@@ -30,6 +30,7 @@
 
     .game-shell {
       width: 100vw;
+<<<<<<< HEAD
       height: var(--app-height, 100vh);
       display: flex;
       justify-content: center;
@@ -38,17 +39,37 @@
       overflow: hidden;
       touch-action: none;
       padding-bottom: 72px; /* reserve footer space */
+=======
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding-bottom: 72px; /* reserved footer space */
+      box-sizing: border-box;
+      overflow: hidden;
+      touch-action: none;
+>>>>>>> d5c8f92bda93414bc0ac631a9d4e3f8d4c70caff
     }
 
     canvas {
       display: block;
       background: #000;
       touch-action: none;
+<<<<<<< HEAD
       width: auto;
       height: auto;
       aspect-ratio: 1024 / 1536;
       max-width: 100vw;
       max-height: calc(var(--app-height, 100vh) - 72px);
+=======
+      max-width: 100vw;
+      max-height: calc(100vh - 72px);
+      max-height: calc(100dvh - 72px);
+      aspect-ratio: 1024 / 1536;
+      width: auto;
+      height: auto;
+>>>>>>> d5c8f92bda93414bc0ac631a9d4e3f8d4c70caff
     }
   </style>
 </head>
@@ -58,6 +79,7 @@
   </div>
 
   <script>
+<<<<<<< HEAD
     function setAppHeight() {
       const h = window.visualViewport
         ? window.visualViewport.height
@@ -76,6 +98,8 @@
       window.visualViewport.addEventListener("scroll", setAppHeight);
     }
 
+=======
+>>>>>>> d5c8f92bda93414bc0ac631a9d4e3f8d4c70caff
     document.addEventListener("touchmove", function (e) {
       e.preventDefault();
     }, { passive: false });
