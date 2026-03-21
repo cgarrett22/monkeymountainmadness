@@ -361,8 +361,8 @@ function drawSheetFrame(img, frame, facing, frameWidth, frameHeight, drawWidth, 
     sy,
     frameWidth,
     frameHeight,
-    -drawWidth * 2,
-    -drawHeight * 2,
+    -drawWidth / 2,
+    -drawHeight / 2,
     drawWidth,
     drawHeight
   );
