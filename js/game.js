@@ -212,7 +212,7 @@ const BANANA_NODE_IDS = ["D", "E", "F", "G", "J", "K", "M", "L", "N", "P"];
 // ASSETS
 // ======================================================
 const backgroundImage = new Image();
-backgroundImage.src = "assets/monkeymountain.png";
+backgroundImage.src = "assets/mountain.png";
 
 function loadSprites() {
   spriteStore.lilJabRun = new Image();
