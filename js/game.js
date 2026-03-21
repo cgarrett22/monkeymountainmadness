@@ -55,31 +55,42 @@ function setQueuedDirection(x, y, name) {
 // ======================================================
 const nodes = {
   A:   { id: "A",   x: 850, y: 230,  neighbors: ["B", "G"] },
-  B:   { id: "B",   x: 100, y: 230,  neighbors: ["A", "C"] },
+//  B:   { id: "B",   x: 100, y: 230,  neighbors: ["A", "C"] },
+  B: { id: "B", x: 100, y: 230, neighbors: ["A", "C"], ladderExit: true },
 
-  C:   { id: "C",   x: 100, y: 530,  neighbors: ["B", "CR1", "H"] },
+
+  // C:   { id: "C",   x: 100, y: 530,  neighbors: ["B", "CR1", "H"] },
+  C: { id: "C", x: 100, y: 530, neighbors: ["B", "CR1", "H"], ladderExit: true },
   D:   { id: "D",   x: 360, y: 530,  neighbors: ["CR1", "E"] },
 
   E:   { id: "E",   x: 530, y: 670,  neighbors: ["D", "F", "G"] },
   F:   { id: "F",   x: 600, y: 720,  neighbors: ["E", "CB1"] },
 
   G:   { id: "G",   x: 710, y: 440,  neighbors: ["A", "E", "O"] },
-  O:   { id: "O",   x: 955, y: 440,  neighbors: ["G", "N"] },
+  // O:   { id: "O",   x: 955, y: 440,  neighbors: ["G", "N"] },
+  O: { id: "O", x: 955, y: 440, neighbors: ["G", "N"], ladderExit: true },
 
-  N:   { id: "N",   x: 955, y: 720,  neighbors: ["O", "CB1", "M"] },
+  // N:   { id: "N",   x: 955, y: 720,  neighbors: ["O", "CB1", "M"] },
+  N: { id: "N", x: 955, y: 720, neighbors: ["O", "CB1", "M"], ladderExit: true },
 
-  H:   { id: "H",   x: 100, y: 820,  neighbors: ["C", "J", "I"] },
-  I:   { id: "I",   x: 100, y: 1220, neighbors: ["H", "R", "CB3"] },
+  // H:   { id: "H",   x: 100, y: 820,  neighbors: ["C", "J", "I"] },
+  H: { id: "H", x: 100, y: 820, neighbors: ["I", "CY1"], ladderExit: true },
+  // I:   { id: "I",   x: 100, y: 1220, neighbors: ["H", "R", "CB3"] },
+  I: { id: "I", x: 100, y: 1220, neighbors: ["H", "CB3"], ladderExit: true },
 
-  J:   { id: "J",   x: 400, y: 820,  neighbors: ["H", "K"] },
+  J:   { id: "J",   x: 400, y: 820,  neighbors: ["H", "K", "CY1"] },
   K:   { id: "K",   x: 530, y: 950,  neighbors: ["J", "M", "L"] },
 
-  M:   { id: "M",   x: 710, y: 850,  neighbors: ["K", "N", "L"] },
-  L:   { id: "L",   x: 710, y: 1110, neighbors: ["K", "M", "P", "CR3"] },
+  // M:   { id: "M",   x: 710, y: 850,  neighbors: ["K", "N", "L"] },
+  M: { id: "M", x: 710, y: 850, neighbors: ["K", "N", "L"], ladderExit: true },
+  // L:   { id: "L",   x: 710, y: 1110, neighbors: ["K", "M", "P", "CR3"] },
+  L: { id: "L", x: 710, y: 1110, neighbors: ["K", "M", "P", "CR3"], ladderExit: true },
 
-  P:   { id: "P",   x: 530, y: 1220, neighbors: ["CB3", "L", "Q"] },
-  Q:   { id: "Q",   x: 530, y: 1450, neighbors: ["P", "R"] },
-  R:   { id: "R",   x: 100, y: 1450, neighbors: ["Q", "I"] },
+  // P:   { id: "P",   x: 530, y: 1220, neighbors: ["CB3", "L", "Q"] },
+  // Q:   { id: "Q",   x: 530, y: 1450, neighbors: ["P", "R"] },
+  P: { id: "P", x: 530, y: 1220, neighbors: ["CB3", "L", "Q"], ladderExit: true },
+  Q: { id: "Q", x: 530, y: 1450, neighbors: ["P", "CY3"], ladderExit: true },
+  R:   { id: "R",   x: 100, y: 1450, neighbors: ["I", "CY3"] },
 
   // red upper-left cave: inline path node
   CR1: {
@@ -88,7 +99,7 @@ const nodes = {
     y: 530,
     neighbors: ["C", "D", "CR2"],
     inputMap: { up: "CR2", left: "C", right: "D", down: "D" },
-    stopHere: true
+    cavePassThrough: true
   },
   CR2: {
     id: "CR2",
@@ -105,7 +116,7 @@ const nodes = {
     y: 720,
     neighbors: ["F", "N", "CB2"],
     inputMap: { up: "CB2", left: "F", right: "N", down: "N" },
-    stopHere: true
+    cavePassThrough: true
   },
   CB2: {
     id: "CB2",
@@ -115,6 +126,23 @@ const nodes = {
     inputMap: { down: "CB1" }
   },
 
+    // yellow upper cave: inline path node
+  CY1: {
+    id: "CY1",
+    x: 250,
+    y: 820,
+    neighbors: ["H", "J", "CY2"],
+    inputMap: { up: "CY2", left: "H", right: "J" },
+    cavePassThrough: true
+  },
+  CY2: {
+    id: "CY2",
+    x: 250,
+    y: 700,
+    neighbors: ["CY1"],
+    inputMap: { down: "CY1" }
+  },
+
   // blue lower-left cave: inline path node
   CB3: {
     id: "CB3",
@@ -122,7 +150,7 @@ const nodes = {
     y: 1220,
     neighbors: ["I", "P", "CB4"],
     inputMap: { up: "CB4", left: "I", right: "P", down: "P" },
-    stopHere: true
+    cavePassThrough: true
   },
   CB4: {
     id: "CB4",
@@ -139,7 +167,7 @@ const nodes = {
     y: 1110,
     neighbors: ["L", "CR4"],
     inputMap: { up: "CR4", left: "L", right: "L", down: "L" },
-    stopHere: true
+    cavePassThrough: true
   },
   CR4: {
     id: "CR4",
@@ -147,14 +175,34 @@ const nodes = {
     y: 1035,
     neighbors: ["CR3"],
     inputMap: { down: "CR3" }
+  },
+
+  // yellow lower-right cave
+  CY3: {
+    id: "CY3",
+    x: 250,
+    y: 1450,
+    neighbors: ["R", "Q", "CY4"],
+    inputMap: { up: "CY4", left: "R", right: "q" },
+    cavePassThrough: true
+  },
+  CY4: {
+    id: "CY4",
+    x: 250,
+    y: 1350,
+    neighbors: ["CY3"],
+    inputMap: { down: "CY3" }
   }
+
 };
 
 const portals = {
   CB2: "CB4",
   CB4: "CB2",
   CR2: "CR4",
-  CR4: "CR2"
+  CR4: "CR2",
+  CY2: "CY4",
+  CY4: "CY2"
 };
 
 const HOME_NODE = "A";
@@ -306,15 +354,35 @@ function tryContinueForward(actor) {
   const current = nodes[actor.currentNode];
   if (!current || !actor.previousNode) return false;
 
+  // cave pass-through nodes only stop if player intentionally queued cave entry
+  if (current.cavePassThrough) {
+    if (queuedDirectionName === "up" && current.inputMap?.up) {
+      return false;
+    }
+
+    const options = current.neighbors.filter(
+      n => n !== actor.previousNode && n !== current.inputMap?.up
+    );
+
+    if (options.length === 1) {
+      actor.targetNode = options[0];
+      return true;
+    }
+  }
+
+  // ladder exits pause for player reaction time
+  if (current.ladderExit) {
+    return false;
+  }
+
+  // explicit stop nodes
   if (current.stopHere) {
-    console.log("STOP NODE:", actor.currentNode);
     return false;
   }
 
   const options = current.neighbors.filter(n => n !== actor.previousNode);
 
   if (options.length === 1) {
-    console.log("AUTO-CONTINUE:", actor.currentNode, "->", options[0]);
     actor.targetNode = options[0];
     return true;
   }
@@ -385,9 +453,9 @@ function updateAnim(actor, dt, fps = 12) {
   actor.frame = Math.floor(actor.animTime * fps) % (actor.frameCount || 4);
 }
 
-function drawBanana(x, y, scale = 1, age = 0) {
+function drawBanana(x, y, scale = 3, age = 0) {
   const ripeness = ripenessLabel(age);
-
+  scale = scale * 2;
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(scale, scale);
@@ -647,7 +715,7 @@ function drawZookeeper() {
     sx, sy,
     frameWidth, spriteStore.zookeeper1.height,
     50, 65,
-    156, 156
+    192, 192
   );
 }
 
@@ -665,8 +733,8 @@ function drawZookeeper2() {
     spriteStore.zookeeper2,
     sx, sy,
     frameWidth, spriteStore.zookeeper2.height,
-    505, 380,
-    156, 156
+    790, 250,
+    224, 224
   );
 }
 
@@ -818,7 +886,7 @@ update(dt) {
     if (img?.complete && img.naturalWidth > 0) {
       const frameWidth = img.width / 4;
       const frameHeight = img.height / 3;
-      drawSheetFrame(img, this.frame, this.facing, frameWidth, frameHeight, 72, 72);
+      drawSheetFrame(img, this.frame, this.facing, frameWidth, frameHeight, 96, 96);
     } else {
       ctx.fillStyle = this.hasBanana ? "#ffd54a" : "#ffeb66";
       ctx.beginPath();
@@ -954,7 +1022,7 @@ class Troop {
     if (img?.complete && img.naturalWidth > 0) {
       const frameWidth = img.width / 4;
       const frameHeight = img.height / 3;
-      drawSheetFrame(img, this.frame, this.facing, frameWidth, frameHeight, 68, 68);
+      drawSheetFrame(img, this.frame, this.facing, frameWidth, frameHeight, 128, 128);
     } else {
       ctx.fillStyle = this.color;
       ctx.beginPath();
@@ -1287,9 +1355,9 @@ function draw() {
   // drawNodeLabels();
   // drawNodeHighlights();
   drawBananaState();
-  drawActors();
   drawZookeeper();
   drawZookeeper2();
+  drawActors();
   drawHudOverlay();
   drawOverlay();
 }
