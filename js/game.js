@@ -517,7 +517,7 @@ function drawHudOverlay() {
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, canvas.width, h);
 
-  const fontSize = Math.max(16, Math.floor(canvas.width * 0.018));
+  const fontSize = Math.max(30, Math.floor(canvas.width * 0.018));
   ctx.textBaseline = "middle";
   ctx.font = `${Math.floor(fontSize * 0.8)}px Arial`;
   ctx.fillStyle = "#c8ffd8";
@@ -553,13 +553,13 @@ function drawOverlay() {
   ctx.font = "bold 44px Arial";
   ctx.fillText("Monkey Mountain Madness", canvas.width / 2, canvas.height / 2 - 40);
 
-  ctx.font = "20px Arial";
+  ctx.font = "30px Arial";
   const line = state.mode === "start"
     ? "Tap or use spacebar to start the Banana Banzai!"
     : "Lil' Jab was tossed too many times. Tap to try again.";
   ctx.fillText(line, canvas.width / 2, canvas.height / 2 + 8);
 
-  ctx.font = "16px Arial";
+  ctx.font = "30px Arial";
   ctx.fillStyle = "#fde68a";
   ctx.fillText("Human detected. Banana etiquette unacceptable.", canvas.width / 2, canvas.height / 2 + 42);
 
@@ -1351,9 +1351,9 @@ function drawActors() {
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawBackground();
-  drawGraph();
-  drawNodeLabels();
-  drawNodeHighlights();
+  // drawGraph();
+  // drawNodeLabels();
+  // drawNodeHighlights();
   drawBananaState();
   drawZookeeper();
   drawZookeeper2();
