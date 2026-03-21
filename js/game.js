@@ -230,13 +230,16 @@ function loadSprites() {
 
 function loadSounds() {
   sounds.pickup = new Audio("assets/pickup.mp3");
+    sounds.pickup.volume = 0.75;
   sounds.catch = new Audio("assets/catch.mp3");
+    sounds.catch.volume = 0.75;
   sounds.score = new Audio("assets/score.mp3");
+    sounds.score.volume = 0.75;
   sounds.step = new Audio("assets/step.mp3");
   sounds.panic = new Audio("assets/panic.mp3");
+    sounds.panic.volume = 0.75;
   sounds.music = new Audio("assets/jungle_jumpin.ogg");
   sounds.music.loop = true;
-  sounds.music.volume = 0.75;
 }
 
 loadSprites();
