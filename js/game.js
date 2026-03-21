@@ -520,7 +520,7 @@ function drawHudOverlay() {
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, canvas.width, h);
 
-  const fontSize = Math.max(30, Math.floor(canvas.width * 0.018));
+  const fontSize = Math.max(36, Math.floor(canvas.width * 0.018));
   ctx.textBaseline = "middle";
   ctx.font = `${Math.floor(fontSize * 0.8)}px Arial`;
   ctx.fillStyle = "#c8ffd8";
