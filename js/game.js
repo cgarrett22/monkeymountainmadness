@@ -74,11 +74,11 @@ const nodes = {
   N: { id: "N", x: 955, y: 720, neighbors: ["O", "CB1", "M"], ladderExit: true },
 
   // H:   { id: "H",   x: 100, y: 820,  neighbors: ["C", "J", "I"] },
-  H: { id: "H", x: 100, y: 820, neighbors: ["I", "CY1"], ladderExit: true },
+  H: { id: "H", x: 100, y: 820, neighbors: ["I", "C", "CY1"], ladderExit: true },
   // I:   { id: "I",   x: 100, y: 1220, neighbors: ["H", "R", "CB3"] },
-  I: { id: "I", x: 100, y: 1220, neighbors: ["H", "CB3"], ladderExit: true },
+  I: { id: "I", x: 100, y: 1220, neighbors: ["H", "R", "CB3"], ladderExit: true },
 
-  J:   { id: "J",   x: 400, y: 820,  neighbors: ["H", "K", "CY1"] },
+  J:   { id: "J",   x: 400, y: 820,  neighbors: ["K", "CY1"] },
   K:   { id: "K",   x: 530, y: 950,  neighbors: ["J", "M", "L"] },
 
   // M:   { id: "M",   x: 710, y: 850,  neighbors: ["K", "N", "L"] },
@@ -1351,9 +1351,9 @@ function drawActors() {
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawBackground();
-  // drawGraph();
-  // drawNodeLabels();
-  // drawNodeHighlights();
+  drawGraph();
+  drawNodeLabels();
+  drawNodeHighlights();
   drawBananaState();
   drawZookeeper();
   drawZookeeper2();
