@@ -25,6 +25,7 @@ const state = {
   score: 0,
   lives: 3,
   acceptance: 0,
+  isMuted: false,
   nextAcceptanceUnlock: 10,
   player: null,
   troops: [],
@@ -47,8 +48,14 @@ let queuedDirectionName = null;
 function setQueuedDirection(x, y, name) {
   queuedDirection = { x, y };
   queuedDirectionName = name;
-  console.log("queued:", name);
 }
+
+const muteButton = {
+  x: 0,
+  y: 0,
+  w: 54,
+  h: 36
+};
 
 // ======================================================
 // NODE GRAPH
@@ -226,6 +233,9 @@ function loadSprites() {
 
   spriteStore.zookeeper2 = new Image();
   spriteStore.zookeeper2.src = "sprites/zookeeper-2.png";
+
+  spriteStore.levelUpArt = new Image();
+  spriteStore.levelUpArt.src = "assets/levelup-monkeys.png";
 }
 
 function loadSounds() {
@@ -240,6 +250,7 @@ function loadSounds() {
     sounds.panic.volume = 0.75;
   sounds.music = new Audio("assets/jungle_jumpin.ogg");
   sounds.music.loop = true;
+  applyMuteState();
 }
 
 loadSprites();
@@ -275,6 +286,42 @@ function playMusicOnce() {
   sounds.music.play().catch(() => {});
 }
 
+function applyMuteState() {
+  for (const key in sounds) {
+    if (sounds[key]) {
+      sounds[key].muted = state.isMuted;
+    }
+  }
+}
+
+function toggleMute() {
+  state.isMuted = !state.isMuted;
+  applyMuteState();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  const radius = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + w - radius, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+  ctx.lineTo(x + w, y + h - radius);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+  ctx.lineTo(x + radius, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+}
+
+function pointInRect(px, py, rect) {
+  return (
+    px >= rect.x &&
+    px <= rect.x + rect.w &&
+    py >= rect.y &&
+    py <= rect.y + rect.h
+  );
+}
 function validateGraph() {
   const errors = [];
 
@@ -291,12 +338,12 @@ function validateGraph() {
     }
   }
 
-  if (errors.length) {
-    console.warn("Graph validation errors:");
-    errors.forEach(err => console.warn(err));
-  } else {
-    console.log("Graph is valid.");
-  }
+  // if (errors.length) {
+  //   console.warn("Graph validation errors:");
+  //   errors.forEach(err => console.warn(err));
+  // } else {
+  //   console.log("Graph is valid.");
+  // }
 }
 
 function getBestNeighbor(currentNodeId, inputVec, inputName) {
@@ -343,10 +390,6 @@ function tryConsumeQueuedTurn(actor) {
   if (!nextId) return false;
 
   actor.targetNode = nextId;
-
-  console.log(
-    `TURN USED at ${actor.currentNode}: ${queuedDirectionName} -> ${nextId}`
-  );
 
   queuedDirection = null;
   queuedDirectionName = null;
@@ -402,9 +445,197 @@ function inputVectorFromNodes(fromId, toId) {
   return { x: dx / len, y: dy / len };
 }
 
+
+// ======================================================
+// LEVEL STATE
+// ======================================================
+
+function getLevelConfig() {
+  const level = state.level;
+
+  if (level === 1) return { troopCount: 3, speed: 0.60, intelligence: 0.20 };
+  if (level === 2) return { troopCount: 3, speed: 0.68, intelligence: 0.30 };
+  if (level === 3) return { troopCount: 4, speed: 0.78, intelligence: 0.45 };
+
+  return {
+    troopCount: Math.min(6, 4 + Math.floor((level - 3) / 2)),
+    speed: Math.min(1.25, 0.78 + (level - 3) * 0.06),
+    intelligence: Math.min(0.85, 0.45 + (level - 3) * 0.07)
+  };
+}
+
+function showLevelUp(level) {
+  state.levelUp = {
+    level,
+    time: 0,
+    duration: 2.2,
+    hearts: Array.from({ length: 12 }, () => ({
+      x: rand(80, canvas.width - 80),
+      y: rand(canvas.height * 0.65, canvas.height - 40),
+      size: rand(14, 34),
+      speed: rand(18, 42),
+      drift: rand(-12, 12),
+      phase: rand(0, Math.PI * 2)
+    }))
+  };
+}
+
+function updateLevelUp(dt) {
+  if (!state.levelUp) return;
+
+  const lu = state.levelUp;
+  lu.time += dt;
+
+  for (const h of lu.hearts) {
+    h.y -= h.speed * dt;
+    h.x += Math.sin(lu.time * 2 + h.phase) * h.drift * dt;
+
+    if (h.y < -40) {
+      h.y = canvas.height + rand(10, 80);
+      h.x = rand(80, canvas.width - 80);
+    }
+  }
+
+  if (lu.time >= lu.duration) {
+    state.levelUp = null;
+  }
+}
+
+function easeOutBack(t) {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+
+function drawHeartShape(x, y, size, alpha = 1) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(size / 24, size / 24);
+  ctx.globalAlpha = alpha;
+
+  ctx.beginPath();
+  ctx.moveTo(0, 8);
+  ctx.bezierCurveTo(-18, -12, -28, 10, 0, 30);
+  ctx.bezierCurveTo(28, 10, 18, -12, 0, 8);
+  ctx.closePath();
+
+  ctx.fillStyle = "#ff4f8b";
+  ctx.fill();
+
+  ctx.restore();
+}
+
 // ======================================================
 // DRAWING HELPERS
 // ======================================================
+
+function drawLevelUpOverlay() {
+  if (!state.levelUp) return;
+
+  const lu = state.levelUp;
+  const t = Math.min(lu.time / lu.duration, 1);
+
+  // overall fade
+  const fadeIn = Math.min(t / 0.25, 1);
+  const fadeOut = lu.time > lu.duration - 0.35
+    ? Math.max((lu.duration - lu.time) / 0.35, 0)
+    : 1;
+  const alpha = fadeIn * fadeOut;
+
+  // background gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  grad.addColorStop(0, "#ff5a1f");
+  grad.addColorStop(1, "#ff1f6a");
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // floating hearts
+  for (const h of lu.hearts) {
+    drawHeartShape(h.x, h.y, h.size, 0.22 * alpha);
+  }
+
+  // title text
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const titlePop = easeOutBack(Math.min(t / 0.35, 1));
+  const subPop = easeOutBack(Math.min(Math.max((t - 0.08) / 0.35, 0), 1));
+  const congratsPop = easeOutBack(Math.min(Math.max((t - 0.16) / 0.35, 0), 1));
+
+  ctx.save();
+  ctx.translate(canvas.width / 2, 185);
+  ctx.scale(titlePop, titlePop);
+  ctx.fillStyle = "#fff";
+  ctx.strokeStyle = "rgba(0,0,0,0.18)";
+  ctx.lineWidth = 8;
+  ctx.font = "bold 72px Arial";
+  ctx.strokeText("Acceptance", 0, 0);
+  ctx.fillText("Acceptance", 0, 0);
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate(canvas.width / 2, 295);
+  ctx.scale(subPop, subPop);
+  ctx.fillStyle = "#ffe066";
+  ctx.strokeStyle = "rgba(0,0,0,0.18)";
+  ctx.lineWidth = 8;
+  ctx.font = "bold 88px Arial";
+  ctx.strokeText(`Level ${lu.level}`, 0, 0);
+  ctx.fillText(`Level ${lu.level}`, 0, 0);
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate(canvas.width / 2, 410);
+  ctx.scale(congratsPop, congratsPop);
+  ctx.fillStyle = "#fff";
+  ctx.strokeStyle = "rgba(0,0,0,0.18)";
+  ctx.lineWidth = 7;
+  ctx.font = "bold 64px Arial";
+  ctx.strokeText("Congratulations!", 0, 0);
+  ctx.fillText("Congratulations!", 0, 0);
+  ctx.restore();
+
+  // monkey art pop/bounce
+  const artT = Math.min(Math.max((t - 0.12) / 0.45, 0), 1);
+  const artScale = easeOutBack(artT);
+  const bob = Math.sin(lu.time * 5.5) * 8;
+
+  for (let i = 0; i < 8; i++) {
+    const ang = (Math.PI * 2 * i) / 8 + lu.time * 0.8;
+    const rx = Math.cos(ang) * 260;
+    const ry = Math.sin(ang) * 120;
+    drawHeartShape(
+      canvas.width / 2 + rx,
+      1010 + ry + bob,
+      10 + Math.sin(lu.time * 4 + i) * 2,
+      0.16 * alpha
+    );
+  }
+
+  const img = spriteStore.levelUpArt; // assign your cartoon image here
+  if (img?.complete && img.naturalWidth > 0) {
+    const targetW = 620;
+    const targetH = targetW * (img.height / img.width);
+
+    ctx.save();
+    ctx.translate(canvas.width / 2, 1030 + bob);
+    ctx.scale(artScale, artScale);
+    ctx.drawImage(
+      img,
+      -targetW / 2,
+      -targetH / 2,
+      targetW,
+      targetH
+    );
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
 function getDirRow(facing) {
   if (facing === "down") return 0;
   if (facing === "left") return 1;
@@ -509,8 +740,8 @@ function drawBackground() {
 }
 
 function drawHudOverlay() {
-  const pad = 40;
   const h = 54;
+  const pad = 20;
 
   ctx.save();
 
@@ -520,26 +751,56 @@ function drawHudOverlay() {
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, canvas.width, h);
 
-  const fontSize = Math.max(36, Math.floor(canvas.width * 0.018));
   ctx.textBaseline = "middle";
-  ctx.font = `${Math.floor(fontSize * 0.8)}px Arial`;
+  ctx.font = "24px Arial";
   ctx.fillStyle = "#c8ffd8";
 
-  ctx.textAlign = "left";
-  ctx.fillText(`Score: ${state.score}   Acceptance: ${state.acceptance ?? 0}`, pad, h / 2);
+  const leftX = pad;
+  const centerX = canvas.width / 2;
+  const rightTextX = canvas.width - 110;
 
-  let ripenessText = "airborne";
+  // CENTER: banana ripeness/state
+  let ripenessText = "Airborne";
   if (state.player?.hasBanana) {
     ripenessText = "secured";
   } else if (state.banana?.landed) {
     ripenessText = ripenessLabel(state.banana.age).label;
   }
 
-  ctx.textAlign = "center";
-  ctx.fillText(`Ripeness: ${ripenessText}`, canvas.width / 2, h / 2);
+  // ctx.textAlign = "center";
+  // ctx.fillText(`Ripeness: ${ripenessText}`, centerX, h / 2);
 
+  // LEFT: score / acceptance / level
+  ctx.textAlign = "left";
+  ctx.fillText(
+    `Score: ${state.score}   Acceptance: ${state.acceptance ?? 0}   Level: ${state.level ?? 1}   Ripeness: ${ripenessText} `,
+    leftX,
+    h / 2
+  );
+
+
+  // RIGHT: lives
   ctx.textAlign = "right";
-  ctx.fillText(`Lives: ${state.lives}`, canvas.width - pad, h / 2);
+  ctx.fillText(`Lives: ${state.lives}`, rightTextX, h / 2);
+
+  // Mute button box
+  muteButton.w = 54;
+  muteButton.h = 32;
+  muteButton.x = canvas.width - muteButton.w - 16;
+  muteButton.y = 11;
+
+  ctx.fillStyle = "rgba(255,255,255,0.12)";
+  ctx.strokeStyle = "rgba(255,255,255,0.25)";
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, muteButton.x, muteButton.y, muteButton.w, muteButton.h, 8);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.font = "30px Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(state.isMuted ? "🔇" : "🔊", muteButton.x + muteButton.w / 2, muteButton.y + muteButton.h / 2 + 1);
 
   ctx.restore();
 }
@@ -717,8 +978,8 @@ function drawZookeeper() {
     spriteStore.zookeeper1,
     sx, sy,
     frameWidth, spriteStore.zookeeper1.height,
-    50, 65,
-    192, 192
+    50, 30,
+    224, 224
   );
 }
 
@@ -807,6 +1068,12 @@ class Player {
     }
 
 update(dt) {
+
+  if (state.levelUp) {
+    updateLevelUp(dt);
+    return;
+  }
+
   // immediate reversal while traveling
   if (this.targetNode && queuedDirection) {
     const from = nodes[this.currentNode];
@@ -826,9 +1093,8 @@ update(dt) {
       this.currentNode = this.targetNode;
       this.targetNode = oldCurrent;
       this.previousNode = oldCurrent;
-
-      console.log("REVERSE");
     }
+
   }
 
   // if standing still at a node, try queued turn first
@@ -864,8 +1130,6 @@ update(dt) {
     this.currentNode = this.targetNode;
     this.targetNode = null;
     this.movedThisRound = true;
-
-    console.log("ARRIVED:", this.currentNode);
 
     handlePortalTravel(this);
 
@@ -922,7 +1186,11 @@ class Troop {
     this.dir = { x: 0, y: 0 };
     this.facing = "left";
     this.radius = 20;
-    this.speed = 220;
+    //this.speed = 220;
+    this.baseSpeed = 220;
+    this.speedMultiplier = 0.60;
+    this.intelligence = 0.20;
+    this.speed = this.baseSpeed * this.speedMultiplier;
     this.frame = 0;
     this.animTime = 0;
     this.frameCount = 4;
@@ -940,40 +1208,42 @@ class Troop {
     this.facing = "left";
     this.frame = 0;
     this.animTime = 0;
+    this.speed = this.baseSpeed * this.speedMultiplier;
   }
 
-    chooseNextNode() {
+  chooseNextNode() {
     const current = nodes[this.currentNode];
     if (!current) return null;
 
-        const candidates = current.neighbors.filter(n => n !== this.previousNode);
-        const pool = candidates.length ? candidates : current.neighbors;
-        if (!pool.length) return null;
+    const candidates = current.neighbors.filter(n => n !== this.previousNode);
+    const pool = candidates.length ? candidates : current.neighbors;
+    if (!pool.length) return null;
 
-        const player = state.player;
+    const player = state.player;
 
-        // chase only when player has banana
-        if (player && player.hasBanana) {
-            let best = null;
-            let bestDist = Infinity;
+    // Only chase intelligently some of the time, and mainly when player has banana
+    if (player && player.hasBanana && Math.random() < this.intelligence) {
+      let best = null;
+      let bestDist = Infinity;
 
-            for (const candidate of pool) {
-            const p = nodes[candidate];
-            const d = Math.hypot(player.x - p.x, player.y - p.y);
-            if (d < bestDist) {
-                bestDist = d;
-                best = candidate;
-            }
-            }
-
-            return best;
+      for (const candidate of pool) {
+        const p = nodes[candidate];
+        const d = Math.hypot(player.x - p.x, player.y - p.y);
+        if (d < bestDist) {
+          bestDist = d;
+          best = candidate;
         }
+      }
 
-        // otherwise wander randomly
-        return choose(pool);
+      return best;
     }
 
+    return choose(pool);
+  }
+
   update(dt) {
+    this.speed = this.baseSpeed * this.speedMultiplier;
+
     if (!this.targetNode) {
       const next = this.chooseNextNode();
       if (next) this.targetNode = next;
@@ -1042,15 +1312,41 @@ class Troop {
 // ======================================================
 function addAcceptance(amount) {
   state.acceptance = Math.max(0, (state.acceptance || 0) + amount);
-  if ((state.acceptance || 0) >= (state.nextAcceptanceUnlock || 10)) {
-    state.nextAcceptanceUnlock += 10;
+
+  const requiredForNextLevel = state.level * 10;
+
+  if (state.acceptance >= requiredForNextLevel) {
+    state.level += 1;
+    showLevelUp(state.level);
+    applyLevelConfig();
+  }
+}
+
+function applyLevelConfig() {
+  const config = getLevelConfig();
+
+  const baseTroopStarts = ["N", "M", "K", "O", "H", "Q"];
+  const troopColors = ["#7c5c46", "#6c4d39", "#8d6b52", "#5f4635", "#8b6a50", "#6d5240"];
+
+  while (state.troops.length < config.troopCount) {
+    const idx = state.troops.length;
+    state.troops.push(new Troop(baseTroopStarts[idx], troopColors[idx]));
+  }
+
+  while (state.troops.length > config.troopCount) {
+    state.troops.pop();
+  }
+
+  for (const troop of state.troops) {
+    troop.speedMultiplier = config.speed;
+    troop.intelligence = config.intelligence;
   }
 }
 
 function ripenessLabel(age) {
-  if (age >= 9) return { label: "golden", points: 3, color: "#facc15" };
-  if (age >= 5) return { label: "yellow", points: 2, color: "#fde047" };
-  return { label: "green", points: 1, color: "#4ade80" };
+  if (age >= 9) return { label: "Golden", points: 3, color: "#facc15" };
+  if (age >= 5) return { label: "Yellow", points: 2, color: "#fde047" };
+  return { label: "Green", points: 1, color: "#4ade80" };
 }
 
 function beginGame() {
@@ -1077,10 +1373,13 @@ function startGame() {
   state.particles = [];
   state.catchAnim = null;
   state.acceptance = 0;
-  state.nextAcceptanceUnlock = 10;
+  state.level = 1;
+  state.levelUp = null;
   state.zookeeper = { anim: "idle", frame: 0, time: 0, didThrowSound: false };
   state.zookeeper2 = { anim: "idle", frame: 0, time: 0, timer: rand(2.5, 6) };
+  
   resetActors();
+  applyLevelConfig();
   newRound();
 }
 
@@ -1363,6 +1662,7 @@ function draw() {
   drawActors();
   drawHudOverlay();
   drawOverlay();
+  drawLevelUpOverlay();
 }
 
 // ======================================================
@@ -1370,8 +1670,20 @@ function draw() {
 // ======================================================
 canvas.addEventListener("pointerdown", (e) => {
   e.preventDefault();
+
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const x = (e.clientX - rect.left) * scaleX;
+  const y = (e.clientY - rect.top) * scaleY;
+
+  if (pointInRect(x, y, muteButton)) {
+    toggleMute();
+    return;
+  }
+
   beginGame();
-  touchStart = { x: e.clientX, y: e.clientY };
+  touchStart = { x, y };
   swipeHandled = false;
 }, { passive: false });
 
@@ -1423,6 +1735,12 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
   } else if (e.code === "Space") {
     beginGame();
+    e.preventDefault();
+  }
+
+  //temp
+  if (e.key === "l" || e.key === "L") {
+    showLevelUp(state.level + 1);
     e.preventDefault();
   }
 });
