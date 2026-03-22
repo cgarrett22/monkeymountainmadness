@@ -752,7 +752,7 @@ function drawHudOverlay() {
   ctx.fillRect(0, 0, canvas.width, h);
 
   ctx.textBaseline = "middle";
-  ctx.font = "24px Arial";
+  ctx.font = "26px Arial";
   ctx.fillStyle = "#c8ffd8";
 
   const leftX = pad;
