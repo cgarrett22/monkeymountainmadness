@@ -1688,12 +1688,19 @@ canvas.addEventListener("pointerdown", (e) => {
 }, { passive: false });
 
 canvas.addEventListener("pointermove", (e) => {
-  if (!touchStart || swipeHandled || !state.player) return;
+  if (!touchStart || !state.player) return;
 
   e.preventDefault();
 
-  const dx = e.clientX - touchStart.x;
-  const dy = e.clientY - touchStart.y;
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+
+  const x = (e.clientX - rect.left) * scaleX;
+  const y = (e.clientY - rect.top) * scaleY;
+
+  const dx = x - touchStart.x;
+  const dy = y - touchStart.y;
 
   if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) return;
 
@@ -1703,7 +1710,8 @@ canvas.addEventListener("pointermove", (e) => {
     setQueuedDirection(0, dy > 0 ? 1 : -1, dy > 0 ? "down" : "up");
   }
 
-  swipeHandled = true;
+  // reset anchor so another swipe can be detected immediately
+  touchStart = { x, y };
 }, { passive: false });
 
 canvas.addEventListener("pointerup", () => {
