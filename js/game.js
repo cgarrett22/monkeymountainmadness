@@ -60,20 +60,21 @@ const muteButton = {
 // ======================================================
 // NODE GRAPH
 // ======================================================
+
 const nodes = {
-  A:   { id: "A",   x: 850, y: 230,  neighbors: ["B", "G"] },
+  A:   { id: "A",   x: 870, y: 230,  neighbors: ["S", "G"] },
 //  B:   { id: "B",   x: 100, y: 230,  neighbors: ["A", "C"] },
-  B: { id: "B", x: 100, y: 230, neighbors: ["A", "C"], ladderExit: true },
+  B: { id: "B", x: 100, y: 230, neighbors: ["S", "C"], ladderExit: true },
 
 
   // C:   { id: "C",   x: 100, y: 530,  neighbors: ["B", "CR1", "H"] },
   C: { id: "C", x: 100, y: 530, neighbors: ["B", "CR1", "H"], ladderExit: true },
   D:   { id: "D",   x: 360, y: 530,  neighbors: ["CR1", "E"] },
 
-  E:   { id: "E",   x: 530, y: 670,  neighbors: ["D", "F", "G"] },
+  E:   { id: "E",   x: 525, y: 645,  neighbors: ["D", "F", "G", "S"] },
   F:   { id: "F",   x: 600, y: 720,  neighbors: ["E", "CB1"] },
 
-  G:   { id: "G",   x: 710, y: 440,  neighbors: ["A", "E", "O"] },
+  G:   { id: "G",   x: 715,  y: 440,  neighbors: ["A", "E", "O"] },
   // O:   { id: "O",   x: 955, y: 440,  neighbors: ["G", "N"] },
   O: { id: "O", x: 955, y: 440, neighbors: ["G", "N"], ladderExit: true },
 
@@ -91,14 +92,15 @@ const nodes = {
   // M:   { id: "M",   x: 710, y: 850,  neighbors: ["K", "N", "L"] },
   M: { id: "M", x: 710, y: 850, neighbors: ["K", "N", "L"], ladderExit: true },
   // L:   { id: "L",   x: 710, y: 1110, neighbors: ["K", "M", "P", "CR3"] },
-  L: { id: "L", x: 710, y: 1110, neighbors: ["K", "M", "P", "CR3"], ladderExit: true },
+  // L: { id: "L", x: 710, y: 1110, neighbors: ["K", "M", "P", "CR3"], ladderExit: true },
+  L: { id: "L", x: 710, y: 1110, neighbors: ["K", "M", "P", "CR3"], inputMap: { up: "M", left: "K", right: "CR3", down: "P" }, ladderExit: true },
 
   // P:   { id: "P",   x: 530, y: 1220, neighbors: ["CB3", "L", "Q"] },
   // Q:   { id: "Q",   x: 530, y: 1450, neighbors: ["P", "R"] },
   P: { id: "P", x: 530, y: 1220, neighbors: ["CB3", "L", "Q"], ladderExit: true },
   Q: { id: "Q", x: 530, y: 1450, neighbors: ["P", "CY3"], ladderExit: true },
   R:   { id: "R",   x: 100, y: 1450, neighbors: ["I", "CY3"] },
-
+  S:   { id: "S",   x: 525, y: 230,  neighbors: ["B", "A", "E"], inputMap: { left: "B", right: "A", down: "E" }, ropePassThrough: true },
   // red upper-left cave: inline path node
   CR1: {
     id: "CR1",
@@ -425,6 +427,22 @@ function tryContinueForward(actor) {
   if (current.stopHere) {
     return false;
   }
+
+  if (current.ropePassThrough) {
+    if (queuedDirectionName === "down" && current.inputMap?.down) {
+      return false;
+    }
+
+    if (actor.previousNode === "A" && current.inputMap?.left) {
+      actor.targetNode = current.inputMap.left;
+      return true;
+    }
+
+    if (actor.previousNode === "B" && current.inputMap?.right) {
+      actor.targetNode = current.inputMap.right;
+      return true;
+    }
+  } 
 
   const options = current.neighbors.filter(n => n !== actor.previousNode);
 
