@@ -8,6 +8,7 @@ canvas.height = 1536;
 // CONFIG
 // ======================================================
 const DEBUG = true;
+let NODE_DEBUG = true;
 const SWIPE_THRESHOLD = 24;
 
 const spriteStore = {};
@@ -20,13 +21,13 @@ const keys = {
 };
 
 const state = {
-  mode: "start", // start, playing, gameOver
+  mode: "start",
   lastTime: 0,
   score: 0,
   lives: 3,
   acceptance: 0,
   isMuted: false,
-  nextAcceptanceUnlock: 10,
+  nextAcceptanceUnlock: 3,
   player: null,
   troops: [],
   banana: null,
@@ -36,7 +37,11 @@ const state = {
   catchAnim: null,
   zookeeper: { anim: "idle", frame: 0, time: 0, didThrowSound: false },
   zookeeper2: { anim: "idle", frame: 0, time: 0, timer: 3.5 },
-  roundState: "waiting"
+  scene: "main",
+  boss: null,
+  bossIntro: null,
+  roundState: "waiting",
+  cavePreview: null
 };
 
 let musicStarted = false;
@@ -71,7 +76,7 @@ const nodes = {
   C: { id: "C", x: 100, y: 530, neighbors: ["B", "CR1", "H"], ladderExit: true },
   D:   { id: "D",   x: 360, y: 530,  neighbors: ["CR1", "E"] },
 
-  E:   { id: "E",   x: 525, y: 645,  neighbors: ["D", "F", "G", "S"] },
+  E:   { id: "E",   x: 525, y: 645,  neighbors: ["D", "F", "G", "S"], inputMap: { up: "S", left: "D", right: "G", down: "F" } },
   F:   { id: "F",   x: 600, y: 720,  neighbors: ["E", "CB1"] },
 
   G:   { id: "G",   x: 715,  y: 440,  neighbors: ["A", "E", "O"] },
@@ -192,7 +197,7 @@ const nodes = {
     x: 250,
     y: 1450,
     neighbors: ["R", "Q", "CY4"],
-    inputMap: { up: "CY4", left: "R", right: "q" },
+    inputMap: { up: "CY4", left: "R", right: "Q" },
     cavePassThrough: true
   },
   CY4: {
@@ -206,13 +211,143 @@ const nodes = {
 };
 
 const portals = {
-  CB2: "CB4",
-  CB4: "CB2",
-  CR2: "CR4",
-  CR4: "CR2",
-  CY2: "CY4",
-  CY4: "CY2"
+  CB2: "CR2",
+  CB4: "CY4",
+  CR2: "CB2",
+  CR4: "CY2",
+  CY2: "CR4",
+  CY4: "CB4"
 };
+
+const bossNodes = {
+  // ======================================================
+  // BOTTOM PLATFORM
+  // ======================================================
+  START: { id: "START", x: 170, y: 1300, neighbors: ["L1D"] },
+  // B0:    { id: "B0",    x: 285, y: 1315, neighbors: ["START", "B1", "L1D"] },
+  // B1:    { id: "B1",    x: 520, y: 1295, neighbors: ["B0", "B2"] },
+  // B2:    { id: "B2",    x: 780, y: 1278, neighbors: ["B1", "L2D"] },
+
+  // left ladder to lower slope
+  L1D:   { id: "L1D",   x: 340, y: 1290, neighbors: ["START", "L2D", "L1U"], ladderExit: true },
+  L1U:   { id: "L1U",   x: 340, y: 1005,  neighbors: ["L1D", "S1D", "L3D"], ladderExit: true },
+
+    // small short ladder left
+  S1D:   { id: "S1D",   x: 200, y: 920,  neighbors: ["S1U", "L1U"], ladderExit: true },
+  S1U:  { id: "S1U",  x: 200, y: 820,  neighbors: ["S1D", "R1B", "M1"], ladderExit: true },
+
+  // right ladder to lower slope
+  L2D:   { id: "L2D",   x: 825, y: 1215, neighbors: ["L1D", "L2U"], ladderExit: true },
+  L2U:   { id: "L2U",   x: 825, y: 1035,  neighbors: ["L2D", "R2B", "M0"], ladderExit: true },
+
+  // ======================================================
+  // LOWER SLOPE (left higher -> right lower)
+  // ======================================================
+  M0:    { id: "M0",    x: 600, y: 935,  neighbors: ["L2U", "L3D"], stopHere: true },
+  M1:    { id: "M1",    x: 280, y: 735,  neighbors: ["S1U", "L3U", "L5D"] },
+
+  // center main ladder up to upper shelf
+  L3D:   { id: "L3D",   x: 500, y: 940,  neighbors: ["L1U", "L3U", "M0"], ladderExit: true },
+  L3U:   { id: "L3U",   x: 500, y: 730,  neighbors: ["L3D", "L4D", "M1"], ladderExit: true },
+
+  // ======================================================
+  // MIDDLE SHELF (left low -> right high)
+  // ======================================================
+  // H0:    { id: "H0",    x: 160, y: 690,  neighbors: ["H1", "SL1"] },
+  // H1:    { id: "H1",    x: 365, y: 625,  neighbors: ["H0", "H2", "L3D"] },
+  // H2:    { id: "H2",    x: 650, y: 540,  neighbors: ["H1", "H3"] },
+  // H3:    { id: "H3",    x: 850, y: 485,  neighbors: ["H2", "R2B"] },
+
+  // // small short ladder left
+  // SL1:   { id: "SL1",   x: 150, y: 655,  neighbors: ["H0", "SL1U"], ladderExit: true },
+  // SL1U:  { id: "SL1U",  x: 150, y: 585,  neighbors: ["SL1", "U0"], ladderExit: true },
+
+  // ======================================================
+  // UPPER SHELF (left high -> right low)
+  // // ======================================================
+  // U0:    { id: "U0",    x: 120, y: 515,  neighbors: ["U1", "R1B"] },
+  // U1:    { id: "U1",    x: 360, y: 490,  neighbors: ["U0", "U2", "L3U"] },
+  // U2:    { id: "U2",    x: 610, y: 455,  neighbors: ["U1", "U3"] },
+  // U3:    { id: "U3",    x: 850, y: 425,  neighbors: ["U2", "L4D"] },
+
+  // left rope from upper shelf down
+  R1B: {
+    id: "R1B",
+    x: 85,
+    y: 790,
+    neighbors: ["S1U", "R1T"],
+    inputMap: { up: "R1T", right: "S1U" },
+    ropePassThrough: true
+  },
+  R1T: {
+    id: "R1T",
+    x: 85,
+    y: 435,
+    neighbors: ["R1B", "L5D"],
+    inputMap: { down: "R1B", right: "L5D" }
+  },
+
+  // right rope from middle-right down
+  R2B: {
+    id: "R2B",
+    x: 925,
+    y: 1030,
+    neighbors: ["L2U", "R2T"],
+    inputMap: { up: "R2T", left: "L2U" },
+    ropePassThrough: true
+  },
+  R2T: {
+    id: "R2T",
+    x: 895,
+    y: 650,
+    neighbors: ["R2B", "L4D"],
+    inputMap: { down: "R2B", left: "L4D" }
+  },
+
+  // ======================================================
+  // SUMMIT LADDER + GOAL
+  // ======================================================
+  L4D:   { id: "L4D",   x: 690, y: 690, neighbors: ["L3U", "L4U", "R2T"], ladderExit: true },
+  L4U:   { id: "L4U",   x: 690, y: 490, neighbors: ["L4D", "L5D"], ladderExit: true },
+
+  L5D:   { id: "L5D",   x: 340, y: 450, neighbors: ["R1T", "L4U", "M1", "GOAL"], stopHere: true },
+  // L5U:   { id: "L5U",   x: 315, y: 330, neighbors: ["L4D", "GOAL"], ladderExit: true },
+
+  TOP: { id: "TOP", x: 340, y: 0, neighbors: [] },
+  GOAL:  { id: "GOAL",  x: 340, y: 300, neighbors: ["L5D"] }
+};
+
+const bossConfig = {
+  startNode: "START",
+  goalNode: "GOAL",
+  motherStartNode: "L2U",
+  roamingTroopStartNodes: ["R1T", "L4U"],
+  coconutThrowerNode: "TOP",
+  bananaNodes: ["R1T", "L3D", "L2D", "R2T", "L5D"],
+  coconutSafeNodes: ["M0", "M1"],
+  fullSafeNodes: ["START"]
+};
+
+const bossCoconutLanes = [
+  ["TOP", "L5D", "M1", "S1D", "L1U", "L1D", "START"],
+  ["TOP", "L4U", "L4D", "L3U", "L3D", "M0", "L2U", "L2D"],
+  ["TOP", "R2T", "R2B", "L2U", "L2D"]
+];
+
+function getBossScale(x, y) {
+  if (!isBossScene()) return 1;
+
+  // tune rectangles to your ledges
+  const zones = [
+    { x: 220, y: 860, w: 430, h: 180 }, // M0
+    { x: 160, y: 660, w: 320, h: 140 }  // M1
+  ];
+
+  return zones.some(z =>
+    x >= z.x && x <= z.x + z.w &&
+    y >= z.y && y <= z.y + z.h
+  ) ? 0.8 : 1.0;
+}
 
 const HOME_NODE = "A";
 const BANANA_NODE_IDS = ["D", "E", "F", "G", "J", "K", "M", "L", "N", "P"];
@@ -238,6 +373,15 @@ function loadSprites() {
 
   spriteStore.levelUpArt = new Image();
   spriteStore.levelUpArt.src = "assets/levelup-monkeys.png";
+
+  spriteStore.mother = new Image();
+  spriteStore.mother.src = "assets/mother-plush.png";
+
+  spriteStore.bossBackground = new Image();
+  spriteStore.bossBackground.src = "assets/boss-mountain.png";
+
+  spriteStore.bossShadowOverlay = new Image();
+  spriteStore.bossShadowOverlay.src = "assets/boss-mountain-overlay.png";
 }
 
 function loadSounds() {
@@ -252,6 +396,9 @@ function loadSounds() {
     sounds.panic.volume = 0.75;
   sounds.music = new Audio("assets/jungle_jumpin.ogg");
   sounds.music.loop = true;
+  sounds.bossMusic = new Audio("assets/boss-loop.ogg");
+  sounds.bossMusic.loop = true;
+  //sounds.bossMusic.volume = 0.75;
   applyMuteState();
 }
 
@@ -261,6 +408,27 @@ loadSounds();
 // ======================================================
 // HELPERS
 // ======================================================
+
+function stopAllMusic() {
+  if (sounds.music) {
+    sounds.music.pause();
+    sounds.music.currentTime = 0;
+  }
+  if (sounds.bossMusic) {
+    sounds.bossMusic.pause();
+    sounds.bossMusic.currentTime = 0;
+  }
+}
+
+function playSceneMusic() {
+  stopAllMusic();
+
+  const track = isBossScene() ? sounds.bossMusic : sounds.music;
+  if (track) {
+    track.play().catch(() => {});
+  }
+}
+
 function rand(min, max) {
   return Math.random() * (max - min) + min;
 }
@@ -273,12 +441,16 @@ function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
 }
 
+function isBossScene() {
+  return state.scene === "boss";
+}
+
 function distance(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
 function nodePos(id) {
-  return nodes[id];
+  return getCurrentNodeMap()[id];
 }
 
 function playMusicOnce() {
@@ -299,6 +471,145 @@ function applyMuteState() {
 function toggleMute() {
   state.isMuted = !state.isMuted;
   applyMuteState();
+}
+
+function getCurrentNodeMap() {
+  return state.scene === "boss" ? bossNodes : nodes;
+}
+
+function getCurrentBackgroundImage() {
+  return state.scene === "boss" ? spriteStore.bossBackground : backgroundImage;
+}
+
+function startBossNodeTest() {
+  state.scene = "boss";
+
+  if (!state.player) {
+    state.player = new Player(bossConfig.startNode);
+  }
+
+  const start = bossNodes[bossConfig.startNode];
+  state.player.currentNode = bossConfig.startNode;
+  state.player.previousNode = null;
+  state.player.targetNode = null;
+  state.player.x = start.x;
+  state.player.y = start.y;
+
+  state.boss = {
+    coconutTimer: 0,
+    mother: {
+      carried: false,
+      nodeId: bossConfig.motherStartNode
+    }
+  };
+}
+
+function showBossIntro(level) {
+  state.bossIntro = {
+    level,
+    time: 0,
+    duration: 1.8
+  };
+}
+
+function updateBossIntro(dt) {
+  if (!state.bossIntro) return;
+
+  state.bossIntro.time += dt;
+
+  if (state.bossIntro.time >= state.bossIntro.duration) {
+    state.bossIntro = null;
+    startBossMode();
+  }
+}
+
+function getNearestNodeId(x, y, nodeMap, maxDist = 40) {
+  let bestId = null;
+  let bestDist = Infinity;
+
+  for (const id in nodeMap) {
+    const n = nodeMap[id];
+    const d = Math.hypot(x - n.x, y - n.y);
+    if (d < bestDist) {
+      bestDist = d;
+      bestId = id;
+    }
+  }
+
+  return bestDist <= maxDist ? bestId : null;
+}
+
+function debugTeleportPlayerToNode(nodeId, nodeMap) {
+  const n = nodeMap[nodeId];
+  if (!n || !state.player) return;
+
+  state.player.currentNode = nodeId;
+  state.player.previousNode = null;
+  state.player.targetNode = null;
+  state.player.x = n.x;
+  state.player.y = n.y;
+
+  console.log("DEBUG NODE:", nodeId, n.x, n.y, n);
+}
+
+function drawPathOverlay(nodeMap) {
+  if (!NODE_DEBUG) return;
+
+  ctx.save();
+  ctx.strokeStyle = "rgba(255, 80, 80, 0.9)";
+  ctx.lineWidth = 4;
+
+  const drawn = new Set();
+
+  for (const id in nodeMap) {
+    const node = nodeMap[id];
+
+    for (const neighborId of node.neighbors) {
+      const neighbor = nodeMap[neighborId];
+      if (!neighbor) continue;
+
+      const key = [id, neighborId].sort().join("|");
+      if (drawn.has(key)) continue;
+
+      ctx.beginPath();
+      ctx.moveTo(node.x, node.y);
+      ctx.lineTo(neighbor.x, neighbor.y);
+      ctx.stroke();
+
+      drawn.add(key);
+    }
+  }
+
+  ctx.restore();
+}
+
+function drawNodeDebugOverlay(nodeMap) {
+  if (!NODE_DEBUG) return;
+
+  ctx.save();
+  ctx.font = "18px Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  for (const id in nodeMap) {
+    const n = nodeMap[id];
+
+    if (n.ladderExit) ctx.fillStyle = "#ffd54a";
+    else if (n.ropePassThrough) ctx.fillStyle = "#7dd3fc";
+    else ctx.fillStyle = "#ffffff";
+
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 4;
+    ctx.strokeText(id, n.x, n.y - 18);
+    ctx.fillStyle = "white";
+    ctx.fillText(id, n.x, n.y - 18);
+  }
+
+  ctx.restore();
 }
 
 function roundRect(ctx, x, y, w, h, r) {
@@ -324,6 +635,7 @@ function pointInRect(px, py, rect) {
     py <= rect.y + rect.h
   );
 }
+
 function validateGraph() {
   const errors = [];
 
@@ -349,10 +661,10 @@ function validateGraph() {
 }
 
 function getBestNeighbor(currentNodeId, inputVec, inputName) {
-  const current = nodes[currentNodeId];
+  const nodeMap = getCurrentNodeMap();
+  const current = nodeMap[currentNodeId];
   if (!current) return null;
 
-  // explicit override first
   if (inputName && current.inputMap && current.inputMap[inputName]) {
     const forced = current.inputMap[inputName];
     if (current.neighbors.includes(forced)) {
@@ -366,7 +678,9 @@ function getBestNeighbor(currentNodeId, inputVec, inputName) {
   let bestScore = -Infinity;
 
   for (const neighborId of current.neighbors) {
-    const neighbor = nodes[neighborId];
+    const neighbor = nodeMap[neighborId];
+    if (!neighbor) continue;
+
     const dx = neighbor.x - current.x;
     const dy = neighbor.y - current.y;
     const len = Math.hypot(dx, dy);
@@ -399,10 +713,10 @@ function tryConsumeQueuedTurn(actor) {
 }
 
 function tryContinueForward(actor) {
-  const current = nodes[actor.currentNode];
+  const nodeMap = getCurrentNodeMap();
+  const current = nodeMap[actor.currentNode];
   if (!current || !actor.previousNode) return false;
 
-  // cave pass-through nodes only stop if player intentionally queued cave entry
   if (current.cavePassThrough) {
     if (queuedDirectionName === "up" && current.inputMap?.up) {
       return false;
@@ -418,31 +732,23 @@ function tryContinueForward(actor) {
     }
   }
 
-  // ladder exits pause for player reaction time
-  if (current.ladderExit) {
-    return false;
-  }
-
-  // explicit stop nodes
-  if (current.stopHere) {
-    return false;
-  }
-
   if (current.ropePassThrough) {
     if (queuedDirectionName === "down" && current.inputMap?.down) {
       return false;
     }
 
-    if (actor.previousNode === "A" && current.inputMap?.left) {
-      actor.targetNode = current.inputMap.left;
-      return true;
-    }
+    const options = current.neighbors.filter(
+      n => n !== actor.previousNode && n !== current.inputMap?.down
+    );
 
-    if (actor.previousNode === "B" && current.inputMap?.right) {
-      actor.targetNode = current.inputMap.right;
+    if (options.length === 1) {
+      actor.targetNode = options[0];
       return true;
     }
-  } 
+  }
+
+  if (current.ladderExit) return false;
+  if (current.stopHere) return false;
 
   const options = current.neighbors.filter(n => n !== actor.previousNode);
 
@@ -455,14 +761,56 @@ function tryContinueForward(actor) {
 }
 
 function inputVectorFromNodes(fromId, toId) {
-  const a = nodes[fromId];
-  const b = nodes[toId];
+  const nodeMap = getCurrentNodeMap();
+  const a = nodeMap[fromId];
+  const b = nodeMap[toId];
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const len = Math.hypot(dx, dy) || 1;
   return { x: dx / len, y: dy / len };
 }
 
+function startBossMode() {
+  state.scene = "boss";
+  state.mode = "playing";
+  state.catchAnim = null;
+  state.hearts = [];
+  state.particles = [];
+  state.banana = null;
+  state.hand = null;
+
+  if (!state.player) {
+    state.player = new Player(bossConfig.startNode);
+  }
+
+  const start = bossNodes[bossConfig.startNode];
+  state.player.currentNode = bossConfig.startNode;
+  state.player.previousNode = null;
+  state.player.targetNode = null;
+  state.player.x = start.x;
+  state.player.y = start.y;
+
+  state.troops = [];
+  state.coconuts = [];
+
+  state.boss = {
+    coconutTimer: 0,
+    heartsCollected: 0,
+    requiredHearts: 3,
+    hearts: [
+      { nodeId: "M1", collected: false },
+      { nodeId: "L3D", collected: false },
+      { nodeId: "R2T", collected: false }
+    ],
+    mother: {
+      carried: false,
+      nodeId: bossConfig.motherStartNode
+    }
+  };
+
+  spawnBossRoamers();
+  playSceneMusic();
+}
 
 // ======================================================
 // LEVEL STATE
@@ -516,7 +864,94 @@ function updateLevelUp(dt) {
 
   if (lu.time >= lu.duration) {
     state.levelUp = null;
+    handlePostLevelUp();
   }
+}
+
+function handlePostLevelUp() {
+  if (state.level > 1 && state.level % 2 === 0) {
+    showBossIntro(state.level);
+    return;
+  }
+
+  applyLevelConfig();
+  newRound();
+}
+
+// function showBossIntro(level) {
+//   state.bossIntro = {
+//     level,
+//     time: 0,
+//     duration: 1.8
+//   };
+// }
+
+function updateBossIntro(dt) {
+  if (!state.bossIntro) return;
+
+  state.bossIntro.time += dt;
+
+  if (state.bossIntro.time >= state.bossIntro.duration) {
+    state.bossIntro = null;
+    startBossMode();
+  }
+}
+
+function spawnBossRoamers() {
+  state.troops = bossConfig.roamingTroopStartNodes.map((nodeId, i) => {
+    const troop = new Troop(nodeId, i === 0 ? "#7c5c46" : "#8d6b52");
+    troop.baseSpeed = 120;
+    troop.speedMultiplier = 1.0;
+    troop.intelligence = 0.35;
+    troop.speed = troop.baseSpeed * troop.speedMultiplier;
+    return troop;
+  });
+}
+
+function drawBossIntroOverlay() {
+  if (!state.bossIntro) return;
+
+  const bi = state.bossIntro;
+  const t = Math.min(bi.time / bi.duration, 1);
+
+  const fadeIn = Math.min(t / 0.2, 1);
+  const fadeOut = bi.time > bi.duration - 0.3
+    ? Math.max((bi.duration - bi.time) / 0.3, 0)
+    : 1;
+  const alpha = fadeIn * fadeOut;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  ctx.fillStyle = "rgba(0,0,0,0.72)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  ctx.strokeStyle = "rgba(0,0,0,0.35)";
+  ctx.lineWidth = 8;
+
+  ctx.fillStyle = "#ffe066";
+  ctx.font = "bold 82px Arial";
+  ctx.strokeText("Boss Round", canvas.width / 2, 300);
+  ctx.fillText("Boss Round", canvas.width / 2, 300);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 64px Arial";
+  ctx.strokeText("Rescue Mother", canvas.width / 2, 420);
+  ctx.fillText("Rescue Mother", canvas.width / 2, 420);
+
+  ctx.font = "36px Arial";
+  ctx.fillStyle = "#f3f4f6";
+  ctx.fillText("Carry Mother to the cave.", canvas.width / 2, 600);
+  ctx.fillText("Avoid troops and coconuts.", canvas.width / 2, 660);
+
+  ctx.font = "28px Arial";
+  ctx.fillStyle = "#fca5a5";
+  ctx.fillText("If danger gets too close, Jab may drop her.", canvas.width / 2, 760);
+
+  ctx.restore();
 }
 
 function easeOutBack(t) {
@@ -748,13 +1183,79 @@ function drawBanana(x, y, scale = 3, age = 0) {
   ctx.restore();
 }
 
+// function drawBackground() {
+//   if (backgroundImage.complete && backgroundImage.naturalWidth > 0) {
+//     ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+//   } else {
+//     ctx.fillStyle = "#273b59";
+//     ctx.fillRect(0, 0, canvas.width, canvas.height);
+//   }
+// }
+
 function drawBackground() {
-  if (backgroundImage.complete && backgroundImage.naturalWidth > 0) {
-    ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+  const bg = getCurrentBackgroundImage();
+
+  if (bg && bg.complete && bg.naturalWidth > 0) {
+    ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
   } else {
     ctx.fillStyle = "#273b59";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
+}
+
+function drawAcceptanceHearts() {
+  const maxHearts = 3;
+  const filled = state.acceptance || 0;
+
+  const startX = 520;
+  const y = 15;
+  const spacing = 30;
+  const size = 18;
+
+  for (let i = 0; i < maxHearts; i++) {
+    const x = startX + i * spacing;
+    const isFilled = i < filled;
+    drawHeart(x, y, size, isFilled ? "#d22" : "#fff");
+  }
+}
+
+function drawBossHeartHud() {
+  const maxHearts = state.boss?.requiredHearts || 3;
+  const filled = state.boss?.heartsCollected || 0;
+
+  const startX = 520;
+  const y = 15;
+  const spacing = 30;
+  const size = 18;
+
+  for (let i = 0; i < maxHearts; i++) {
+    const x = startX + i * spacing;
+    const isFilled = i < filled;
+    drawHeart(x, y, size, isFilled ? "#d22" : "#fff");
+  }
+}
+
+function drawHeart(x, y, size, fillColor) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(size / 13, size / 13);
+
+  ctx.beginPath();
+  ctx.moveTo(0, 6);
+  ctx.bezierCurveTo(0, 0, -9, 0, -9, 6);
+  ctx.bezierCurveTo(-9, 12, 0, 16, 0, 18);
+  ctx.bezierCurveTo(0, 16, 9, 12, 9, 6);
+  ctx.bezierCurveTo(9, 0, 0, 0, 0, 6);
+  ctx.closePath();
+
+  ctx.fillStyle = fillColor;
+  ctx.fill();
+
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = "#000";
+  ctx.stroke();
+
+  ctx.restore();
 }
 
 function drawHudOverlay() {
@@ -791,12 +1292,17 @@ function drawHudOverlay() {
   // LEFT: score / acceptance / level
   ctx.textAlign = "left";
   ctx.fillText(
-    `Score: ${state.score}   Acceptance: ${state.acceptance ?? 0}   Level: ${state.level ?? 1}   Ripeness: ${ripenessText} `,
+    `Score: ${state.score}   Level: ${state.level ?? 1}   Ripeness: ${ripenessText} `,
     leftX,
     h / 2
   );
 
-
+  // drawAcceptanceHearts();
+  if (isBossScene() && state.boss) {
+    drawBossHeartHud();
+  } else {
+    drawAcceptanceHearts();
+  }
   // RIGHT: lives
   ctx.textAlign = "right";
   ctx.fillText(`Lives: ${state.lives}`, rightTextX, h / 2);
@@ -1020,13 +1526,83 @@ function drawZookeeper2() {
   );
 }
 
+function drawCavePreview() {
+  if (!state.cavePreview) return;
+
+  const nodeMap = getCurrentNodeMap();
+  const node = nodeMap[state.cavePreview.targetNodeId];
+  if (!node) return;
+
+  const t = state.cavePreview.time / state.cavePreview.duration;
+  const alpha = 1 - t;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  ctx.translate(node.x, node.y);
+  ctx.scale(1.4, 1.0); // horizontal tunnel glow
+
+  const radius = 144 + t * 28;
+  const grad = ctx.createRadialGradient(0, 0, 4, 0, 0, radius);
+  grad.addColorStop(0, "rgba(255,255,220,0.55)");
+  grad.addColorStop(0.45, "rgba(220,220,200,0.22)");
+  grad.addColorStop(1, "rgba(255,255,220,0)");
+
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function beginCavePreview(fromNodeId, toNodeId) {
+  state.cavePreview = {
+    fromNodeId,
+    targetNodeId: toNodeId,
+    time: 0,
+    duration: 0.2
+  };
+}
+
+function finishCavePreview() {
+  const cp = state.cavePreview;
+  if (!cp) return;
+
+  const nodeMap = getCurrentNodeMap();
+  const target = nodeMap[cp.targetNodeId];
+  if (!target || !state.player) {
+    state.cavePreview = null;
+    return;
+  }
+
+  state.player.currentNode = cp.targetNodeId;
+  state.player.previousNode = null;
+  state.player.targetNode = null;
+  state.player.x = target.x;
+  state.player.y = target.y;
+  state.player.dir = { x: 0, y: 0 };
+  state.player.facing = "down";
+
+  state.cavePreview = null;
+}
+
 function handlePortalTravel(actor) {
   if (!actor || !actor.currentNode) return;
+  if (state.scene === "boss") return; // no cave teleports in boss scene
+  if (state.cavePreview) return;
 
   const destinationId = portals[actor.currentNode];
   if (!destinationId) return;
 
-  const dest = nodes[destinationId];
+  // Only preview for the player; troops can stay instant for now
+  if (actor === state.player) {
+    beginCavePreview(actor.currentNode, destinationId);
+    return;
+  }
+
+  const nodeMap = getCurrentNodeMap();
+  const dest = nodeMap[destinationId];
   if (!dest) return;
 
   actor.currentNode = destinationId;
@@ -1050,7 +1626,8 @@ class Player {
     this.dir = { x: 0, y: 0 };
     this.facing = "left";
     this.radius = 22;
-    this.speed = 280;
+    this.baseSpeed = 280;
+    this.speed = this.baseSpeed;
     this.frame = 0;
     this.animTime = 0;
     this.frameCount = 4;
@@ -1073,6 +1650,7 @@ class Player {
     this.hasBanana = false;
     this.panicking = false;
     this.movedThisRound = false;
+    this.speed = this.baseSpeed;
   }
 
   tryStartMove() {
@@ -1086,36 +1664,35 @@ class Player {
     }
 
 update(dt) {
-
   if (state.levelUp) {
     updateLevelUp(dt);
     return;
   }
 
-  // immediate reversal while traveling
+  const nodeMap = getCurrentNodeMap();
+
   if (this.targetNode && queuedDirection) {
-    const from = nodes[this.currentNode];
-    const to = nodes[this.targetNode];
+    const from = nodeMap[this.currentNode];
+    const to = nodeMap[this.targetNode];
+    if (from && to) {
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const len = Math.hypot(dx, dy) || 1;
 
-    const dx = to.x - from.x;
-    const dy = to.y - from.y;
-    const len = Math.hypot(dx, dy) || 1;
+      const forwardX = dx / len;
+      const forwardY = dy / len;
 
-    const forwardX = dx / len;
-    const forwardY = dy / len;
+      const dot = forwardX * queuedDirection.x + forwardY * queuedDirection.y;
 
-    const dot = forwardX * queuedDirection.x + forwardY * queuedDirection.y;
-
-    if (dot < -0.65) {
-      const oldCurrent = this.currentNode;
-      this.currentNode = this.targetNode;
-      this.targetNode = oldCurrent;
-      this.previousNode = oldCurrent;
+      if (dot < -0.65) {
+        const oldCurrent = this.currentNode;
+        this.currentNode = this.targetNode;
+        this.targetNode = oldCurrent;
+        this.previousNode = oldCurrent;
+      }
     }
-
   }
 
-  // if standing still at a node, try queued turn first
   if (!this.targetNode) {
     if (!tryConsumeQueuedTurn(this)) {
       this.dir = { x: 0, y: 0 };
@@ -1124,7 +1701,13 @@ update(dt) {
     }
   }
 
-  const target = nodePos(this.targetNode);
+  const target = nodeMap[this.targetNode];
+  if (!target) {
+    this.targetNode = null;
+    this.dir = { x: 0, y: 0 };
+    return;
+  }
+
   const dx = target.x - this.x;
   const dy = target.y - this.y;
   const dist = Math.hypot(dx, dy);
@@ -1151,7 +1734,6 @@ update(dt) {
 
     handlePortalTravel(this);
 
-    // after landing: queued turn first, otherwise continue straight if possible
     if (!tryConsumeQueuedTurn(this)) {
       tryContinueForward(this);
     }
@@ -1163,9 +1745,39 @@ update(dt) {
   updateAnim(this, dt, 12);
 }
 
+//   draw() {
+//     ctx.save();
+//     ctx.translate(this.x, this.y);
+
+//     const img = spriteStore.lilJabRun;
+//     if (img?.complete && img.naturalWidth > 0) {
+//       const frameWidth = img.width / 4;
+//       const frameHeight = img.height / 3;
+//       drawSheetFrame(img, this.frame, this.facing, frameWidth, frameHeight, 96, 96);
+//     } else {
+//       ctx.fillStyle = this.hasBanana ? "#ffd54a" : "#ffeb66";
+//       ctx.beginPath();
+//       ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+//       ctx.fill();
+
+//       ctx.fillStyle = "#000";
+//       ctx.beginPath();
+//       ctx.arc(8, -8, 3, 0, Math.PI * 2);
+//       ctx.fill();
+//     }
+
+//     if (this.hasBanana) {
+//       drawBanana(18, -18, 0.45, state.banana?.age || 0);
+//     }
+
+//     ctx.restore();
+//   }
   draw() {
     ctx.save();
     ctx.translate(this.x, this.y);
+
+    const s = getBossScale(this.x, this.y);
+    ctx.scale(s, s);
 
     const img = spriteStore.lilJabRun;
     if (img?.complete && img.naturalWidth > 0) {
@@ -1190,7 +1802,9 @@ update(dt) {
 
     ctx.restore();
   }
-}
+ }
+
+
 
 class Troop {
   constructor(startNodeId, color = "#7c5c46") {
@@ -1229,35 +1843,55 @@ class Troop {
     this.speed = this.baseSpeed * this.speedMultiplier;
   }
 
-  chooseNextNode() {
-    const current = nodes[this.currentNode];
-    if (!current) return null;
+chooseNextNode() {
+  const nodeMap = getCurrentNodeMap();
+  const current = nodeMap[this.currentNode];
+  if (!current) return null;
 
-    const candidates = current.neighbors.filter(n => n !== this.previousNode);
-    const pool = candidates.length ? candidates : current.neighbors;
-    if (!pool.length) return null;
+  const candidates = current.neighbors.filter(n => n !== this.previousNode);
+  const pool = candidates.length ? candidates : current.neighbors;
+  if (!pool.length) return null;
 
-    const player = state.player;
+  const player = state.player;
 
-    // Only chase intelligently some of the time, and mainly when player has banana
-    if (player && player.hasBanana && Math.random() < this.intelligence) {
-      let best = null;
-      let bestDist = Infinity;
+  // In boss mode, chase some of the time regardless of banana state
+  if (player && state.scene === "boss" && Math.random() < this.intelligence) {
+    let best = null;
+    let bestDist = Infinity;
 
-      for (const candidate of pool) {
-        const p = nodes[candidate];
-        const d = Math.hypot(player.x - p.x, player.y - p.y);
-        if (d < bestDist) {
-          bestDist = d;
-          best = candidate;
-        }
+    for (const candidate of pool) {
+      const p = nodeMap[candidate];
+      if (!p) continue;
+      const d = Math.hypot(player.x - p.x, player.y - p.y);
+      if (d < bestDist) {
+        bestDist = d;
+        best = candidate;
       }
-
-      return best;
     }
 
-    return choose(pool);
+    return best;
   }
+
+  // Main scene behavior can remain as-is
+  if (player && player.hasBanana && Math.random() < this.intelligence) {
+    let best = null;
+    let bestDist = Infinity;
+
+    for (const candidate of pool) {
+      const p = nodeMap[candidate];
+      if (!p) continue;
+      const d = Math.hypot(player.x - p.x, player.y - p.y);
+      if (d < bestDist) {
+        bestDist = d;
+        best = candidate;
+      }
+    }
+
+    return best;
+  }
+
+  return choose(pool);
+}
 
   update(dt) {
     this.speed = this.baseSpeed * this.speedMultiplier;
@@ -1273,7 +1907,13 @@ class Troop {
       return;
     }
 
-    const target = nodes[this.targetNode];
+    const nodeMap = getCurrentNodeMap();
+const target = nodeMap[this.targetNode];
+if (!target) {
+  this.targetNode = null;
+  this.dir = { x: 0, y: 0 };
+  return;
+}
     const dx = target.x - this.x;
     const dy = target.y - this.y;
     const dist = Math.hypot(dx, dy);
@@ -1309,6 +1949,10 @@ class Troop {
     ctx.save();
     ctx.translate(this.x, this.y);
 
+    const s = getBossScale(this.x, this.y);
+    ctx.scale(s, s);
+
+
     const img = spriteStore.troopRun;
     if (img?.complete && img.naturalWidth > 0) {
       const frameWidth = img.width / 4;
@@ -1329,14 +1973,14 @@ class Troop {
 // GAME FLOW
 // ======================================================
 function addAcceptance(amount) {
-  state.acceptance = Math.max(0, (state.acceptance || 0) + amount);
+  const maxAcceptance = 3;
 
-  const requiredForNextLevel = state.level * 10;
+  state.acceptance = clamp((state.acceptance || 0) + amount, 0, maxAcceptance);
 
-  if (state.acceptance >= requiredForNextLevel) {
+  if (state.acceptance >= maxAcceptance) {
+    state.acceptance = 0;
     state.level += 1;
     showLevelUp(state.level);
-    applyLevelConfig();
   }
 }
 
@@ -1384,6 +2028,9 @@ function resetActors() {
 }
 
 function startGame() {
+  state.scene = "main";
+  state.boss = null;
+
   state.mode = "playing";
   state.score = 0;
   state.lives = 3;
@@ -1395,10 +2042,11 @@ function startGame() {
   state.levelUp = null;
   state.zookeeper = { anim: "idle", frame: 0, time: 0, didThrowSound: false };
   state.zookeeper2 = { anim: "idle", frame: 0, time: 0, timer: rand(2.5, 6) };
-  
+
   resetActors();
   applyLevelConfig();
   newRound();
+  playSceneMusic();
 }
 
 function newRound() {
@@ -1547,9 +2195,183 @@ function updateBanana(dt) {
   }
 }
 
+function getBossDangerAtPlayer() {
+  if (!state.player) return 999;
+
+  let danger = 999;
+
+  for (const troop of state.troops || []) {
+    const d = Math.hypot(state.player.x - troop.x, state.player.y - troop.y);
+    danger = Math.min(danger, d);
+  }
+
+  for (const coconut of state.coconuts || []) {
+    const d = Math.hypot(state.player.x - coconut.x, state.player.y - coconut.y);
+    danger = Math.min(danger, d);
+  }
+
+  return danger;
+}
+
+function updateBossMother(dt) {
+  const mother = state.boss?.mother;
+  if (!mother) return false;
+
+  const danger = getBossDangerAtPlayer();
+
+  if (mother.carried && danger >= 1.0) {
+    dropMother();
+  }
+
+  updateBossHeartCollection();
+  pickupMotherIfSafe();
+
+  // speed penalty while carrying
+  state.player.speed = mother.carried ? 210 : 280;
+
+  if (
+    mother.carried &&
+    state.player.currentNode === bossConfig.goalNode &&
+    state.boss.heartsCollected >= state.boss.requiredHearts
+  ) {
+    endBossModeSuccess();
+  }
+  return false;
+}
+
+function drawBossMother() {
+  if (!isBossScene() || !state.boss?.mother) return;
+
+  const mother = state.boss.mother;
+  const img = spriteStore.mother;
+
+  if (mother.carried) {
+    ctx.save();
+
+    if (img && img.complete && img.naturalWidth > 0) {
+      ctx.drawImage(img, state.player.x - 26, state.player.y - 26, 128, 128);
+    } else {
+      ctx.fillStyle = "#d8b38a";
+      ctx.beginPath();
+      ctx.arc(state.player.x, state.player.y - 10, 24, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+    return;
+  }
+
+  const node = bossNodes[mother.nodeId];
+  if (!node) return;
+
+  ctx.save();
+
+  if (img && img.complete && img.naturalWidth > 0) {
+    ctx.drawImage(img, node.x - 28, node.y - 22, 56, 56);
+  } else {
+    ctx.fillStyle = "#d8b38a";
+    ctx.beginPath();
+    ctx.arc(node.x, node.y, 18, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function drawBossCollectibleHearts() {
+  const boss = state.boss;
+  if (!isBossScene() || !boss || !boss.hearts) return;
+
+  for (const heart of boss.hearts) {
+    if (heart.collected) continue;
+
+    const node = bossNodes[heart.nodeId];
+    if (!node) continue;
+
+    ctx.save();
+    ctx.fillStyle = "#ff3355";
+    ctx.beginPath();
+    ctx.arc(node.x, node.y - 18, 14, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.restore();
+  }
+}
+
+function dropMother() {
+  const mother = state.boss?.mother;
+  if (!mother || !mother.carried) return;
+
+  mother.carried = false;
+  mother.nodeId = state.player.currentNode;
+}
+
+function resetBossPlayerToStart() {
+  const start = bossNodes[bossConfig.startNode];
+  if (!start || !state.player) return;
+
+  state.player.currentNode = bossConfig.startNode;
+  state.player.previousNode = null;
+  state.player.targetNode = null;
+  state.player.x = start.x;
+  state.player.y = start.y;
+  state.player.dir = { x: 0, y: 0 };
+  state.player.facing = "down";
+}
+
+function resetMotherToStart() {
+  const mother = state.boss?.mother;
+  if (!mother) return;
+
+  mother.carried = false;
+  mother.nodeId = bossConfig.motherStartNode;
+}
+
+function dropMotherAndResetPlayer() {
+  resetMotherToStart();
+  resetBossPlayerToStart();
+}
+
+// function pickupMotherIfSafe() {
+//   const mother = state.boss?.mother;
+//   if (!mother || mother.carried) return;
+//   if (state.player.currentNode !== mother.nodeId) return;
+
+//   const danger = getBossDangerAtPlayer();
+//   if (danger < 0.35) {
+//     mother.carried = true;
+//   }
+// }
+
+function pickupMotherIfSafe() {
+  const mother = state.boss?.mother;
+  if (!mother || mother.carried) return;
+  if (state.player.currentNode !== mother.nodeId) return;
+
+  mother.carried = true;
+}
+
+function updateBossHeartCollection() {
+  const boss = state.boss;
+  const player = state.player;
+  if (!boss || !player || !boss.hearts) return;
+
+  for (const heart of boss.hearts) {
+    if (!heart.collected && heart.nodeId === player.currentNode) {
+      heart.collected = true;
+      boss.heartsCollected += 1;
+      sounds.pickup?.play().catch(() => {});
+    }
+  }
+}
+
 function updatePlayer(dt) {
   if (!state.player) return;
-
+  getCurrentNodeMap();
   state.player.update(dt);
 
   if (state.player.movedThisRound && state.roundState === "waiting" && state.banana?.landed) {
@@ -1592,13 +2414,135 @@ function updateTroops(dt) {
   state.troops.forEach(t => t.update(dt));
 
   if (state.catchAnim) return;
-
+  getCurrentNodeMap();
   for (const troop of state.troops) {
     if (distance(state.player, troop) < 34) {
       startCatch(troop);
       break;
     }
   }
+}
+
+function restartBossLevel() {
+  state.coconuts = [];
+  state.troops = [];
+  state.boss = null;
+  startBossMode();
+}
+
+function updateBossCollisions() {
+  const player = state.player;
+  const mother = state.boss?.mother;
+  if (!player || !mother) return;
+
+  for (const troop of state.troops) {
+    if (Math.hypot(player.x - troop.x, player.y - troop.y) < 34) {
+      if (mother.carried) {
+        //dropMother();
+        dropMotherAndResetPlayer();
+      } else {
+        restartBossLevel();
+        state.lives = Math.max(0, state.lives - 1);
+        resetMotherToStart();
+        resetBossPlayerToStart();
+
+        if (state.lives <= 0) {
+          // whatever your existing game over / restart flow is
+        }
+      }
+      return;
+    }
+  }
+
+  for (const coconut of state.coconuts) {
+    if (Math.hypot(player.x - coconut.x, player.y - coconut.y) < 34) {
+      if (mother.carried) {
+        dropMother();
+      } else {
+        restartBossLevel();
+      }
+      return;
+    }
+  }
+}
+
+function endBossModeSuccess() {
+  state.scene = "main";
+  state.boss = null;
+  state.coconuts = [];
+  state.troops = [];
+  showLevelUp(state.level);
+  resetActors();
+  applyLevelConfig();
+  newRound();
+  playSceneMusic();
+}
+
+function spawnBossCoconut() {
+  const lane = choose(bossCoconutLanes);
+
+  const first = bossNodes[lane[0]];
+  state.coconuts.push({
+    lane,
+    laneIndex: 0,
+    x: first.x,
+    y: first.y,
+    speed: 260
+  });
+}
+
+function updateBossCoconuts(dt) {
+  const nodeMap = bossNodes;
+
+  for (const coconut of state.coconuts) {
+    const nextIndex = coconut.laneIndex + 1;
+    if (nextIndex >= coconut.lane.length) {
+      coconut.done = true;
+      continue;
+    }
+
+    const target = nodeMap[coconut.lane[nextIndex]];
+    const dx = target.x - coconut.x;
+    const dy = target.y - coconut.y;
+    const dist = Math.hypot(dx, dy);
+    const step = coconut.speed * dt;
+
+    if (dist <= step) {
+      coconut.x = target.x;
+      coconut.y = target.y;
+      coconut.laneIndex = nextIndex;
+    } else {
+      coconut.x += (dx / dist) * step;
+      coconut.y += (dy / dist) * step;
+    }
+  }
+
+  state.coconuts = state.coconuts.filter(c => !c.done);
+}
+
+function updateBossMode(dt) {
+  if (!state.boss) return;
+
+  updatePlayer(dt);
+  if (!state.boss) return;
+
+  updateTroops(dt);
+  if (!state.boss) return;
+
+  updateBossMother(dt);
+  if (!state.boss || state.scene !== "boss") return;
+
+  state.boss.coconutTimer += dt;
+
+  if (state.boss.coconutTimer >= 2.4) {
+    state.boss.coconutTimer = 0;
+    spawnBossCoconut();
+  }
+
+  updateBossCoconuts(dt);
+  if (!state.boss || state.scene !== "boss") return;
+
+  updateBossCollisions();
 }
 
 function updateCatch(dt) {
@@ -1639,7 +2583,32 @@ function updateParticles(dt) {
 }
 
 function update(dt) {
+  if (state.levelUp) {
+    updateLevelUp(dt);
+    return;
+  }
+
+  if (state.bossIntro) {
+    updateBossIntro(dt);
+    return;
+  }
+
+  if (state.cavePreview) {
+    state.cavePreview.time += dt;
+
+    if (state.cavePreview.time >= state.cavePreview.duration) {
+      finishCavePreview();
+    }
+
+    return;
+  }
+
   if (state.mode !== "playing") return;
+
+  if (state.scene === "boss") {
+    updateBossMode(dt);
+    return;
+  }
 
   updateHand(dt);
   updateBanana(dt);
@@ -1671,16 +2640,121 @@ function drawActors() {
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawBackground();
-  // drawGraph();
-  // drawNodeLabels();
-  // drawNodeHighlights();
-  drawBananaState();
-  drawZookeeper();
-  drawZookeeper2();
-  drawActors();
+
+  if (!isBossScene()) {
+    drawBananaState();
+    drawZookeeper();
+    drawZookeeper2();
+    drawActors();
+  } else {
+    drawBossActorsWithShadow();
+  }
+//drawNodeLabels();
+//drawPathOverlay(getCurrentNodeMap());
   drawHudOverlay();
   drawOverlay();
+  drawBossIntroOverlay();
   drawLevelUpOverlay();
+  drawCavePreview();
+}
+
+function drawBossIntroOverlay() {
+  if (!state.bossIntro) return;
+
+  const bi = state.bossIntro;
+  const t = Math.min(bi.time / bi.duration, 1);
+
+  const fadeIn = Math.min(t / 0.2, 1);
+  const fadeOut = bi.time > bi.duration - 0.3
+    ? Math.max((bi.duration - bi.time) / 0.3, 0)
+    : 1;
+  const alpha = fadeIn * fadeOut;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  // dark cinematic wash
+  ctx.fillStyle = "rgba(0,0,0,0.72)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  // headline
+  ctx.strokeStyle = "rgba(0,0,0,0.35)";
+  ctx.lineWidth = 8;
+  ctx.fillStyle = "#ffe066";
+  ctx.font = "bold 82px Arial";
+  ctx.strokeText("Boss Round", canvas.width / 2, 300);
+  ctx.fillText("Boss Round", canvas.width / 2, 300);
+
+  // subhead
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 64px Arial";
+  ctx.strokeText("Rescue Mother", canvas.width / 2, 420);
+  ctx.fillText("Rescue Mother", canvas.width / 2, 420);
+
+  // instructions
+  ctx.font = "36px Arial";
+  ctx.fillStyle = "#f3f4f6";
+  ctx.fillText("Carry Mother to the cave.", canvas.width / 2, 600);
+  ctx.fillText("Avoid troops and coconuts.", canvas.width / 2, 660);
+
+  // tiny flavor line
+  ctx.font = "28px Arial";
+  ctx.fillStyle = "#fca5a5";
+  ctx.fillText("If danger gets too close, Jab may drop her.", canvas.width / 2, 760);
+
+  ctx.restore();
+}
+
+function isInBossShadowZone(x, y) {
+  // Tune these rectangles to match your awning/ledge areas
+  const zones = [
+    { x: 220, y: 860, w: 430, h: 180 }, // M0 / lower sheltered zone
+    { x: 160, y: 660, w: 320, h: 140 }  // M1 / upper sheltered zone
+  ];
+
+  return zones.some(z =>
+    x >= z.x &&
+    x <= z.x + z.w &&
+    y >= z.y &&
+    y <= z.y + z.h
+  );
+}
+
+function drawBossActorsWithShadow() {
+  // draw all boss actors first
+  state.player?.draw();
+
+  state.troops.forEach(t => t.draw());
+
+  drawBossMother();
+  drawBossCollectibleHearts();
+  for (const coconut of (state.coconuts || [])) {
+    drawBossCoconut(coconut);
+  }
+
+  drawHearts();
+  drawParticles();
+
+  // now darken them with the ledge overlay
+  if (
+    spriteStore.bossShadowOverlay &&
+    spriteStore.bossShadowOverlay.complete &&
+    spriteStore.bossShadowOverlay.naturalWidth > 0
+  ) {
+    ctx.drawImage(spriteStore.bossShadowOverlay, 0, 0, canvas.width, canvas.height);
+  }
+}
+
+function drawBossCoconut(coconut) {
+  ctx.save();
+  ctx.fillStyle = "#7a4a21";
+  ctx.beginPath();
+  ctx.arc(coconut.x, coconut.y, 14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 // ======================================================
@@ -1747,6 +2821,10 @@ canvas.addEventListener("click", () => {
 });
 
 document.addEventListener("keydown", (e) => {
+if (e.key === "n" || e.key === "N") {
+  showBossIntro(state.level ?? 1);
+  e.preventDefault();
+}
   if (e.key === "ArrowLeft") {
     setQueuedDirection(-1, 0, "left");
     e.preventDefault();
@@ -1761,12 +2839,6 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
   } else if (e.code === "Space") {
     beginGame();
-    e.preventDefault();
-  }
-
-  //temp
-  if (e.key === "l" || e.key === "L") {
-    showLevelUp(state.level + 1);
     e.preventDefault();
   }
 });
@@ -1797,14 +2869,30 @@ canvas.addEventListener("touchend", (e) => {
 // ======================================================
 // LOOP
 // ======================================================
+// function loop(ts) {
+//   const dt = Math.min((ts - state.lastTime) / 1000, 0.05);
+//   state.lastTime = ts;
+//   update(dt || 0);
+//   draw();
+//   requestAnimationFrame(loop);
+// }
 function loop(ts) {
-  const dt = Math.min((ts - state.lastTime) / 1000, 0.05);
-  state.lastTime = ts;
-  update(dt || 0);
-  draw();
+  try {
+    const dt = Math.min((ts - state.lastTime) / 1000, 0.05);
+    state.lastTime = ts;
+    update(dt || 0);
+    draw();
+  } catch (err) {
+    console.error("LOOP CRASH", err);
+    console.log("scene:", state.scene);
+    console.log("boss:", state.boss);
+    console.log("player:", state.player);
+    debugger;
+    return; // stop the loop so the error stays visible
+  }
+
   requestAnimationFrame(loop);
 }
-
 // ======================================================
 // STARTUP
 // ======================================================
