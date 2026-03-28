@@ -22,6 +22,9 @@ const keys = {
 
 const state = {
   mode: "start",
+  cardBackground: null,
+  loadScreenImage: null,
+  levelIntro: null,
   lastTime: 0,
   score: 0,
   lives: 3,
@@ -219,11 +222,16 @@ const portals = {
   CY4: "CB4"
 };
 
+const bossPortals = {
+  M0C: "M1C",
+  M1C: "M0C"
+};
+
 const bossNodes = {
   // ======================================================
   // BOTTOM PLATFORM
   // ======================================================
-  START: { id: "START", x: 170, y: 1300, neighbors: ["L1D"] },
+  START: { id: "START", x: 170, y: 1310, neighbors: ["L1D"] },
   // B0:    { id: "B0",    x: 285, y: 1315, neighbors: ["START", "B1", "L1D"] },
   // B1:    { id: "B1",    x: 520, y: 1295, neighbors: ["B0", "B2"] },
   // B2:    { id: "B2",    x: 780, y: 1278, neighbors: ["B1", "L2D"] },
@@ -238,53 +246,66 @@ const bossNodes = {
 
   // right ladder to lower slope
   L2D:   { id: "L2D",   x: 825, y: 1215, neighbors: ["L1D", "L2U"], ladderExit: true },
-  L2U:   { id: "L2U",   x: 825, y: 1035,  neighbors: ["L2D", "R2B", "M0"], ladderExit: true },
+  L2U:   { id: "L2U",   x: 825, y: 1055,  neighbors: ["L2D", "R2B", "M0"], ladderExit: true },
 
   // ======================================================
   // LOWER SLOPE (left higher -> right lower)
   // ======================================================
-  M0:    { id: "M0",    x: 600, y: 935,  neighbors: ["L2U", "L3D"], stopHere: true },
-  M1:    { id: "M1",    x: 280, y: 735,  neighbors: ["S1U", "L3U", "L5D"] },
+  M0:    { id: "M0",    x: 695, y: 1020,  neighbors: ["L2U", "L3D", "M0C"], inputMap: { up: "M0C", left: "L3D", right: "L2U" }, cavePassThrough: true },
+  // M0C:    { id: "M0C",    x: 695, y: 950,  neighbors: ["M0"], stopHere: true },
+  M1:    { id: "M1",    x: 280, y: 800,  neighbors: ["S1U", "M1C", "L5B"], inputMap: { up: "M1C", left: "S1U", right: "L5B" }, cavePassThrough: true },
+  // M1C:    { id: "M1C",    x: 280, y: 740,  neighbors: ["M1"] },
+  M0C: {
+  id: "M0C",
+  x: 695,
+  y: 950,
+  neighbors: ["M0"],
+  cavePassThrough: true,
+  stopHere: true
+},
+M1C: {
+  id: "M1C",
+  x: 280,
+  y: 740,
+  neighbors: ["M1"],
+  cavePassThrough: true,
+  stopHere: true
+},
 
   // center main ladder up to upper shelf
-  L3D:   { id: "L3D",   x: 500, y: 940,  neighbors: ["L1U", "L3U", "M0"], ladderExit: true },
-  L3U:   { id: "L3U",   x: 500, y: 730,  neighbors: ["L3D", "L4D", "M1"], ladderExit: true },
-
-  // ======================================================
-  // MIDDLE SHELF (left low -> right high)
-  // ======================================================
-  // H0:    { id: "H0",    x: 160, y: 690,  neighbors: ["H1", "SL1"] },
-  // H1:    { id: "H1",    x: 365, y: 625,  neighbors: ["H0", "H2", "L3D"] },
-  // H2:    { id: "H2",    x: 650, y: 540,  neighbors: ["H1", "H3"] },
-  // H3:    { id: "H3",    x: 850, y: 485,  neighbors: ["H2", "R2B"] },
-
-  // // small short ladder left
-  // SL1:   { id: "SL1",   x: 150, y: 655,  neighbors: ["H0", "SL1U"], ladderExit: true },
-  // SL1U:  { id: "SL1U",  x: 150, y: 585,  neighbors: ["SL1", "U0"], ladderExit: true },
-
-  // ======================================================
-  // UPPER SHELF (left high -> right low)
-  // // ======================================================
-  // U0:    { id: "U0",    x: 120, y: 515,  neighbors: ["U1", "R1B"] },
-  // U1:    { id: "U1",    x: 360, y: 490,  neighbors: ["U0", "U2", "L3U"] },
-  // U2:    { id: "U2",    x: 610, y: 455,  neighbors: ["U1", "U3"] },
-  // U3:    { id: "U3",    x: 850, y: 425,  neighbors: ["U2", "L4D"] },
+  L3D:   { id: "L3D",   x: 500, y: 970,  neighbors: ["L1U", "L3U", "M0"], ladderExit: true },
+  L3U:   { id: "L3U",   x: 500, y: 740,  neighbors: ["L3D", "L4D", "L5B"], ladderExit: true },
 
   // left rope from upper shelf down
   R1B: {
     id: "R1B",
     x: 85,
     y: 790,
-    neighbors: ["S1U", "R1T"],
-    inputMap: { up: "R1T", right: "S1U" },
-    ropePassThrough: true
+    neighbors: ["S1U", "R1M"],
+    inputMap: { up: "R1M", right: "S1U" },
+    stopHere: true
   },
   R1T: {
     id: "R1T",
     x: 85,
     y: 435,
-    neighbors: ["R1B", "L5D"],
-    inputMap: { down: "R1B", right: "L5D" }
+    neighbors: ["R1N", "L5D"],
+    inputMap: { down: "R1N", right: "L5D" },
+    stopHere: true
+  },
+  R1M: {
+    id: "R1M",
+    x: 115,
+    y: 670,
+    neighbors: ["R1N", "R1B"],
+    stopHere: false
+  },
+  R1N: {
+    id: "R1N",
+    x: 110,
+    y: 580,
+    neighbors: ["R1M", "R1T"],
+    stopHere: false
   },
 
   // right rope from middle-right down
@@ -292,25 +313,43 @@ const bossNodes = {
     id: "R2B",
     x: 925,
     y: 1030,
-    neighbors: ["L2U", "R2T"],
-    inputMap: { up: "R2T", left: "L2U" },
-    ropePassThrough: true
+    neighbors: ["L2U", "R2M"],
+    inputMap: { up: "R2M", left: "L2U" },
+    stopHere: true
   },
   R2T: {
     id: "R2T",
-    x: 895,
+    x: 905,
     y: 650,
-    neighbors: ["R2B", "L4D"],
-    inputMap: { down: "R2B", left: "L4D" }
+    neighbors: ["R2N", "L4D"],
+    inputMap: { down: "R2N", left: "L4D" },
+    stopHere: true
+  },
+  R2M: {
+    id: "R2M",
+    x: 895,
+    y: 950,
+    neighbors: ["R2B", "R2N"],
+    stopHere: false
+  },
+  R2N: {
+    id: "R2N",
+    x: 885,
+    y: 850,
+    neighbors: ["R2T", "R2M"],
+    stopHere: false
   },
 
   // ======================================================
   // SUMMIT LADDER + GOAL
   // ======================================================
-  L4D:   { id: "L4D",   x: 690, y: 690, neighbors: ["L3U", "L4U", "R2T"], ladderExit: true },
+  L4D:   { id: "L4D",   x: 690, y: 690, neighbors: ["L5B", "L4U", "R2T"], ladderExit: true },
   L4U:   { id: "L4U",   x: 690, y: 490, neighbors: ["L4D", "L5D"], ladderExit: true },
 
-  L5D:   { id: "L5D",   x: 340, y: 450, neighbors: ["R1T", "L4U", "M1", "GOAL"], stopHere: true },
+  L5D:   { id: "L5D",   x: 340, y: 450, neighbors: ["R1T", "L4U", "L5N", "GOAL"], stopHere: true },
+  L5B:   { id: "L5B",   x: 380, y: 740, neighbors: ["L3U", "M1", "L5C"], stopHere: true },
+  L5C:   { id: "L5C",   x: 400, y: 620, neighbors: ["L5B", "L5N"], stopHere: false },
+  L5N:   { id: "L5N",   x: 390, y: 520, neighbors: ["L5D", "L5C"], stopHere: false },
   // L5U:   { id: "L5U",   x: 315, y: 330, neighbors: ["L4D", "GOAL"], ladderExit: true },
 
   TOP: { id: "TOP", x: 340, y: 0, neighbors: [] },
@@ -320,12 +359,10 @@ const bossNodes = {
 const bossConfig = {
   startNode: "START",
   goalNode: "GOAL",
-  motherStartNode: "L2U",
+  motherStartNode: "L2D",
   roamingTroopStartNodes: ["R1T", "L4U"],
   coconutThrowerNode: "TOP",
-  bananaNodes: ["R1T", "L3D", "L2D", "R2T", "L5D"],
-  coconutSafeNodes: ["M0", "M1"],
-  fullSafeNodes: ["START"]
+  bananaNodes: ["R1T", "L3D", "L2D", "R2T", "L5D"]
 };
 
 const bossCoconutLanes = [
@@ -334,19 +371,23 @@ const bossCoconutLanes = [
   ["TOP", "R2T", "R2B", "L2U", "L2D"]
 ];
 
+// function getBossScale(x, y) {
+//   if (!isBossScene()) return 1;
+
+//   // tune rectangles to your ledges
+//   const zones = [
+//     { x: 220, y: 860, w: 430, h: 180 }, // M0
+//     { x: 160, y: 660, w: 320, h: 140 }  // M1
+//   ];
+
+//   return zones.some(z =>
+//     x >= z.x && x <= z.x + z.w &&
+//     y >= z.y && y <= z.y + z.h
+//   ) ? 0.8 : 1.0;
+// }
+
 function getBossScale(x, y) {
-  if (!isBossScene()) return 1;
-
-  // tune rectangles to your ledges
-  const zones = [
-    { x: 220, y: 860, w: 430, h: 180 }, // M0
-    { x: 160, y: 660, w: 320, h: 140 }  // M1
-  ];
-
-  return zones.some(z =>
-    x >= z.x && x <= z.x + z.w &&
-    y >= z.y && y <= z.y + z.h
-  ) ? 0.8 : 1.0;
+  return 1;
 }
 
 const HOME_NODE = "A";
@@ -380,8 +421,20 @@ function loadSprites() {
   spriteStore.bossBackground = new Image();
   spriteStore.bossBackground.src = "assets/boss-mountain.png";
 
-  spriteStore.bossShadowOverlay = new Image();
-  spriteStore.bossShadowOverlay.src = "assets/boss-mountain-overlay.png";
+  spriteStore.bananaBonanzaCard = new Image();
+  spriteStore.bananaBonanzaCard.src = "assets/banana-bonanza-card.png";
+
+  spriteStore.coconutKongCard = new Image();
+  spriteStore.coconutKongCard.src = "assets/coconut-kong-card.png";
+
+  spriteStore.feedingTimeCard = new Image();
+  spriteStore.feedingTimeCard.src = "assets/feeding-time-card.png";
+
+  spriteStore.gameOverCard = new Image();
+  spriteStore.gameOverCard.src = "assets/game-over-card.png";
+
+  spriteStore.youWinCard = new Image();
+  spriteStore.youWinCard.src = "assets/you-win-card.png";
 }
 
 function loadSounds() {
@@ -427,6 +480,26 @@ function playSceneMusic() {
   if (track) {
     track.play().catch(() => {});
   }
+}
+
+function getLevelCardImage(level) {
+  if (level % 2 === 0) {
+    return spriteStore.coconutKongCard;
+  }
+  return spriteStore.bananaBonanzaCard;
+}
+// function getLevelCardImage(level) {
+//   if (level % 3 === 0) {
+//     return spriteStore.feedingTimeCard;
+//   }
+//   if (level % 2 === 0) {
+//     return spriteStore.coconutKongCard;
+//   }
+//   return spriteStore.bananaBonanzaCard;
+// }
+
+function getGameOverCardImage() {
+  return spriteStore.gameOverCard || null;
 }
 
 function rand(min, max) {
@@ -505,10 +578,22 @@ function startBossNodeTest() {
 }
 
 function showBossIntro(level) {
+  state.loadScreenImage = getLevelCardImage(level);
+
   state.bossIntro = {
     level,
     time: 0,
-    duration: 1.8
+    duration: 3.8
+  };
+}
+
+function showLevelIntro(level) {
+  state.loadScreenImage = getLevelCardImage(level);
+
+  state.levelIntro = {
+    level,
+    time: 0,
+    duration: 2.6
   };
 }
 
@@ -520,6 +605,24 @@ function updateBossIntro(dt) {
   if (state.bossIntro.time >= state.bossIntro.duration) {
     state.bossIntro = null;
     startBossMode();
+  }
+}
+
+function updateLevelIntro(dt) {
+  if (!state.levelIntro) return;
+
+  state.levelIntro.time += dt;
+
+  if (state.levelIntro.time >= state.levelIntro.duration) {
+    const level = state.levelIntro.level;
+    state.levelIntro = null;
+
+    // temporary routing until Feeding Time exists
+    state.scene = "main";
+    resetActors();
+    applyLevelConfig();
+    newRound();
+    playSceneMusic();
   }
 }
 
@@ -773,6 +876,7 @@ function inputVectorFromNodes(fromId, toId) {
 function startBossMode() {
   state.scene = "boss";
   state.mode = "playing";
+  state.cardBackground = spriteStore.bossBackground;
   state.catchAnim = null;
   state.hearts = [];
   state.particles = [];
@@ -831,6 +935,8 @@ function getLevelConfig() {
 }
 
 function showLevelUp(level) {
+  state.loadScreenImage = getLevelCardImage(level);
+
   state.levelUp = {
     level,
     time: 0,
@@ -844,6 +950,10 @@ function showLevelUp(level) {
       phase: rand(0, Math.PI * 2)
     }))
   };
+}
+
+function getOverlayBackgroundImage() {
+  return state.loadScreenImage || null;
 }
 
 function updateLevelUp(dt) {
@@ -874,8 +984,7 @@ function handlePostLevelUp() {
     return;
   }
 
-  applyLevelConfig();
-  newRound();
+  showLevelIntro(state.level);
 }
 
 // function showBossIntro(level) {
@@ -923,19 +1032,26 @@ function drawBossIntroOverlay() {
   ctx.save();
   ctx.globalAlpha = alpha;
 
-  ctx.fillStyle = "rgba(0,0,0,0.72)";
+  const bg = state.loadScreenImage || getLevelCardImage(bi.level);
+  if (bg && bg.complete && bg.naturalWidth > 0) {
+    ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+  } else {
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  ctx.fillStyle = "rgba(0,0,0,0.45)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
-  ctx.strokeStyle = "rgba(0,0,0,0.35)";
-  ctx.lineWidth = 8;
-
-  ctx.fillStyle = "#ffe066";
-  ctx.font = "bold 82px Arial";
-  ctx.strokeText("Boss Round", canvas.width / 2, 300);
-  ctx.fillText("Boss Round", canvas.width / 2, 300);
+  // ctx.strokeStyle = "rgba(0,0,0,0.35)";
+  // ctx.lineWidth = 8;
+  // ctx.fillStyle = "#ffe066";
+  // ctx.font = "bold 82px Arial";
+  // ctx.strokeText("Boss Round", canvas.width / 2, 300);
+  // ctx.fillText("Boss Round", canvas.width / 2, 300);
 
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 64px Arial";
@@ -945,11 +1061,52 @@ function drawBossIntroOverlay() {
   ctx.font = "36px Arial";
   ctx.fillStyle = "#f3f4f6";
   ctx.fillText("Carry Mother to the cave.", canvas.width / 2, 600);
-  ctx.fillText("Avoid troops and coconuts.", canvas.width / 2, 660);
+  ctx.fillText("Collect 3 hearts before escaping.", canvas.width / 2, 660);
 
-  ctx.font = "28px Arial";
-  ctx.fillStyle = "#fca5a5";
-  ctx.fillText("If danger gets too close, Jab may drop her.", canvas.width / 2, 760);
+  ctx.restore();
+}
+
+function drawLevelIntroOverlay() {
+  if (!state.levelIntro) return;
+
+  const li = state.levelIntro;
+  const t = Math.min(li.time / li.duration, 1);
+
+  const fadeIn = Math.min(t / 0.2, 1);
+  const fadeOut = li.time > li.duration - 0.4
+    ? Math.max((li.duration - li.time) / 0.4, 0)
+    : 1;
+  const alpha = fadeIn * fadeOut;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  const bg = state.loadScreenImage || getLevelCardImage(li.level);
+  if (bg && bg.complete && bg.naturalWidth > 0) {
+    ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+  } else {
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  ctx.fillStyle = "rgba(0,0,0,0.42)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  ctx.strokeStyle = "rgba(0,0,0,0.35)";
+  ctx.lineWidth = 8;
+
+  ctx.fillStyle = "#ffe066";
+  ctx.font = "bold 78px Arial";
+  ctx.strokeText(`Level ${li.level}`, canvas.width / 2, 320);
+  ctx.fillText(`Level ${li.level}`, canvas.width / 2, 320);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 58px Arial";
+  ctx.strokeText("Get Ready", canvas.width / 2, 430);
+  ctx.fillText("Get Ready", canvas.width / 2, 430);
 
   ctx.restore();
 }
@@ -1332,7 +1489,17 @@ function drawHudOverlay() {
 function drawOverlay() {
   if (state.mode === "playing") return;
 
+  const bg = getOverlayBackgroundImage();
+
   ctx.save();
+
+  if (bg && bg.complete && bg.naturalWidth > 0) {
+    ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+  } else {
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
   ctx.fillStyle = "rgba(0,0,0,0.4)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -1343,7 +1510,7 @@ function drawOverlay() {
 
   ctx.font = "30px Arial";
   const line = state.mode === "start"
-    ? "Tap or use spacebar to start the Banana Banzai!"
+    ? "Tap or use spacebar to start the Banana Bonanza round!"
     : "Lil' Jab was tossed too many times. Tap to try again.";
   ctx.fillText(line, canvas.width / 2, canvas.height / 2 + 8);
 
@@ -1397,37 +1564,39 @@ function drawParticles() {
 function drawGraph() {
   if (!DEBUG) return;
 
+  const nodeMap = getCurrentNodeMap();
+
   ctx.save();
   ctx.strokeStyle = "rgba(255,0,0,0.9)";
   ctx.lineWidth = 6;
-  ctx.fillStyle = "#6fd3ff";
 
   const drawn = new Set();
 
-  for (const id in nodes) {
-    const node = nodes[id];
+  for (const id in nodeMap) {
+    const node = nodeMap[id];
     for (const neighborId of node.neighbors) {
+      const neighbor = nodeMap[neighborId];
+      if (!neighbor) continue;
+
       const key = [id, neighborId].sort().join("-");
       if (drawn.has(key)) continue;
-      const n2 = nodes[neighborId];
+
       ctx.beginPath();
       ctx.moveTo(node.x, node.y);
-      ctx.lineTo(n2.x, n2.y);
+      ctx.lineTo(neighbor.x, neighbor.y);
       ctx.stroke();
       drawn.add(key);
     }
   }
 
-for (const id in nodes) {
-  const node = nodes[id];
+  for (const id in nodeMap) {
+    const node = nodeMap[id];
 
-  if (id.startsWith("CB")) {
-        ctx.fillStyle = id.endsWith("1") || id.endsWith("3") ? "#60a5fa" : "#2563eb";
-    } else if (id.startsWith("CR")) {
-        ctx.fillStyle = id.endsWith("1") || id.endsWith("3") ? "#f87171" : "#dc2626";
-    } else {
-        ctx.fillStyle = "#6fd3ff";
-    }
+    ctx.fillStyle = node.ropePassThrough
+      ? "#7dd3fc"
+      : node.ladderExit
+      ? "#ffd54a"
+      : "#6fd3ff";
 
     ctx.beginPath();
     ctx.arc(node.x, node.y, 8, 0, Math.PI * 2);
@@ -1440,13 +1609,15 @@ for (const id in nodes) {
 function drawNodeLabels() {
   if (!DEBUG) return;
 
+  const nodeMap = getCurrentNodeMap();
+
   ctx.save();
   ctx.font = "28px Arial";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
-  for (const id in nodes) {
-    const node = nodes[id];
+  for (const id in nodeMap) {
+    const node = nodeMap[id];
     ctx.strokeStyle = "black";
     ctx.lineWidth = 6;
     ctx.strokeText(id, node.x, node.y - 24);
@@ -1460,7 +1631,9 @@ function drawNodeLabels() {
 function drawNodeHighlights() {
   if (!DEBUG || !state.player) return;
 
-  const current = nodes[state.player.currentNode];
+  const nodeMap = getCurrentNodeMap();
+
+  const current = nodeMap[state.player.currentNode];
   if (current) {
     ctx.save();
     ctx.strokeStyle = "yellow";
@@ -1472,14 +1645,16 @@ function drawNodeHighlights() {
   }
 
   if (state.player.targetNode) {
-    const target = nodes[state.player.targetNode];
-    ctx.save();
-    ctx.strokeStyle = "lime";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.arc(target.x, target.y, 20, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
+    const target = nodeMap[state.player.targetNode];
+    if (target) {
+      ctx.save();
+      ctx.strokeStyle = "lime";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(target.x, target.y, 20, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 }
 
@@ -1589,21 +1764,21 @@ function finishCavePreview() {
 
 function handlePortalTravel(actor) {
   if (!actor || !actor.currentNode) return;
-  if (state.scene === "boss") return; // no cave teleports in boss scene
   if (state.cavePreview) return;
 
-  const destinationId = portals[actor.currentNode];
+  const portalMap = isBossScene() ? bossPortals : portals;
+  const destinationId = portalMap[actor.currentNode];
   if (!destinationId) return;
+
+  const nodeMap = getCurrentNodeMap();
+  const dest = nodeMap[destinationId];
+  if (!dest) return;
 
   // Only preview for the player; troops can stay instant for now
   if (actor === state.player) {
     beginCavePreview(actor.currentNode, destinationId);
     return;
   }
-
-  const nodeMap = getCurrentNodeMap();
-  const dest = nodeMap[destinationId];
-  if (!dest) return;
 
   actor.currentNode = destinationId;
   actor.targetNode = null;
@@ -1666,6 +1841,16 @@ class Player {
 update(dt) {
   if (state.levelUp) {
     updateLevelUp(dt);
+    return;
+  }
+
+  if (state.bossIntro) {
+    updateBossIntro(dt);
+    return;
+  }
+
+  if (state.levelIntro) {
+    updateLevelIntro(dt);
     return;
   }
 
@@ -2012,7 +2197,15 @@ function ripenessLabel(age) {
 }
 
 function beginGame() {
-  if (state.mode !== "playing") {
+  if (state.mode === "start") {
+    state.mode = "playing";
+    startGame();
+    playMusicOnce();
+    return;
+  }
+
+  if (state.mode === "gameOver") {
+    state.mode = "playing";
     startGame();
     playMusicOnce();
   }
@@ -2030,8 +2223,9 @@ function resetActors() {
 function startGame() {
   state.scene = "main";
   state.boss = null;
-
-  state.mode = "playing";
+  state.cardBackground = backgroundImage;
+  state.loadScreenImage = getLevelCardImage(1);
+  // state.mode = "playing";
   state.score = 0;
   state.lives = 3;
   state.hearts = [];
@@ -2227,8 +2421,11 @@ function updateBossMother(dt) {
   pickupMotherIfSafe();
 
   // speed penalty while carrying
-  state.player.speed = mother.carried ? 210 : 280;
-
+  // state.player.speed = mother.carried ? 210 : 280;
+  if (state.scene === "boss") {
+    const targetSpeed = mother.carried ? 210 : 300;
+    state.player.speed += (targetSpeed - state.player.speed) * 0.2;
+  }
   if (
     mother.carried &&
     state.player.currentNode === bossConfig.goalNode &&
@@ -2249,11 +2446,11 @@ function drawBossMother() {
     ctx.save();
 
     if (img && img.complete && img.naturalWidth > 0) {
-      ctx.drawImage(img, state.player.x - 26, state.player.y - 26, 128, 128);
+      ctx.drawImage(img, state.player.x - 36, state.player.y - 36, 156, 156);
     } else {
       ctx.fillStyle = "#d8b38a";
       ctx.beginPath();
-      ctx.arc(state.player.x, state.player.y - 10, 24, 0, Math.PI * 2);
+      ctx.arc(state.player.x, state.player.y - 40, 24, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -2261,13 +2458,42 @@ function drawBossMother() {
     return;
   }
 
-  const node = bossNodes[mother.nodeId];
-  if (!node) return;
+const node = bossNodes[mother.nodeId];
+if (!node) return;
 
+ctx.save();
+ctx.translate(node.x + 40, node.y + 40);
+
+//const pulse = 1 + Math.sin(performance.now() * 0.01) * 0.22;
+const pulse = 1 + Math.sin(performance.now() * 0.006) * 0.08;
+ctx.scale(pulse, pulse);
+
+// strong outer glow
+const glow = ctx.createRadialGradient(0, 0, 8, 0, 0, 190);
+glow.addColorStop(0,    "rgba(255,255,180,0.63)"); // was 0.90
+glow.addColorStop(0.18, "rgba(255,210,90,0.52)");  // was 0.75
+glow.addColorStop(0.45, "rgba(255,140,30,0.32)");  // was 0.45
+glow.addColorStop(0.75, "rgba(255,90,0,0.12)");    // was 0.18
+glow.addColorStop(1, "rgba(255,60,0,0)");
+
+ctx.fillStyle = glow;
+ctx.beginPath();
+ctx.arc(0, 0, 90, 0, Math.PI * 2);
+ctx.fill();
+
+// hot inner ring
+ctx.strokeStyle = "rgba(255,190,70,0.65)";
+ctx.lineWidth = 6;
+ctx.beginPath();
+ctx.arc(0, 0, 42, 0, Math.PI * 2);
+//ctx.stroke();
+
+ctx.restore();
   ctx.save();
 
   if (img && img.complete && img.naturalWidth > 0) {
-    ctx.drawImage(img, node.x - 28, node.y - 22, 56, 56);
+    // ctx.drawImage(img, node.x - 40, node.y - 44, 156, 156);
+    ctx.drawImage(img, node.x - 44, node.y - 44, 156, 156);
   } else {
     ctx.fillStyle = "#d8b38a";
     ctx.beginPath();
@@ -2282,21 +2508,31 @@ function drawBossCollectibleHearts() {
   const boss = state.boss;
   if (!isBossScene() || !boss || !boss.hearts) return;
 
+  const pulse = 1 + Math.sin(performance.now() * 0.006) * 0.08;
+
   for (const heart of boss.hearts) {
     if (heart.collected) continue;
 
     const node = bossNodes[heart.nodeId];
     if (!node) continue;
 
-    ctx.save();
-    ctx.fillStyle = "#ff3355";
-    ctx.beginPath();
-    ctx.arc(node.x, node.y - 18, 14, 0, Math.PI * 2);
-    ctx.fill();
+    const x = node.x;
+    const y = node.y - 18;
 
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(pulse, pulse);
+
+    // glow
+    ctx.globalAlpha = 0.22;
+    ctx.fillStyle = "#ff7a95";
+    ctx.beginPath();
+    ctx.arc(0, 0, 22, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // heart body
+    drawHeart(0, 0, 30, "#e11d48");
 
     ctx.restore();
   }
@@ -2321,6 +2557,14 @@ function resetBossPlayerToStart() {
   state.player.y = start.y;
   state.player.dir = { x: 0, y: 0 };
   state.player.facing = "down";
+
+  const carried = state.boss?.mother?.carried;
+  state.player.speed = carried ? 210 : 300;
+}
+
+function dropMotherAndResetPlayer() {
+  resetMotherToStart();
+  resetBossPlayerToStart();
 }
 
 function resetMotherToStart() {
@@ -2329,11 +2573,6 @@ function resetMotherToStart() {
 
   mother.carried = false;
   mother.nodeId = bossConfig.motherStartNode;
-}
-
-function dropMotherAndResetPlayer() {
-  resetMotherToStart();
-  resetBossPlayerToStart();
 }
 
 // function pickupMotherIfSafe() {
@@ -2441,11 +2680,8 @@ function updateBossCollisions() {
         //dropMother();
         dropMotherAndResetPlayer();
       } else {
-        restartBossLevel();
         state.lives = Math.max(0, state.lives - 1);
-        resetMotherToStart();
-        resetBossPlayerToStart();
-
+        restartBossLevel();
         if (state.lives <= 0) {
           // whatever your existing game over / restart flow is
         }
@@ -2467,15 +2703,13 @@ function updateBossCollisions() {
 }
 
 function endBossModeSuccess() {
+  state.level += 1;
   state.scene = "main";
   state.boss = null;
   state.coconuts = [];
   state.troops = [];
+
   showLevelUp(state.level);
-  resetActors();
-  applyLevelConfig();
-  newRound();
-  playSceneMusic();
 }
 
 function spawnBossCoconut() {
@@ -2563,10 +2797,17 @@ function updateCatch(dt) {
 
     if (state.lives <= 0) {
       state.mode = "gameOver";
+      state.loadScreenImage = getGameOverCardImage();
+
       if (sounds.music) {
         sounds.music.pause();
         sounds.music.currentTime = 0;
       }
+      if (sounds.bossMusic) {
+        sounds.bossMusic.pause();
+        sounds.bossMusic.currentTime = 0;
+      }
+
       musicStarted = false;
     } else {
       newRound();
@@ -2637,75 +2878,64 @@ function drawActors() {
   drawParticles();
 }
 
+// function draw() {
+//   ctx.clearRect(0, 0, canvas.width, canvas.height);
+//   drawBackground();
+
+//   if (!isBossScene()) {
+//     drawBananaState();
+//     drawZookeeper();
+//     drawZookeeper2();
+//     drawActors();
+//   } else {
+//     drawBossActors();
+//     drawBossMother();
+//   }
+// // drawNodeLabels();
+// // drawPathOverlay(getCurrentNodeMap());
+//   drawHudOverlay();
+//   drawOverlay();
+//   drawBossIntroOverlay();
+//   drawLevelUpOverlay();
+//   drawCavePreview();
+// }
+
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawBackground();
 
-  if (!isBossScene()) {
-    drawBananaState();
-    drawZookeeper();
-    drawZookeeper2();
-    drawActors();
+const showingTransitionCard =
+  !!state.levelUp ||
+  !!state.bossIntro ||
+  !!state.levelIntro ||   // <-- THIS WAS MISSING
+  state.mode !== "playing";
+  
+  if (showingTransitionCard) {
+    // During start screen / level-up / boss intro,
+    // do NOT draw the live game scene underneath.
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
   } else {
-    drawBossActorsWithShadow();
+    drawBackground();
+
+    if (!isBossScene()) {
+      drawBananaState();
+      drawZookeeper();
+      drawZookeeper2();
+      drawActors();
+    } else {
+      drawBossActors();
+      drawBossMother();
+    }
+
+    drawHudOverlay();
+    drawCavePreview();
   }
-//drawNodeLabels();
-//drawPathOverlay(getCurrentNodeMap());
-  drawHudOverlay();
+  // drawNodeLabels();
+  // drawPathOverlay(getCurrentNodeMap());
   drawOverlay();
   drawBossIntroOverlay();
+  drawLevelIntroOverlay();
   drawLevelUpOverlay();
-  drawCavePreview();
-}
-
-function drawBossIntroOverlay() {
-  if (!state.bossIntro) return;
-
-  const bi = state.bossIntro;
-  const t = Math.min(bi.time / bi.duration, 1);
-
-  const fadeIn = Math.min(t / 0.2, 1);
-  const fadeOut = bi.time > bi.duration - 0.3
-    ? Math.max((bi.duration - bi.time) / 0.3, 0)
-    : 1;
-  const alpha = fadeIn * fadeOut;
-
-  ctx.save();
-  ctx.globalAlpha = alpha;
-
-  // dark cinematic wash
-  ctx.fillStyle = "rgba(0,0,0,0.72)";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-
-  // headline
-  ctx.strokeStyle = "rgba(0,0,0,0.35)";
-  ctx.lineWidth = 8;
-  ctx.fillStyle = "#ffe066";
-  ctx.font = "bold 82px Arial";
-  ctx.strokeText("Boss Round", canvas.width / 2, 300);
-  ctx.fillText("Boss Round", canvas.width / 2, 300);
-
-  // subhead
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 64px Arial";
-  ctx.strokeText("Rescue Mother", canvas.width / 2, 420);
-  ctx.fillText("Rescue Mother", canvas.width / 2, 420);
-
-  // instructions
-  ctx.font = "36px Arial";
-  ctx.fillStyle = "#f3f4f6";
-  ctx.fillText("Carry Mother to the cave.", canvas.width / 2, 600);
-  ctx.fillText("Avoid troops and coconuts.", canvas.width / 2, 660);
-
-  // tiny flavor line
-  ctx.font = "28px Arial";
-  ctx.fillStyle = "#fca5a5";
-  ctx.fillText("If danger gets too close, Jab may drop her.", canvas.width / 2, 760);
-
-  ctx.restore();
 }
 
 function isInBossShadowZone(x, y) {
@@ -2723,37 +2953,77 @@ function isInBossShadowZone(x, y) {
   );
 }
 
-function drawBossActorsWithShadow() {
-  // draw all boss actors first
+function drawBossActors() {
   state.player?.draw();
-
   state.troops.forEach(t => t.draw());
 
-  drawBossMother();
   drawBossCollectibleHearts();
+
   for (const coconut of (state.coconuts || [])) {
     drawBossCoconut(coconut);
   }
 
   drawHearts();
   drawParticles();
-
-  // now darken them with the ledge overlay
-  if (
-    spriteStore.bossShadowOverlay &&
-    spriteStore.bossShadowOverlay.complete &&
-    spriteStore.bossShadowOverlay.naturalWidth > 0
-  ) {
-    ctx.drawImage(spriteStore.bossShadowOverlay, 0, 0, canvas.width, canvas.height);
-  }
 }
 
 function drawBossCoconut(coconut) {
   ctx.save();
-  ctx.fillStyle = "#7a4a21";
+  ctx.translate(coconut.x, coconut.y);
+
+  const r = 24; // was effectively ~14 before
+
+  // soft shadow
+  ctx.globalAlpha = 0.28;
+  ctx.fillStyle = "#000";
   ctx.beginPath();
-  ctx.arc(coconut.x, coconut.y, 14, 0, Math.PI * 2);
+  ctx.ellipse(4, 12, r * 0.85, r * 0.42, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // outer shell
+  const shellGrad = ctx.createRadialGradient(-6, -8, 4, 0, 0, r);
+  shellGrad.addColorStop(0, "#9a6130");
+  shellGrad.addColorStop(0.6, "#6f421f");
+  shellGrad.addColorStop(1, "#4d2b14");
+
+  ctx.fillStyle = shellGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // edge
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = "#2f180c";
+  ctx.stroke();
+
+  // fibrous lines
+  ctx.strokeStyle = "rgba(255, 220, 170, 0.28)";
+  ctx.lineWidth = 1.5;
+  for (let i = -1; i <= 1; i++) {
+    ctx.beginPath();
+    ctx.arc(0, 0, r - 4 - i * 2, -0.8, 1.7);
+    ctx.stroke();
+  }
+
+  // highlight
+  ctx.fillStyle = "rgba(255,255,255,0.18)";
+  ctx.beginPath();
+  ctx.ellipse(-8, -10, 7, 5, -0.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // top tuft
+  ctx.strokeStyle = "#5d7f2d";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, -r + 2);
+  ctx.lineTo(-3, -r - 7);
+  ctx.moveTo(0, -r + 2);
+  ctx.lineTo(0, -r - 9);
+  ctx.moveTo(0, -r + 2);
+  ctx.lineTo(4, -r - 6);
+  ctx.stroke();
+
   ctx.restore();
 }
 
@@ -2890,11 +3160,11 @@ function loop(ts) {
     debugger;
     return; // stop the loop so the error stays visible
   }
-
   requestAnimationFrame(loop);
 }
 // ======================================================
 // STARTUP
 // ======================================================
 validateGraph();
+state.loadScreenImage = getLevelCardImage(1);
 requestAnimationFrame(loop);
