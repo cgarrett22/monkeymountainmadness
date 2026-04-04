@@ -473,14 +473,14 @@ function stopAllMusic() {
   }
 }
 
-function playSceneMusic() {
-  stopAllMusic();
+// function playSceneMusic() {
+//   stopAllMusic();
 
-  const track = isBossScene() ? sounds.bossMusic : sounds.music;
-  if (track) {
-    track.play().catch(() => {});
-  }
-}
+//   const track = isBossScene() ? sounds.bossMusic : sounds.music;
+//   if (track) {
+//     track.play().catch(() => {});
+//   }
+//}
 
 function getLevelCardImage(level) {
   if (level % 2 === 0) {
@@ -543,7 +543,7 @@ function applyMuteState() {
 
 function toggleMute() {
   state.isMuted = !state.isMuted;
-  applyMuteState();
+  applyMuteState(sounds, state);
 }
 
 function getCurrentNodeMap() {
@@ -622,7 +622,7 @@ function updateLevelIntro(dt) {
     resetActors();
     applyLevelConfig();
     newRound();
-    playSceneMusic();
+    // playSceneMusic();
   }
 }
 
@@ -913,7 +913,7 @@ function startBossMode() {
   };
 
   spawnBossRoamers();
-  playSceneMusic();
+  // playSceneMusic();
 }
 
 // ======================================================
@@ -1509,9 +1509,13 @@ function drawOverlay() {
   ctx.fillText("Monkey Mountain Madness", canvas.width / 2, canvas.height / 2 - 40);
 
   ctx.font = "30px Arial";
-  const line = state.mode === "start"
-    ? "Tap or use spacebar to start the Banana Bonanza round!"
-    : "Lil' Jab was tossed too many times. Tap to try again.";
+  let line = "";
+
+  if (state.mode === "start") {
+    line = "Tap or use spacebar to begin!";
+  } else if (state.mode === "gameOver") {
+    line = "Lil' Jab was tossed too many times. Tap to try again.";
+  }
   ctx.fillText(line, canvas.width / 2, canvas.height / 2 + 8);
 
   ctx.font = "30px Arial";
@@ -2240,7 +2244,7 @@ function startGame() {
   resetActors();
   applyLevelConfig();
   newRound();
-  playSceneMusic();
+  // playSceneMusic();
 }
 
 function newRound() {
