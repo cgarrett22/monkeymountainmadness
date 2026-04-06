@@ -15,11 +15,38 @@ export function loadSprites() {
   spriteStore.troopRun = new Image();
   spriteStore.troopRun.src = "sprites/troop-sprite.png";
 
-  spriteStore.zookeeper1 = new Image();
-  spriteStore.zookeeper1.src = "sprites/zookeeper-1.png";
+  spriteStore.zookeeper1_bb = new Image();
+  spriteStore.zookeeper1_bb.src = "sprites/zookeeper1-bb.png";
 
-  spriteStore.zookeeper2 = new Image();
-  spriteStore.zookeeper2.src = "sprites/zookeeper-2.png";
+  spriteStore.zookeeper1_ck = new Image();
+  spriteStore.zookeeper1_ck.src = "sprites/zookeeper1-ck.png";
+
+  spriteStore.zookeeper1_ch = new Image();
+  spriteStore.zookeeper1_ch.src = "sprites/zookeeper1-ch.png";
+
+  spriteStore.zookeeper2_bb_gifts = new Image();
+  spriteStore.zookeeper2_bb_gifts.src = "sprites/zookeeper2-bb-gifts.png";
+
+  spriteStore.zookeeper2_bb_hearts = new Image();
+  spriteStore.zookeeper2_bb_hearts.src = "sprites/zookeeper2-bb-hearts.png";
+
+  spriteStore.zookeeper2_ck_gifts = new Image();
+  spriteStore.zookeeper2_ck_gifts.src = "sprites/zookeeper2-ck-gifts.png";
+
+  spriteStore.zookeeper2_ck_hearts = new Image();
+  spriteStore.zookeeper2_ck_hearts.src = "sprites/zookeeper2-ck-hearts.png";
+
+  spriteStore.zookeeper2_ch_gifts = new Image();
+  spriteStore.zookeeper2_ch_gifts.src = "sprites/zookeeper2-ch-gifts.png";
+
+  spriteStore.zookeeper2_ch_hearts = new Image();
+  spriteStore.zookeeper2_ch_hearts.src = "sprites/zookeeper2-ch-hearts.png";
+
+  // spriteStore.zookeeperHearts = new Image();
+  // spriteStore.zookeeperHearts.src = "sprites/zookeeper-hearts.png";
+
+  // spriteStore.zookeeperGifts = new Image();
+  // spriteStore.zookeeperGifts.src = "sprites/zookeeper-gifts.png";
 
   spriteStore.levelUpArt = new Image();
   spriteStore.levelUpArt.src = "assets/levelup-monkeys.png";

@@ -5,6 +5,9 @@ import {
   CANVAS_HEIGHT,
   DEBUG,
   NODE_DEBUG,
+  HAT_TRICK_WINDOW,
+  HAT_TRICK_COUNT,
+  HAT_TRICK_BONUS,
   SWIPE_THRESHOLD,
   HOME_NODE,
   BANANA_NODE_IDS,
@@ -499,6 +502,33 @@ function getCurrentNodeMap() {
   return nodes;
 }
 
+function getTopmostNodeId(nodeMap) {
+  if (!nodeMap) return null;
+
+  let topId = null;
+  let topY = Infinity;
+
+  for (const [id, node] of Object.entries(nodeMap)) {
+    if (typeof node.y === "number" && node.y < topY) {
+      topY = node.y;
+      topId = id;
+    }
+  }
+
+  return topId;
+}
+
+function checkChillHillDebugWin() {
+  if (!DEBUG) return;
+  if (state.scene !== "chill") return;
+  if (!state.player) return;
+  if (state.mode !== "playing") return;
+
+  if (state.player.currentNode === "CG" && !state.player.targetNode) {
+    onSceneWin();
+  }
+}
+
 function getCurrentBackgroundImage() {
   if (state.scene === "boss") return spriteStore.bossBackground;
   if (state.scene === "chill") return spriteStore.chillHillBackground || backgroundImage;
@@ -506,7 +536,13 @@ function getCurrentBackgroundImage() {
 }
 
 function showBossIntro(level) {
-  state.loadScreenImage = spriteStore.coconutKongCard;  // force scene 2 card
+  state.mode = "playing";
+  state.sceneWinTimer = 0;
+  state.levelIntro = null;
+  state.levelUp = null;
+
+  state.loadScreenImage = getSceneCard("boss");
+
   state.bossIntro = {
     level,
     time: 0,
@@ -514,8 +550,14 @@ function showBossIntro(level) {
   };
 }
 
+
 function showLevelIntro(level, nextScene = "main") {
-  state.loadScreenImage = getSceneCard(nextScene, level);
+  state.mode = "playing";
+  state.sceneWinTimer = 0;
+  state.bossIntro = null;
+  state.levelUp = null;
+
+  state.loadScreenImage = getSceneCard(nextScene);
 
   state.levelIntro = {
     level,
@@ -805,9 +847,34 @@ function startMainScene() {
   state.catchAnim = null;
   state.hearts = [];
   state.fieldHearts = [];
+  state.flyingHearts = [];
   state.particles = [];
   state.hand = null;
   state.banana = null;
+  state.heartThrowTimer = 2.5;
+  state.heartsThrown = 0;
+  state.maxHeartsToThrow = 3;
+
+  // if (state.zookeeper) {
+  //   state.zookeeper.action = "normal";
+  //   state.zookeeper.actionTimer = 0;
+  // }
+
+  state.zookeeper = {
+  anim: "idle",
+  frame: 0,
+  time: 0,
+  didThrowSound: false
+};
+
+state.zookeeper2 = {
+  anim: "idle",
+  frame: 0,
+  time: 0,
+  timer: rand(2.5, 6),
+  action: "hearts",
+  actionTimer: 0
+};
 
   resetActors();
   applyLevelConfig();
@@ -822,9 +889,13 @@ function startBossMode() {
   state.catchAnim = null;
   state.hearts = [];
   state.fieldHearts = [];
+  state.flyingHearts = [];
   state.particles = [];
   state.banana = null;
   state.hand = null;
+  state.heartThrowTimer = 2.5;
+  state.heartsThrown = 0;
+  state.maxHeartsToThrow = 3;
 
   if (!state.player) {
     state.player = new Player(bossConfig.startNode);
@@ -839,6 +910,22 @@ function startBossMode() {
 
   state.troops = [];
   state.coconuts = [];
+
+  state.zookeeper = {
+  anim: "idle",
+  frame: 0,
+  time: 0,
+  didThrowSound: false
+};
+
+state.zookeeper2 = {
+  anim: "idle",
+  frame: 0,
+  time: 0,
+  timer: rand(2.5, 6),
+  action: "hearts",
+  actionTimer: 0
+};
 
   state.boss = {
     coconutTimer: 0,
@@ -855,6 +942,11 @@ function startBossMode() {
     }
   };
   state.player.setCarryingMother(false);
+  console.log("boss start", {
+  motherCarried: state.boss.mother.carried,
+  motherNode: state.boss.mother.nodeId,
+  playerNode: state.player?.currentNode
+});
   spawnBossRoamers();
 }
 
@@ -865,15 +957,35 @@ function startChillHill() {
   state.catchAnim = null;
   state.hearts = [];
   state.fieldHearts = [];
+  state.flyingHearts = [];
   state.particles = [];
   state.hand = null;
   state.banana = null;
+  state.heartThrowTimer = 2.5;
+  state.heartsThrown = 0;
+  state.maxHeartsToThrow = 3;
 
   if (!state.player) {
     state.player = new Player(chillConfig.startNode);
   } else {
     state.player.reset(chillConfig.startNode);
   }
+
+ state.zookeeper = {
+  anim: "idle",
+  frame: 0,
+  time: 0,
+  didThrowSound: false
+};
+
+state.zookeeper2 = {
+  anim: "idle",
+  frame: 0,
+  time: 0,
+  timer: rand(2.5, 6),
+  action: "hearts",
+  actionTimer: 0
+}; 
 
   state.troops = [];
   state.player.hasBanana = false;
@@ -1098,6 +1210,92 @@ function drawFieldHearts() {
     ctx.translate(node.x, node.y - 12);
     ctx.scale(pulse, pulse);
     drawHeart(0, 0, 20, "#d22");
+    ctx.restore();
+  }
+}
+
+function throwHeartFromZookeeper(zookeeper, targetNodeId) {
+  const target = mainNodes[targetNodeId];
+  if (!target) return;
+
+  state.flyingHearts.push({
+    x: zookeeper.x,
+    y: zookeeper.y,
+    startX: zookeeper.x,
+    startY: zookeeper.y,
+    targetX: target.x,
+    targetY: target.y,
+    time: 0,
+    duration: 0.8,
+    targetNodeId
+  });
+
+  state.fieldHearts.push({
+    nodeId: h.targetNodeId,
+    collected: false
+  });
+}
+
+function triggerHeartThrow(z, targetNodeId) {
+  if (!z) return;
+
+  if (state.zookeeper2) {
+    state.zookeeper2.action = "hearts";
+    state.zookeeper2.actionTimer = 0.5;
+  }
+
+  throwHeartFromZookeeper(z, targetNodeId);
+}
+
+function triggerGiftThrow() {
+  if (!state.zookeeper2) return;
+
+  state.zookeeper2.action = "gifts";
+  state.zookeeper2.actionTimer = 0.7;
+}
+
+function updateKeeperAction(keeper, dt) {
+  if (!keeper || !keeper.actionTimer) return;
+
+  keeper.actionTimer -= dt;
+  if (keeper.actionTimer <= 0) {
+    keeper.actionTimer = 0;
+    keeper.action = "hearts";
+  }
+}
+
+function updateFlyingHearts(dt) {
+  if (!state.flyingHearts?.length) return;
+
+  for (let i = state.flyingHearts.length - 1; i >= 0; i--) {
+    const h = state.flyingHearts[i];
+    h.time += dt;
+
+    const t = Math.min(h.time / h.duration, 1);
+    const arc = Math.sin(t * Math.PI) * 80;
+
+    h.x = h.startX + (h.targetX - h.startX) * t;
+    h.y = h.startY + (h.targetY - h.startY) * t - arc;
+
+    if (t >= 1) {
+      state.flyingHearts.splice(i, 1);
+
+      state.fieldHearts.push({
+        nodeId: h.targetNodeId,
+        collected: false
+      });
+    }
+  }
+}
+
+function drawFlyingHearts() {
+  if (!state.flyingHearts?.length) return;
+
+  for (const h of state.flyingHearts) {
+    ctx.save();
+    ctx.font = "28px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("❤️", h.x, h.y);
     ctx.restore();
   }
 }
@@ -1570,6 +1768,10 @@ function onSceneWin() {
 }
 
 function showSceneWin() {
+  state.levelIntro = null;
+  state.bossIntro = null;
+  state.levelUp = null;
+
   state.mode = "sceneWin";
   state.sceneWinTimer = 0;
   state.loadScreenImage = spriteStore.sceneWinCard || spriteStore.levelUpCard;
@@ -1597,9 +1799,9 @@ function showBananaPickupPopup(x, y, age) {
   state.particles.push({
     kind: "pickupText",
     x,
-    y: y - 26,
+    y: y - 56,
     t: 0,
-    life: 1.4,
+    life: 1.8,
     text: `🍌 ${ripeness.points}x`,
     color: ripeness.color
   });
@@ -1629,10 +1831,10 @@ function drawParticles() {
 
       ctx.save();
       ctx.globalAlpha = 1 - progress;
-      ctx.translate(p.x, p.y - progress * 34);
+      ctx.translate(p.x - 10, p.y - progress * 34);
       ctx.scale(1 + (1 - progress) * 0.3, 1 + (1 - progress) * 0.3);
 
-      ctx.font = "bold 24px Arial";
+      ctx.font = "bold 36px Arial";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.lineWidth = 4;
@@ -1750,39 +1952,47 @@ function drawBananaState() {
 
 function drawZookeeper() {
   const z = state.zookeeper;
-  if (!z || !spriteStore.zookeeper1?.complete) return;
+  if (!z) return;
+
+  const img = getZookeeper1Sprite();
+  if (!img || !img.complete || img.naturalWidth <= 0) return;
+
+  const sceneKey = getSceneKey();
+  const box = ZOOKEEPER_LAYOUT[sceneKey].z1;
 
   const frameCount = 4;
   const frame = z.frame || 0;
-  const frameWidth = spriteStore.zookeeper1.width / frameCount;
-  const sx = frame * frameWidth;
-  const sy = 0;
+  const frameWidth = img.width / frameCount;
 
   ctx.drawImage(
-    spriteStore.zookeeper1,
-    sx, sy,
-    frameWidth, spriteStore.zookeeper1.height,
-    50, 30,
-    224, 224
+    img,
+    frame * frameWidth, 0,
+    frameWidth, img.height,
+    box.x, box.y,
+    box.w, box.h
   );
 }
 
 function drawZookeeper2() {
   const z = state.zookeeper2;
-  if (!z || !spriteStore.zookeeper2?.complete) return;
+  if (!z) return;
+
+  const img = getZookeeper2Sprite();
+  if (!img || !img.complete || img.naturalWidth <= 0) return;
+
+  const sceneKey = getSceneKey();
+  const box = ZOOKEEPER_LAYOUT[sceneKey].z2;
 
   const frameCount = 4;
   const frame = z.frame || 0;
-  const frameWidth = spriteStore.zookeeper2.width / frameCount;
-  const sx = frame * frameWidth;
-  const sy = 0;
+  const frameWidth = img.width / frameCount;
 
   ctx.drawImage(
-    spriteStore.zookeeper2,
-    sx, sy,
-    frameWidth, spriteStore.zookeeper2.height,
-    790, 250,
-    224, 224
+    img,
+    frame * frameWidth, 0,
+    frameWidth, img.height,
+    box.x, box.y,
+    box.w, box.h
   );
 }
 
@@ -2325,6 +2535,7 @@ function startGame() {
   state.lives = 3;
   state.hearts = [];
   state.fieldHearts = [];
+  state.flyingHearts = [];
   state.particles = [];
   state.catchAnim = null;
   state.acceptance = 0;
@@ -2334,8 +2545,29 @@ function startGame() {
   state.bossIntro = null;
   state.hand = null;
   state.banana = null;
-  state.zookeeper = { anim: "idle", frame: 0, time: 0, didThrowSound: false };
-  state.zookeeper2 = { anim: "idle", frame: 0, time: 0, timer: rand(2.5, 6) };
+  state.bananaTimestamps = [];
+state.zookeeper = {
+  anim: "idle",
+  frame: 0,
+  time: 0,
+  didThrowSound: false
+};
+
+state.zookeeper2 = {
+  anim: "idle",
+  frame: 0,
+  time: 0,
+  timer: rand(2.5, 6),
+  action: "hearts",
+  actionTimer: 0
+};  state.heartThrowTimer = 2.5;
+  state.heartsThrown = 0;
+  state.maxHeartsToThrow = 3;
+
+  if (state.zookeeper) {
+    state.zookeeper.action = "normal";
+    state.zookeeper.actionTimer = 0;
+  }
 
   resetActors();
   applyLevelConfig();
@@ -2378,11 +2610,14 @@ function resetScene() {
   tossBanana();
 }
 
-// function spawnNextBanana() {
-//   state.banana = null;
-//   state.hand = null;
-//   tossBanana();
-// }
+function getZookeeperThrowOrigin() {
+  const sceneKey = getSceneKey();
+  const box = ZOOKEEPER_LAYOUT[sceneKey].z1;
+  return {
+    x: box.x + 40,
+    y: box.y + 130 + rand(-20, 20)
+  };
+}
 
 function spawnNextBanana() {
   state.roundState = "waiting";
@@ -2402,12 +2637,19 @@ function tossBanana() {
     return;
   }
 
+if (!state.zookeeper) {
   state.zookeeper = {
-    anim: "throw",
+    anim: "idle",
     frame: 0,
     time: 0,
     didThrowSound: false
   };
+}
+
+state.zookeeper.anim = "throw";
+state.zookeeper.frame = 0;
+state.zookeeper.time = 0;
+state.zookeeper.didThrowSound = false;
 
   // existing banana/hand setup...
 
@@ -2422,12 +2664,13 @@ function tossBanana() {
     size: 1,
     collected: false
   };
+  const throwFrom = getZookeeperThrowOrigin();
 
   state.hand = {
     active: true,
     t: 0,
     duration: 0.9,
-    from: { x: 70, y: 160 + rand(-20, 20) },
+    from: throwFrom,
     to: { x: to.x, y: to.y }
   };
 }
@@ -2462,6 +2705,8 @@ function updateZookeeper(dt) {
       sounds.step?.play().catch(() => {});
       z.didThrowSound = true;
     }
+  } else {
+    z.frame = 0;
   }
 }
 
@@ -2482,17 +2727,53 @@ function updateZookeeper2(dt) {
       z.time = 0;
       z.timer = rand(2.5, 6);
     }
-    return;
-  }
-
-  if (z.timer <= 0) {
-    z.anim = "react";
-    z.frame = 1;
-    z.time = 0;
   } else {
     z.frame = 0;
+
+    if (z.timer <= 0) {
+      z.anim = "react";
+      z.frame = 1;
+      z.time = 0;
+    }
   }
+
+  updateKeeperAction(z, dt);
 }
+
+function getHeartTargetNodeId() {
+  // const targets = ["h1", "h2", "h3"]; // replace with real node ids
+  const targets = BANANA_NODE_IDS;
+  return targets[state.heartsThrown] || null;
+}
+
+function updateHeartThrowing(dt) {
+  if (state.scene !== "main") return;
+  if (state.mode !== "playing") return;
+  if (!state.zookeeper) return;
+
+  if (state.heartsThrown >= state.maxHeartsToThrow) return;
+
+  state.heartThrowTimer -= dt;
+  if (state.heartThrowTimer > 0) return;
+
+  const targetNodeId = getHeartTargetNodeId();
+  if (!targetNodeId) return;
+
+  triggerHeartThrow(state.zookeeper, targetNodeId);
+
+  state.heartsThrown += 1;
+  state.heartThrowTimer = 4.0;
+}
+
+// function updateKeeperAction(z, dt) {
+//   if (!z || !z.actionTimer) return;
+
+//   z.actionTimer -= dt;
+//   if (z.actionTimer <= 0) {
+//     z.actionTimer = 0;
+//     z.action = "normal";
+//   }
+// }
 
 function updateHand(dt) {
   if (!state.hand?.active || !state.banana) return;
@@ -2527,11 +2808,40 @@ function updateBanana(dt) {
   state.banana.size = 1 + Math.sin(state.banana.age * 5) * 0.08;
 
   if (distance(state.player, state.banana) < 30) {
+
+    const now = performance.now() / 1000;
+
+    state.bananaTimestamps.push(now);
+
+    // remove old timestamps
+    state.bananaTimestamps = state.bananaTimestamps.filter(
+      t => now - t <= HAT_TRICK_WINDOW
+    );
+
+    // check hat trick
+    if (state.bananaTimestamps.length >= HAT_TRICK_COUNT) {
+      onHatTrick();
+      state.bananaTimestamps = [];
+    }
+
     state.player.hasBanana = true;
     state.roundState = "chase";
     sounds.pickup?.play().catch(() => {});
     triggerZookeeper2("react");
   }
+}
+
+function onHatTrick() {
+  state.bananas += HAT_TRICK_BONUS;
+
+  //spawnFloatingText("HAT TRICK!", state.player.x, state.player.y);
+  showBananaPickupPopup(state.player.x, state.player.y, 0, {
+  text: "🎩 HAT TRICK! +10 🍌",
+  color: "#ffd700",
+  life: 2.0
+});
+  // optional later:
+  // playSound("combo");
 }
 
 function showChillIntro() {
@@ -2572,6 +2882,54 @@ function goToNextScene() {
   }
 }
 
+// function getZookeeperSprite(keeper) {
+//   if (keeper.action === "hearts") {
+//     return spriteStore.zookeeperHearts || spriteStore.zookeeper;
+//   }
+
+//   if (keeper.action === "gifts") {
+//     return spriteStore.zookeeperGifts || spriteStore.zookeeper;
+//   }
+
+//   if (keeper.action === "bananas") {
+//     return spriteStore.zookeeperBananas || spriteStore.zookeeper;
+//   }
+
+//   return spriteStore.zookeeper;
+// }
+
+function getSceneKey() {
+  if (state.scene === "boss") return "ck";
+  if (state.scene === "chill") return "ch";
+  return "bb";
+}
+
+const ZOOKEEPER_LAYOUT = {
+  bb: {
+    z1: { x: 50,  y: 30,  w: 224, h: 224 },
+    z2: { x: 790, y: 250, w: 224, h: 224 }
+  },
+  ck: {
+    z1: { x: 50,  y: 30,  w: 224, h: 224 },
+    z2: { x: 790, y: 250, w: 224, h: 224 }
+  },
+  ch: {
+    z1: { x: 50,  y: 30,  w: 224, h: 224 },
+    z2: { x: 790, y: 250, w: 224, h: 224 }
+  }
+};
+
+function getZookeeper1Sprite() {
+  const key = getSceneKey();
+  return spriteStore[`zookeeper1_${key}`] || null;
+}
+
+function getZookeeper2Sprite() {
+  const key = getSceneKey();
+  const action = state.zookeeper2?.action === "gifts" ? "gifts" : "hearts";
+  return spriteStore[`zookeeper2_${key}_${action}`] || null;
+}
+
 function getBossDangerAtPlayer() {
   if (!state.player) return 999;
 
@@ -2596,9 +2954,9 @@ function updateBossMother(dt) {
 
   const danger = getBossDangerAtPlayer();
 
-  if (mother.carried && danger >= 1.0) {
-    dropMother();
-  }
+  // if (mother.carried && danger >= 1.0) {
+  //   dropMother();
+  // }
 
   updateBossHeartCollection();
   pickupMotherIfSafe();
@@ -2618,50 +2976,91 @@ function updateBossMother(dt) {
   return false;
 }
 
-function drawBossMother() {
-  if (!isBossScene() || !state.boss?.mother) return;
+function pickupMotherIfSafe() {
+  if (state.boss?.motherPickupLock > 0) return;
+  const mother = state.boss?.mother;
+  if (!mother || mother.carried || !state.player) return;
+  // if (!mother || mother.carried) return;
 
-  const mother = state.boss.mother;
-  const img = spriteStore.mother;
-
-  if (mother.carried) return;
+  if (mother.nodeId == null) return;
 
   const node = bossNodes[mother.nodeId];
   if (!node) return;
 
-ctx.save();
-ctx.translate(node.x + 40, node.y + 40);
+  const dist = Math.hypot(state.player.x - node.x, state.player.y - node.y);
+  const danger = getBossDangerAtPlayer();
 
-//const pulse = 1 + Math.sin(performance.now() * 0.01) * 0.22;
-const pulse = 1 + Math.sin(performance.now() * 0.006) * 0.08;
-ctx.scale(pulse, pulse);
+  // if (dist <= 36 && danger < 1.0) {
+  if (dist <= 36) {
+    mother.carried = true;
+    state.player?.setCarryingMother(true);
+    mother.nodeId = null;
+ }
+}
 
-// strong outer glow
-const glow = ctx.createRadialGradient(0, 0, 8, 0, 0, 190);
-glow.addColorStop(0,    "rgba(255,255,180,0.63)"); // was 0.90
-glow.addColorStop(0.18, "rgba(255,210,90,0.52)");  // was 0.75
-glow.addColorStop(0.45, "rgba(255,140,30,0.32)");  // was 0.45
-glow.addColorStop(0.75, "rgba(255,90,0,0.12)");    // was 0.18
-glow.addColorStop(1, "rgba(255,60,0,0)");
+// function pickupMotherIfSafe() {
+//   const mother = state.boss?.mother;
+//   if (!mother || mother.carried) return;
+//   if (state.player.currentNode !== mother.nodeId) return;
 
-ctx.fillStyle = glow;
-ctx.beginPath();
-ctx.arc(0, 0, 90, 0, Math.PI * 2);
-ctx.fill();
+//   mother.carried = true;
+//   mother.nodeId = null;
+//   state.player?.setCarryingMother(true);
+// }
 
-// hot inner ring
-ctx.strokeStyle = "rgba(255,190,70,0.65)";
-ctx.lineWidth = 6;
-ctx.beginPath();
-ctx.arc(0, 0, 42, 0, Math.PI * 2);
-//ctx.stroke();
+function drawBossMother() {
+  if (!isBossScene() || !state.boss?.mother) return;
 
-ctx.restore();
+  // const mother = state.boss.mother;
+  const img = spriteStore.mother;
+
+  // if (mother.carried) return;
+
+  // const node = bossNodes[mother.nodeId];
+  // if (!node) return;
+
+  const mother = state.boss.mother;
+  if (mother.carried) return;
+  if (!mother.nodeId) return;
+
+  const node = bossNodes[mother.nodeId];
+  if (!node) return;
+
+  ctx.save();
+  ctx.translate(node.x + 40, node.y + 40);
+
+  const pulse = 1 + Math.sin(performance.now() * 0.006) * 0.08;
+  ctx.scale(pulse, pulse);
+
+  const glow = ctx.createRadialGradient(0, 0, 8, 0, 0, 190);
+  glow.addColorStop(0,    "rgba(255,255,180,0.63)");
+  glow.addColorStop(0.18, "rgba(255,210,90,0.52)");
+  glow.addColorStop(0.45, "rgba(255,140,30,0.32)");
+  glow.addColorStop(0.75, "rgba(255,90,0,0.12)");
+  glow.addColorStop(1,    "rgba(255,60,0,0)");
+
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(0, 0, 90, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+
   ctx.save();
 
   if (img && img.complete && img.naturalWidth > 0) {
-    // ctx.drawImage(img, node.x - 40, node.y - 44, 156, 156);
-    ctx.drawImage(img, node.x - 44, node.y - 44, 156, 156);
+    const cols = 4;
+    const frameWidth = img.naturalWidth / cols;
+    const frameHeight = img.naturalHeight;
+    const frame = mother.groundPose ?? 0;
+
+    ctx.drawImage(
+      img,
+      frame * frameWidth, 0,
+      frameWidth, frameHeight,
+      node.x - 44, node.y - 44,
+      156, 156
+    );
   } else {
     ctx.fillStyle = "#d8b38a";
     ctx.beginPath();
@@ -2723,9 +3122,26 @@ function drawBossActors() {
 function dropMother() {
   const mother = state.boss?.mother;
   if (!mother || !mother.carried) return;
+  state.boss.motherPickupLock = 0.5;
+  let dropNodeId = null;
+
+  if (state.player) {
+    dropNodeId = getNearestNodeId(
+      state.player.x,
+      state.player.y,
+      bossNodes,
+      120
+    );
+  }
+
+  if (!dropNodeId) {
+    dropNodeId = state.player?.currentNode || bossConfig.motherStartNode;
+  }
 
   mother.carried = false;
-  mother.nodeId = state.player.currentNode;
+  mother.nodeId = dropNodeId;
+  mother.groundPose = Math.floor(Math.random() * 4);
+
   state.player?.setCarryingMother(false);
 }
 
@@ -2762,16 +3178,6 @@ function resetMotherToStart() {
   mother.carried = false;
   mother.nodeId = bossConfig.motherStartNode;
   state.player?.setCarryingMother(false);
-}
-
-function pickupMotherIfSafe() {
-  const mother = state.boss?.mother;
-  if (!mother || mother.carried) return;
-  if (state.player.currentNode !== mother.nodeId) return;
-
-  mother.carried = true;
-  mother.nodeId = null;
-  state.player?.setCarryingMother(true);
 }
 
 function updateBossHeartCollection() {
@@ -2917,6 +3323,7 @@ function endBossModeSuccess() {
   state.troops = [];
   showSceneWin();
 }
+
 function spawnBossCoconut() {
   const lane = choose(bossCoconutLanes);
 
@@ -3077,6 +3484,36 @@ function update(dt) {
     return;
   }
 
+  if (state.scene === "chill") {
+    updateHand(dt);
+    updateBanana(dt);
+
+    if (!state.catchAnim) {
+      updatePlayer(dt);
+    }
+
+    if (state.player) {
+      updateTroops(dt);
+    }
+
+    updateZookeeper(dt);
+    updateZookeeper2(dt);
+    updateHeartThrowing(dt);
+
+    updateKeeperAction(state.zookeeper, dt);
+    // updateKeeperAction(state.zookeeper2, dt);
+if (DEBUG && state.scene === "main" && !state.testHeartThrown) {
+  triggerHeartThrow(state.zookeeper, "h1"); // replace with real node id
+  state.testHeartThrown = true;
+}
+    updateFlyingHearts(dt);
+    updateCatch(dt);
+    updateParticles(dt);
+
+    checkChillHillDebugWin();
+    return;
+  }
+
   updateHand(dt);
   updateBanana(dt);
 
@@ -3103,54 +3540,6 @@ function drawActors() {
   drawHearts();
   drawParticles();
 }
-
-// function draw() {
-//   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-//   if (state.mode === "start") {
-//     drawStartCard(ctx);
-//     return;
-//   }
-
-//   const showingTransitionCard =
-//     !!state.levelUp ||
-//     !!state.bossIntro ||
-//     !!state.levelIntro ||
-//     state.mode === "sceneWin";
-
-//   if (showingTransitionCard) {
-//     ctx.fillStyle = "#000";
-//     ctx.fillRect(0, 0, canvas.width, canvas.height);
-//   } else {
-//     drawBackground();
-
-//     if (!isBossScene()) {
-//       drawBananaState();
-//       drawFieldHearts();
-//       drawZookeeper();
-//       drawZookeeper2();
-//       drawActors();
-//     } else {
-//       drawBossActors();
-//       drawBossMother();
-//     }
-
-//     drawHudOverlay();
-//     drawCavePreview();
-//   }
-
-//   drawNodeLabels();
-//   drawPathOverlay(getCurrentNodeMap());
-//   drawNodeDebugOverlay();
-
-//   if (state.mode === "sceneWin") {
-//     drawLevelUpCard("Scene Clear");
-//   }
-//   drawOverlay();
-//   drawBossIntroOverlay();
-//   drawLevelIntroOverlay();
-//   drawLevelUpOverlay();
-// }
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -3191,16 +3580,16 @@ if (showingTransitionCard) {
 
   drawBackground();
 
-  if (!isBossScene()) {
-    drawBananaState();
-    drawFieldHearts();
-    drawZookeeper();
-    drawZookeeper2();
-    drawActors();
-  } else {
-    drawBossActors();
-    drawBossMother();
-  }
+drawBackground();
+drawZookeeper();
+drawZookeeper2();
+drawBananaState();
+drawFlyingHearts();
+drawActors();
+
+if (state.scene === "boss") {
+  drawBossMother();
+}
   // === debug
   if (DEBUG){
     drawPathOverlay(getCurrentNodeMap());
