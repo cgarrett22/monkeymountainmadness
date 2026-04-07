@@ -851,11 +851,12 @@ function startMainScene() {
   state.particles = [];
   state.hand = null;
   state.banana = null;
+  state.sceneWinAwarded = false;
+  state.bananasCollectedThisScene = 0;
   state.heartThrowTimer = 2.5;
   state.heartsThrown = 0;
   state.maxHeartsToThrow = 3;
 
-  // if (state.zookeeper) {
   //   state.zookeeper.action = "normal";
   //   state.zookeeper.actionTimer = 0;
   // }
@@ -892,6 +893,8 @@ function startBossMode() {
   state.flyingHearts = [];
   state.particles = [];
   state.banana = null;
+  state.sceneWinAwarded = false;
+  state.bananasCollectedThisScene = 0;
   state.hand = null;
   state.heartThrowTimer = 2.5;
   state.heartsThrown = 0;
@@ -960,7 +963,8 @@ function startChillHill() {
   state.flyingHearts = [];
   state.particles = [];
   state.hand = null;
-  state.banana = null;
+  state.banana = null;state.sceneWinAwarded = false;
+  state.bananasCollectedThisScene = 0;
   state.heartThrowTimer = 2.5;
   state.heartsThrown = 0;
   state.maxHeartsToThrow = 3;
@@ -1760,7 +1764,7 @@ function spawnMainFieldHearts() {
 }
 
 const CAVE_REVEAL_DURATION = 1.0;
-const SCENE_WIN_DURATION = 1.5;
+const SCENE_WIN_DURATION = 3.0;
 
 function onSceneWin() {
   state.mode = "caveReveal";
@@ -1768,13 +1772,65 @@ function onSceneWin() {
 }
 
 function showSceneWin() {
-  state.levelIntro = null;
-  state.bossIntro = null;
-  state.levelUp = null;
-
   state.mode = "sceneWin";
   state.sceneWinTimer = 0;
-  state.loadScreenImage = spriteStore.sceneWinCard || spriteStore.levelUpCard;
+
+  const completionBonus = 200;
+
+  // prevent double-add if function fires twice
+  if (!state.sceneWinAwarded) {
+    state.score += completionBonus;
+    state.sceneWinBonus = completionBonus;
+    state.sceneWinAwarded = true;
+  }
+
+  state.loadScreenImage =
+    spriteStore.sceneCompleteCard ||
+    spriteStore.sceneWinCard ||
+    spriteStore.levelUpCard;
+}
+
+function drawSceneCompleteOverlay() {
+  if (
+    state.loadScreenImage &&
+    state.loadScreenImage.complete &&
+    state.loadScreenImage.naturalWidth > 0
+  ) {
+    ctx.drawImage(state.loadScreenImage, 0, 0, canvas.width, canvas.height);
+  } else {
+    drawLevelUpCard("Scene Complete");
+    return;
+  }
+
+  const completionBonus = state.sceneWinBonus ?? 0;
+  const collected = state.bananasCollectedThisScene ?? 0;
+  const total = completionBonus + collected;
+
+  const tireUnlocked = !!state.unlocks?.tireSwing;
+  const lanternUnlocked = !!state.unlocks?.lantern;
+
+  ctx.save();
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "left";
+
+  ctx.font = "bold 38px Arial";
+  ctx.fillText(`🍌 Completion Bonus: +${completionBonus}`, 185, 315);
+  ctx.fillText(`🍌 Collected: +${collected}`, 185, 405);
+  ctx.fillText(`TOTAL: 🍌 ${total}`, 185, 505);
+
+  ctx.font = "bold 34px Arial";
+  ctx.fillText(
+    `🛞 Tire Swing (${tireUnlocked ? "available" : "locked"})`,
+    185,
+    680
+  );
+  ctx.fillText(
+    `🕯️ Lantern (${lanternUnlocked ? "available" : "locked"})`,
+    185,
+    755
+  );
+
+  ctx.restore();
 }
 
 function drawSceneWinOverlay() {
@@ -2813,17 +2869,29 @@ function updateBanana(dt) {
 
     state.bananaTimestamps.push(now);
 
-    // remove old timestamps
     state.bananaTimestamps = state.bananaTimestamps.filter(
       t => now - t <= HAT_TRICK_WINDOW
     );
 
-    // check hat trick
     if (state.bananaTimestamps.length >= HAT_TRICK_COUNT) {
       onHatTrick();
       state.bananaTimestamps = [];
     }
 
+    // 🍌 AWARD BANANA VALUE
+    const ripeness = ripenessLabel(state.banana.age);
+    const value = ripeness.points;
+
+    state.score += value;
+    state.bananasCollectedThisScene += value;
+    // 🍌 POPUP (right here)
+    showBananaPickupPopup(
+      state.banana.x,
+      state.banana.y,
+      state.banana.age
+    );
+
+    // existing logic
     state.player.hasBanana = true;
     state.roundState = "chase";
     sounds.pickup?.play().catch(() => {});
@@ -2832,7 +2900,8 @@ function updateBanana(dt) {
 }
 
 function onHatTrick() {
-  state.bananas += HAT_TRICK_BONUS;
+  // state.bananas += HAT_TRICK_BONUS;
+  state.score += HAT_TRICK_BONUS;
 
   //spawnFloatingText("HAT TRICK!", state.player.x, state.player.y);
   showBananaPickupPopup(state.player.x, state.player.y, 0, {
@@ -2910,12 +2979,12 @@ const ZOOKEEPER_LAYOUT = {
     z2: { x: 790, y: 250, w: 224, h: 224 }
   },
   ck: {
-    z1: { x: 50,  y: 30,  w: 224, h: 224 },
-    z2: { x: 790, y: 250, w: 224, h: 224 }
+    z1: { x: 53,  y: 100,  w: 214, h: 204 },
+    z2: { x: 790, y: 240, w: 224, h: 200 }
   },
   ch: {
-    z1: { x: 50,  y: 30,  w: 224, h: 224 },
-    z2: { x: 790, y: 250, w: 224, h: 224 }
+    z1: { x: 265,  y: 165,  w: 204, h: 204 },
+    z2: { x: 745, y: 175, w: 214, h: 214 }
   }
 };
 
@@ -3215,7 +3284,10 @@ function updatePlayer(dt) {
       state.banana.collected = true;
 
       const ripeness = ripenessLabel(state.banana.age);
-      state.score += ripeness.points;
+      const value = ripeness.points;
+
+      state.score += value;
+      state.bananasCollectedThisScene += value;
 
       showBananaPickupPopup(state.player.x, state.player.y, state.banana.age);
       sounds.score?.play().catch(() => {});
@@ -3568,10 +3640,11 @@ if (showingTransitionCard) {
     return;
   }
 
-  if (state.mode === "sceneWin") {
-    drawLevelUpCard("Scene Clear");
-    return;
-  }
+if (state.mode === "sceneWin") {
+  drawSceneCompleteOverlay();
+  return;
+}
+
   drawBossIntroOverlay();
   drawLevelIntroOverlay();
   drawLevelUpOverlay();
@@ -3588,6 +3661,9 @@ drawFlyingHearts();
 drawActors();
 
 if (state.scene === "boss") {
+  for (const coconut of (state.coconuts || [])) {
+    drawBossCoconut(coconut);
+  }
   drawBossMother();
 }
   // === debug
@@ -3756,22 +3832,62 @@ document.addEventListener("keyup", (e) => {
   }
 });
 
-document.body.addEventListener("touchmove", (e) => {
-  e.preventDefault();
+// document.body.addEventListener("touchmove", (e) => {
+//   e.preventDefault();
+// }, { passive: false });
+
+// canvas.addEventListener("touchstart", (e) => {
+//   e.preventDefault();
+// }, { passive: false });
+
+// canvas.addEventListener("touchmove", (e) => {
+//   e.preventDefault();
+// }, { passive: false });
+
+// canvas.addEventListener("touchend", (e) => {
+//   e.preventDefault();
+// }, { passive: false });
+
+canvas.addEventListener("pointermove", (e) => {
+  if (!touchStart) return;
+
+  canvas.style.touchAction = "none";
+
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const x = (e.clientX - rect.left) * scaleX;
+  const y = (e.clientY - rect.top) * scaleY;
+
+  handleSwipeMove(x, y);
 }, { passive: false });
 
-canvas.addEventListener("touchstart", (e) => {
-  e.preventDefault();
-}, { passive: false });
+function handleSwipeMove(x, y) {
+  if (!touchStart || swipeHandled) return;
 
-canvas.addEventListener("touchmove", (e) => {
-  e.preventDefault();
-}, { passive: false });
+  const dx = x - touchStart.x;
+  const dy = y - touchStart.y;
 
-canvas.addEventListener("touchend", (e) => {
-  e.preventDefault();
-}, { passive: false });
+  if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) {
+    return;
+  }
 
+  if (Math.abs(dx) > Math.abs(dy)) {
+    if (dx > 0) {
+      setQueuedDirectionCompat(1, 0, "right");
+    } else {
+      setQueuedDirectionCompat(-1, 0, "left");
+    }
+  } else {
+    if (dy > 0) {
+      setQueuedDirectionCompat(0, 1, "down");
+    } else {
+      setQueuedDirectionCompat(0, -1, "up");
+    }
+  }
+
+  swipeHandled = true;
+}
 // ======================================================
 // LOOP
 // ======================================================

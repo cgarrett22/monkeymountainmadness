@@ -69,6 +69,9 @@ export function loadSprites() {
   spriteStore.chillHillBackground = new Image();
   spriteStore.chillHillBackground.src = "assets/chill-hill.png";
 
+  spriteStore.sceneCompleteCard = new Image();
+  spriteStore.sceneCompleteCard.src = "assets/scene-complete-card.png";
+
   spriteStore.gameOverCard = new Image();
   spriteStore.gameOverCard.src = "assets/game-over-card.png";
 
