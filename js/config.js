@@ -3,7 +3,7 @@
 export const CANVAS_WIDTH = 1024;
 export const CANVAS_HEIGHT = 1536;
 
-export const DEBUG = false;
+export const DEBUG = true;
 export let NODE_DEBUG = true;
 
 export const SWIPE_THRESHOLD = 24;

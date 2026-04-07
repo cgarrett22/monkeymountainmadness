@@ -1601,19 +1601,6 @@ function drawHudOverlay() {
   ctx.font = "28px Arial";
   ctx.fillText(`🐵 ${state.lives}`, rightTextX, h / 2);
 
-  if (state.paused) {
-    ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.5)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 64px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText("PAUSED", canvas.width / 2, canvas.height / 2);
-
-    ctx.restore();
-  }
-
   // Mute button box
   muteButton.w = 54;
   muteButton.h = 32;
@@ -2115,7 +2102,6 @@ function resetActors() {
 
 function startGame() {
   state.mode = "playing";
-  state.paused = false;
   state.scene = "main";
   state.boss = null;
   state.cardBackground = backgroundImage;
@@ -2948,8 +2934,6 @@ function updateParticles(dt) {
 }
 
 function update(dt) {
-  if (state.paused) return;
-
   if (state.levelUp) {
     updateLevelUp(dt);
     return;
@@ -3235,13 +3219,6 @@ if (e.key === "c" || e.key === "C") {
   startChillHill();
   e.preventDefault();
 }
-if (e.key === "p" || e.key === "p") {
-  if (e.key.toLowerCase() === "p") {
-    state.paused = !state.paused;
-  }
-  e.preventDefault();
-}
-
 if (e.key === "n" || e.key === "N") {
   showBossIntro(state.level ?? 1);
   e.preventDefault();
