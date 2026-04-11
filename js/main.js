@@ -113,154 +113,99 @@ Object.defineProperties(window, {
 // ======================================================
 
 const nodes = {
-  A:   { id: "A",   x: 870, y: 230,  neighbors: ["G", "AS1"], inputMap: {left: "AS1", down: "G" }, stopHere: true },
-  B: { id: "B", x: 85, y: 230, neighbors: ["S", "C"], ladderExit: true },
+  N1: { id: "N1", x: 920, y: 248, neighbors: ["N11", "N2"], tags: ["ladderExit"] },
+  N2: { id: "N2", x: 736, y: 260, neighbors: ["N1", "N3"], tags: ["banana"] },
+  N3: { id: "N3", x: 545, y: 302, neighbors: ["N2", "N4"], tags: [] },
+  N4: { id: "N4", x: 323, y: 266, neighbors: ["N3", "N10", "N5"], tags: [] },
+  N5: { id: "N5", x: 216, y: 271, neighbors: ["N4", "N6"], tags: ["ladderExit"] },
+  N6: { id: "N6", x: 206, y: 515, neighbors: ["N5", "N22", "N7"], tags: ["ladderExit"] },
+  N7: { id: "N7", x: 370, y: 512, neighbors: ["N10", "N6"], tags: ["banana"] },
+  N10: { id: "N10", x: 393, y: 380, neighbors: ["N4", "N7"], tags: [] },
+  N11: { id: "N11", x: 950, y: 467, neighbors: ["N1", "N24", "N12"], tags: ["ladderExit"] },
+  N12: { id: "N12", x: 730, y: 465, neighbors: ["N23", "N11"], tags: ["banana"] },
+  N13: { id: "N13", x: 713, y: 1139, neighbors: ["N15", "N23","N29"], tags: ["banana"] },
+  N14: { id: "N14", x: 1008, y: 1151, neighbors: ["N29"], tags: ["portal"] },
+  N15: { id: "N15", x: 522, y: 1168, neighbors: ["N16", "N33", "N13", "N17"], tags: ["ladderExit", "banana"] },
+  N16: { id: "N16", x: 522, y: 1433, neighbors: ["N15", "N35"], tags: ["ladderExit", "banana"] },
+  N17: { id: "N17", x: 549, y: 1056, neighbors: ["N15", "N18"], tags: ["banana"] },
+  N18: { id: "N18", x: 515, y: 775, neighbors: ["N23", "N17", "N32"], tags: ["ladderExit", "banana"] },
+  N19: { id: "N19", x: -1, y: 787, neighbors: ["N20"], tags: ["portal"] },
+  N20: { id: "N20", x: 132, y: 800, neighbors: ["N19", "N32", "N33"], tags: ["ladderExit", "banana"] },
+  N22: { id: "N22", x: 4, y: 513, neighbors: ["N6"], tags: ["portal"] },
+  N23: { id: "N23", x: 724, y: 736, neighbors: ["N24", "N12", "N13", "N18"], tags: [] },
+  N24: { id: "N24", x: 957, y: 740, neighbors: ["N11", "N25", "N23"], tags: ["ladderExit", "banana"] },
+  N25: { id: "N25", x: 1015, y: 740, neighbors: ["N24"], tags: ["portal"] },
+  N26: { id: "N26", x: 925, y: 1401, neighbors: [], tags: ["portal"] },
+  N28: { id: "N28", x: 199, y: 692, neighbors: ["N32"], tags: ["portal"] },
+  N29: { id: "N29", x: 832, y: 1136, neighbors: ["N13", "N30", "N14"], tags: [] },
+  N33: { id: "N33", x: 130, y: 1170, neighbors: ["N34", "N20"], tags: [] },
+  N34: { id: "N34", x: 69, y: 1439, neighbors: ["N35", "N33"], tags: [] },
+  N30: { id: "N30", x: 832, y: 1040, neighbors: ["N29"], tags: ["portal"] },
+  N32: { id: "N32", x: 199, y: 793, neighbors: ["N18", "N20", "N28"], tags: [] },
+  N35: { id: "N35", x: 306, y: 1428, neighbors: ["N31", "N16", "N34", "N36"], tags: [] },
+  N31: { id: "N31", x: 312, y: 1319, neighbors: ["N35"], tags: ["portal"] },
+  N36: { id: "N36", x: 302, y: 1478, neighbors: ["N35"], tags: ["portal"] }
+};
 
 
-  C: { id: "C", x: 85, y: 530, neighbors: ["B", "CR1", "H"], ladderExit: true },
-  D:   { id: "D",   x: 360, y: 530,  neighbors: ["CR1", "E"] },
+const mainCavePortals = {
+  // example
+  N31: "N30",
+  N30: "N28",
+  N28: "N31"
+};
 
-  E:   { id: "E",   x: 500, y: 645,  neighbors: ["D", "F", "G", "SE2"], inputMap: { up: "SE2", left: "D", right: "G", down: "F" }},
-  FK1:   { id: "FK1",   x: 585, y: 800,  neighbors: ["F", "FK2"], inputMap: { up: "F", down: "FK2" }, ropePassThrough: true },
-  FK2:   { id: "FK2",   x: 610, y: 860,  neighbors: ["FK1", "FK3"], inputMap: { up: "FK1", down: "FK3" }, ropePassThrough: true },
-  FK3:   { id: "FK3",   x: 570, y: 940,  neighbors: ["FK2", "K"], inputMap: { up: "FK2", down: "K" }, ropePassThrough: true },
-  F:   { id: "F",   x: 600, y: 720,  neighbors: ["E", "CB1", "FK1"], inputMap: { up: "E", left: "E", right: "CB1", down: "FK1" } },
+const mainWrapPortals = {
+  // example pairs, replace with your actual edge nodes
+  N14: "N25",
+  N19: "N22",
+  N22: "N19",
+  N25: "N14"
+};
 
-  G:   { id: "G",   x: 715,  y: 440,  neighbors: ["A", "E", "O"] },
-  O: { id: "O", x: 955, y: 440, neighbors: ["G", "N"], ladderExit: true },
+const mainSecretPortals = {
+  N35: "N26" // or whatever your hidden-hole entry node is
+};
 
+// function resolveMainPortal(actor) {
+//   const nodeId = actor?.currentNode;
+//   if (!nodeId) return null;
 
-  H: { id: "H", x: 85, y: 820, neighbors: ["I", "C", "CY1"], ladderExit: true },
-  I: { id: "I", x: 85, y: 1220, neighbors: ["H", "R", "CB3"], ladderExit: true },
+//   // secret room first
+//   if (state.scene === "main" && state.acceptance >= 3 && mainSecretPortals[nodeId]) {
+//     return { type: "secret", to: mainSecretPortals[nodeId] };
+//   }
 
-  J:   { id: "J",   x: 400, y: 820,  neighbors: ["K", "CY1"] },
-  K:   { id: "K",   x: 550, y: 990,  neighbors: ["J", "M", "L", "FK2"], inputMap: { up: "FK3", down: "L", left: "J", right: "M" }, stopHere: true},
+//   // cave portals
+//   if (mainCavePortals[nodeId]) {
+//     return { type: "cave", to: mainCavePortals[nodeId] };
+//   }
 
-  L: { id: "L", x: 710, y: 1110, neighbors: ["K", "M", "P", "CR3"], inputMap: { up: "M", left: "K", right: "CR3", down: "P" }, ladderExit: true },
-  M: { id: "M", x: 710, y: 850, neighbors: ["K", "MN1", "L"], ladderExit: true },
-  MN1: { id: "MN1", x: 830, y: 750, neighbors: ["M", "N"], inputMap: { left: "M", right: "N" }, ropePassThrough: true },
-  N: { id: "N", x: 955, y: 720, neighbors: ["O", "CB1", "MN1"], ladderExit: true },
+//   // edge wraps
+//   if (mainWrapPortals[nodeId]) {
+//     return { type: "wrap", to: mainWrapPortals[nodeId] };
+//   }
 
-  P: { id: "P", x: 530, y: 1220, neighbors: ["CB3", "L", "Q"], ladderExit: true },
-  Q: { id: "Q", x: 530, y: 1450, neighbors: ["P", "CY3"], ladderExit: true },
-  R:   { id: "R",   x: 85, y: 1450, neighbors: ["I", "CY3"] },
-  S:   { id: "S",   x: 460, y: 230,  neighbors: ["B", "AS2", "SE1"], inputMap: { left: "B", right: "AS2", down: "SE1" }, ropePassThrough: true },
-  AS1:   { id: "AS1",   x: 760, y: 230,  neighbors: ["A", "AS2"], inputMap: { left: "AS2", right: "A" }, ropePassThrough: true },
-  AS2:   { id: "AS2",   x: 640, y: 275,  neighbors: ["S", "AS1"], inputMap: { left: "S", right: "AS1" }, ropePassThrough: true },
-  SE1:   { id: "SE1",   x: 545, y: 405,  neighbors: ["SE2", "S"], inputMap: { left: "B", right: "A", down: "E" }, ropePassThrough: true },
-  SE2:   { id: "SE2",   x: 530, y: 550,  neighbors: ["SE1", "E"], inputMap: { left: "B", right: "A", down: "E" }, ropePassThrough: true },
-  // red upper-left cave: inline path node
-  CR1: {
-    id: "CR1",
-    x: 250,
-    y: 530,
-    neighbors: ["C", "D", "CR2"],
-    inputMap: { up: "CR2", left: "C", right: "D", down: "D" },
-    cavePassThrough: true
-  },
-  CR2: {
-    id: "CR2",
-    x: 250,
-    y: 445,
-    neighbors: ["CR1"],
-    inputMap: { down: "CR1" }
-  },
+//   return null;
+// }
 
-  // blue upper-right cave: inline path node
-  CB1: {
-    id: "CB1",
-    x: 820,
-    y: 720,
-    neighbors: ["F", "N", "CB2"],
-    inputMap: { up: "CB2", left: "F", right: "N", down: "N" },
-    cavePassThrough: true
-  },
-  CB2: {
-    id: "CB2",
-    x: 820,
-    y: 610,
-    neighbors: ["CB1"],
-    inputMap: { down: "CB1" }
-  },
+function resolveMainPortal(nodeId) {
+  if (!nodeId) return null;
 
-    // yellow upper cave: inline path node
-  CY1: {
-    id: "CY1",
-    x: 250,
-    y: 820,
-    neighbors: ["H", "J", "CY2"],
-    inputMap: { up: "CY2", left: "H", right: "J" },
-    cavePassThrough: true
-  },
-  CY2: {
-    id: "CY2",
-    x: 250,
-    y: 700,
-    neighbors: ["CY1"],
-    inputMap: { down: "CY1" }
-  },
-
-  // blue lower-left cave: inline path node
-  CB3: {
-    id: "CB3",
-    x: 250,
-    y: 1220,
-    neighbors: ["I", "P", "CB4"],
-    inputMap: { up: "CB4", left: "I", right: "P" },
-    cavePassThrough: true
-  },
-  CB4: {
-    id: "CB4",
-    x: 250,
-    y: 1085,
-    neighbors: ["CB3"],
-    inputMap: { down: "CB3" }
-  },
-
-  // red lower-right cave
-  CR3: {
-    id: "CR3",
-    x: 820,
-    y: 1110,
-    neighbors: ["L", "CR4"],
-    inputMap: { up: "CR4", left: "L", right: "L", down: "L" },
-    cavePassThrough: true
-  },
-  CR4: {
-    id: "CR4",
-    x: 820,
-    y: 1035,
-    neighbors: ["CR3"],
-    inputMap: { down: "CR3" }
-  },
-
-  // yellow lower-right cave
-  CY3: {
-    id: "CY3",
-    x: 250,
-    y: 1450,
-    neighbors: ["R", "Q", "CY4"],
-    inputMap: { up: "CY4", left: "R", right: "Q" },
-    cavePassThrough: true
-  },
-  CY4: {
-    id: "CY4",
-    x: 250,
-    y: 1350,
-    neighbors: ["CY3"],
-    inputMap: { down: "CY3" }
+  if (state.scene === "main" && state.acceptance >= 3 && mainSecretPortals[nodeId]) {
+    return { type: "secret", to: mainSecretPortals[nodeId] };
   }
 
-};
+  if (mainCavePortals[nodeId]) {
+    return { type: "cave", to: mainCavePortals[nodeId] };
+  }
 
-const portals = {
-  CB2: "CR2",
-  CB4: "CY4",
-  CR2: "CB2",
-  CR4: "CY2",
-  CY2: "CR4",
-  CY4: "CB4"
-};
+  if (mainWrapPortals[nodeId]) {
+    return { type: "wrap", to: mainWrapPortals[nodeId] };
+  }
+
+  return null;
+}
 
 const bossPortals = {
   M0C: "M1C",
@@ -433,7 +378,7 @@ const chillConfig = {
 function getBananaNodeIds() {
   if (state.scene === "boss") return bossConfig.bananaNodes;
   if (state.scene === "chill") return CHILL_BANANA_NODE_IDS;
-  return BANANA_NODE_IDS;
+  return getNodeIdsByTag(nodes, "banana");
 }
 
 function getBossScale(x, y) {
@@ -504,6 +449,12 @@ function getCurrentNodeMap() {
   if (state.scene === "boss") return bossNodes;
   if (state.scene === "chill") return chillNodes;
   return nodes;
+}
+
+function getNodeIdsByTag(nodeMap, tag) {
+  return Object.values(nodeMap)
+    .filter(node => Array.isArray(node.tags) && node.tags.includes(tag))
+    .map(node => node.id);
 }
 
 function checkChillHillDebugWin() {
@@ -813,6 +764,10 @@ function startMainScene() {
   state.hearts = [];
   state.fieldHearts = [];
   state.flyingHearts = [];
+  state.mainSecretUnlocked = false;
+  state.mainSecretEntered = false;
+  state.mainMotherPose = "sit";
+  state.mainMotherTimer = 0;
   state.particles = [];
   state.hand = null;
   state.banana = null;
@@ -1153,7 +1108,8 @@ function drawHeartShape(x, y, size, alpha = 1) {
 }
 
 function throwHeartFromZookeeper(zookeeper, targetNodeId) {
-  const target = mainNodes[targetNodeId];
+  const nodeMap = getCurrentNodeMap();
+  const target = nodeMap[targetNodeId];
   if (!target) return;
 
   state.flyingHearts.push({
@@ -1166,11 +1122,6 @@ function throwHeartFromZookeeper(zookeeper, targetNodeId) {
     time: 0,
     duration: 0.8,
     targetNodeId
-  });
-
-  state.fieldHearts.push({
-    nodeId: h.targetNodeId,
-    collected: false
   });
 }
 
@@ -1238,6 +1189,25 @@ function drawFlyingHearts() {
   }
 }
 
+function drawFieldHearts() {
+  if (!state.fieldHearts?.length) return;
+
+  const nodeMap = getCurrentNodeMap();
+
+  for (const heart of state.fieldHearts) {
+    if (heart.collected) continue;
+
+    const node = nodeMap[heart.nodeId];
+    if (!node) continue;
+
+    ctx.save();
+    ctx.font = "34px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("❤️", node.x, node.y - 12);
+    ctx.restore();
+  }
+}
+
 function updateMainHeartCollection() {
   if (state.mode === "sceneWin" || state.mode === "caveReveal") return;
   if (state.scene !== "main" || !state.player || !state.fieldHearts) return;
@@ -1260,7 +1230,7 @@ function updateMainHeartCollection() {
 
   const collected = state.fieldHearts.filter(h => h.collected).length;
   if (collected >= 3) {
-    onSceneWin();
+    state.mainSecretUnlocked = true;
   }
 }
 
@@ -2002,25 +1972,64 @@ function handlePortalTravel(actor) {
   if (!actor || !actor.currentNode) return;
   if (state.cavePreview) return;
 
-  const portalMap = isBossScene() ? bossPortals : portals;
-  const destinationId = portalMap[actor.currentNode];
-  if (!destinationId) return;
+  if (isBossScene()) {
+    const destinationId = bossPortals[actor.currentNode];
+    if (!destinationId) return;
 
-  const nodeMap = getCurrentNodeMap();
-  const dest = nodeMap[destinationId];
-  if (!dest) return;
+    const nodeMap = getCurrentNodeMap();
+    const dest = nodeMap[destinationId];
+    if (!dest) return;
 
-  // Only preview for the player; troops can stay instant for now
-  if (actor === state.player) {
-    beginCavePreview(actor.currentNode, destinationId);
+    if (actor === state.player) {
+      beginCavePreview(actor.currentNode, destinationId);
+      return;
+    }
+
+    actor.currentNode = destinationId;
+    actor.previousNode = null;
+    actor.targetNode = null;
+    actor.x = dest.x;
+    actor.y = dest.y;
+    actor.dir = { x: 0, y: 0 };
     return;
   }
 
-  actor.currentNode = destinationId;
+  const portal = resolveMainPortal(actor.currentNode);
+  if (!portal) return;
+
+  const nodeMap = getCurrentNodeMap();
+  const dest = nodeMap[portal.to];
+  if (!dest) return;
+
+  if (portal.type === "cave" && actor === state.player) {
+    beginCavePreview(actor.currentNode, portal.to);
+    return;
+  }
+
+  actor.currentNode = portal.to;
+  actor.previousNode = null;
   actor.targetNode = null;
   actor.x = dest.x;
   actor.y = dest.y;
-  actor.dir = { x: 0, y: 0 };
+
+  if (portal.type === "secret") {
+    actor.currentNode = portal.to;
+    actor.previousNode = null;
+    actor.targetNode = null;
+    actor.x = dest.x;
+    actor.y = dest.y;
+    actor.dir = { x: 0, y: 0 };
+
+    if (actor === state.player) {
+      state.mainSecretEntered = true;
+      state.mainMotherPose = "sit";
+      state.mainMotherTimer = 0;
+    }
+    return;
+  }
+
+  // for seamless wrap, immediately keep moving if possible
+  tryConsumeQueuedTurn(actor) || tryContinueForward(actor);
 }
 
 // ======================================================
@@ -2039,6 +2048,11 @@ function addAcceptance(amount) {
 }
 
 function applyLevelConfig() {
+    if (state.scene === "main") {
+    state.troops = [];
+    return;
+  }
+
   const config = getLevelConfig();
 
   const baseTroopStarts = ["N", "M", "K", "O", "H", "Q"];
@@ -2106,11 +2120,7 @@ function resetActors() {
   queuedDirectionName = null;
 
   state.player = new Player(HOME_NODE, sharedDeps);
-  state.troops = [
-    new Troop("N", "#7c5c46", sharedDeps),
-    new Troop("M", "#6c4d39", sharedDeps),
-    new Troop("K", "#8d6b52", sharedDeps)
-  ];
+  state.troops = [];
 }
 
 function startGame() {
@@ -2125,6 +2135,10 @@ function startGame() {
   state.hearts = [];
   state.fieldHearts = [];
   state.flyingHearts = [];
+  state.mainSecretUnlocked = false;
+  state.mainSecretEntered = false;
+  state.mainMotherPose = "sit";
+  state.mainMotherTimer = 0;
   state.particles = [];
   state.catchAnim = null;
   state.acceptance = 0;
@@ -2193,10 +2207,10 @@ function resetScene() {
   state.troops.forEach(t => t.reset());
 
   if (state.scene === "main") {
-  spawnMainFieldHearts();
-  state.acceptance = 0;
-}
-  tossBanana();
+    state.fieldHearts = [];
+    state.acceptance = 0;
+  }
+    tossBanana();
 }
 
 function getZookeeperThrowOrigin() {
@@ -2330,7 +2344,7 @@ function updateZookeeper2(dt) {
 }
 
 function getHeartTargetNodeId() {
-  const targets = BANANA_NODE_IDS;
+  const targets = getBananaNodeIds();
   return targets[state.heartsThrown] || null;
 }
 
@@ -3014,10 +3028,6 @@ function update(dt) {
 
     updateKeeperAction(state.zookeeper, dt);
     // updateKeeperAction(state.zookeeper2, dt);
-if (DEBUG && state.scene === "main" && !state.testHeartThrown) {
-  triggerHeartThrow(state.zookeeper, "h1"); // replace with real node id
-  state.testHeartThrown = true;
-}
     updateFlyingHearts(dt);
     updateCatch(dt);
     updateParticles(dt);
@@ -3039,13 +3049,51 @@ if (DEBUG && state.scene === "main" && !state.testHeartThrown) {
 
   updateZookeeper(dt);
   updateZookeeper2(dt);
+  updateHeartThrowing(dt);
+  updateFlyingHearts(dt);
   updateCatch(dt);
   updateParticles(dt);
+
+  if (state.scene === "main" && state.mainSecretEntered) {
+    state.mainMotherTimer += dt;
+
+    if (state.mainMotherTimer >= 0.6 && state.mainMotherPose === "sit") {
+      state.mainMotherPose = "hug";
+    }
+
+    if (state.mainMotherTimer >= 1.4) {
+      showSceneWin();
+      return;
+    }
+  }
 }
 
 // ======================================================
 // RENDER
 // ======================================================
+function drawMainSecretMother() {
+  if (state.scene !== "main") return;
+  if (!state.mainSecretEntered) return;
+
+  const node = nodes["N26"];
+  if (!node) return;
+
+  const img =
+    state.mainMotherPose === "hug"
+      ? spriteStore.motherHug
+      : spriteStore.motherSit;
+
+  if (!img || !img.complete || img.naturalWidth <= 0) return;
+
+  ctx.drawImage(
+    img,
+    node.x - 96,
+    node.y - 120,
+    192,
+    192
+  );
+}
+
 function drawActors() {
   state.player?.draw();
   state.troops.forEach(t => t.draw());
@@ -3099,6 +3147,8 @@ drawZookeeper2();
 drawBananaState();
 drawFlyingHearts();
 drawActors();
+drawFieldHearts();
+drawMainSecretMother();
 
 if (state.scene === "boss") {
   for (const coconut of (state.coconuts || [])) {

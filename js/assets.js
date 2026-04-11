@@ -84,6 +84,18 @@ export function loadSprites() {
   spriteStore.lilJabMotherRun = new Image();
   spriteStore.lilJabMotherRun.src = "sprites/mother-carried-sprite.png";  
 
+  spriteStore.motherSit = new Image();
+  spriteStore.motherSit.src = "sprites/mother-sit.png";
+
+  spriteStore.motherHug = new Image();
+  spriteStore.motherHug.src = "sprites/mother-hug.png";
+
+  spriteStore.nanaSnatchers = new Image();
+  spriteStore.nanaSnatchers.src = "sprites/nana-snatchers.png";  
+
+  spriteStore.nanaSnatchersSnatched = new Image();
+  spriteStore.nanaSnatchersSnatched.src = "sprites/nana-snatchers-snatched.png";  
+
   return spriteStore;
 }
 
