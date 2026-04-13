@@ -123,7 +123,7 @@ const nodes = {
   N10: { id: "N10", x: 393, y: 380, neighbors: ["N4", "N7"], tags: [] },
   N11: { id: "N11", x: 950, y: 467, neighbors: ["N1", "N24", "N12"], tags: ["ladderExit"] },
   N12: { id: "N12", x: 730, y: 465, neighbors: ["N23", "N11"], tags: ["banana"] },
-  N13: { id: "N13", x: 713, y: 1139, neighbors: ["N15", "N23","N29"], tags: ["banana"] },
+  N13: { id: "N13", x: 713, y: 1139, neighbors: ["N15", "N37","N29"], tags: ["banana"] },
   N14: { id: "N14", x: 1008, y: 1151, neighbors: ["N29"], tags: ["portal"] },
   N15: { id: "N15", x: 522, y: 1168, neighbors: ["N16", "N33", "N13", "N17"], tags: ["ladderExit", "banana"] },
   N16: { id: "N16", x: 522, y: 1433, neighbors: ["N15", "N35"], tags: ["ladderExit", "banana"] },
@@ -132,19 +132,21 @@ const nodes = {
   N19: { id: "N19", x: -1, y: 787, neighbors: ["N20"], tags: ["portal"] },
   N20: { id: "N20", x: 132, y: 800, neighbors: ["N19", "N32", "N33"], tags: ["ladderExit", "banana"] },
   N22: { id: "N22", x: 4, y: 513, neighbors: ["N6"], tags: ["portal"] },
-  N23: { id: "N23", x: 724, y: 736, neighbors: ["N24", "N12", "N13", "N18"], tags: [] },
+  N23: { id: "N23", x: 724, y: 736, neighbors: ["N24", "N12", "N37", "N18"], tags: [] },
   N24: { id: "N24", x: 957, y: 740, neighbors: ["N11", "N25", "N23"], tags: ["ladderExit", "banana"] },
   N25: { id: "N25", x: 1015, y: 740, neighbors: ["N24"], tags: ["portal"] },
   N26: { id: "N26", x: 925, y: 1401, neighbors: [], tags: ["portal"] },
   N28: { id: "N28", x: 199, y: 692, neighbors: ["N32"], tags: ["portal"] },
   N29: { id: "N29", x: 832, y: 1136, neighbors: ["N13", "N30", "N14"], tags: [] },
-  N33: { id: "N33", x: 130, y: 1170, neighbors: ["N34", "N20"], tags: [] },
+  N33: { id: "N33", x: 130, y: 1170, neighbors: ["N34", "N20", "N15"], tags: [] },
   N34: { id: "N34", x: 69, y: 1439, neighbors: ["N35", "N33"], tags: [] },
   N30: { id: "N30", x: 832, y: 1040, neighbors: ["N29"], tags: ["portal"] },
   N32: { id: "N32", x: 199, y: 793, neighbors: ["N18", "N20", "N28"], tags: [] },
   N35: { id: "N35", x: 306, y: 1428, neighbors: ["N31", "N16", "N34", "N36"], tags: [] },
   N31: { id: "N31", x: 312, y: 1319, neighbors: ["N35"], tags: ["portal"] },
-  N36: { id: "N36", x: 302, y: 1478, neighbors: ["N35"], tags: ["portal"] }
+  N36: { id: "N36", x: 302, y: 1478, neighbors: ["N35"], tags: ["portal"] },
+  N37: { id: "N37", x: 728, y: 871, neighbors: ["N13", "N23", "N38"], tags: [] },
+  N38: { id: "N38", x: 863, y: 871, neighbors: ["N37"], tags: [] },
 };
 
 
@@ -157,10 +159,10 @@ const mainCavePortals = {
 
 const mainWrapPortals = {
   // example pairs, replace with your actual edge nodes
-  N14: "N25",
-  N19: "N22",
-  N22: "N19",
-  N25: "N14"
+  N14: "N19",
+  N19: "N14",
+  N22: "N25",
+  N25: "N22"
 };
 
 const mainSecretPortals = {
@@ -375,10 +377,81 @@ const chillConfig = {
   goalNode: "CG"
 };
 
+function randInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 function getBananaNodeIds() {
   if (state.scene === "boss") return bossConfig.bananaNodes;
   if (state.scene === "chill") return CHILL_BANANA_NODE_IDS;
   return getNodeIdsByTag(nodes, "banana");
+}
+
+function checkShrubBonus() {
+  if (!state.player) return;
+
+  if (!state.shrubBonusesFound) {
+    state.shrubBonusesFound = {};
+  }
+
+  const shrubNodeId = "N38"; // change if needed
+  if (state.player.currentNode !== shrubNodeId) return;
+  if (state.shrubBonusesFound[shrubNodeId]) return;
+
+  const bonus = randInt(4, 9);
+
+  state.score += bonus;
+  state.bananasCollectedThisScene = (state.bananasCollectedThisScene || 0) + bonus;
+
+  state.shrubBonusesFound[shrubNodeId] = true;
+
+  state.bananaBunchPopup = {
+    nodeId: shrubNodeId,
+    value: bonus,
+    time: 0,
+    duration: 1.6
+  };
+
+  sounds.score?.play().catch(() => {});
+}
+
+function drawBananaBunchPopup() {
+  const popup = state.bananaBunchPopup;
+  if (!popup) return;
+
+  const node = getCurrentNodeMap()[popup.nodeId];
+  if (!node) return;
+
+  const img = spriteStore.bananaBunch;
+  const t = popup.time / popup.duration;
+  const rise = t * 40;
+  const alpha = 1 - t;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  if (img && img.complete && img.naturalWidth > 0) {
+    const w = 84;
+    const h = w * (img.naturalHeight / img.naturalWidth);
+
+    ctx.drawImage(
+      img,
+      node.x - w / 2,
+      node.y - 90 - rise,
+      w,
+      h
+    );
+  }
+
+  ctx.font = "bold 34px Arial";
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#ffe066";
+  ctx.strokeStyle = "rgba(0,0,0,0.45)";
+  ctx.lineWidth = 4;
+  ctx.strokeText(`+${popup.value} 🍌`, node.x, node.y - 110 - rise);
+  ctx.fillText(`+${popup.value} 🍌`, node.x, node.y - 110 - rise);
+
+  ctx.restore();
 }
 
 function getBossScale(x, y) {
@@ -691,6 +764,9 @@ function getBestNeighbor(currentNodeId, inputVec, inputName) {
     }
   }
 
+  // reject weak or backward-ish matches
+  if (bestScore < 0.55) return null;
+
   return bestNeighbor;
 }
 
@@ -712,43 +788,53 @@ function tryContinueForward(actor) {
   const current = nodeMap[actor.currentNode];
   if (!current || !actor.previousNode) return false;
 
-  if (current.cavePassThrough) {
-    if (queuedDirectionName === "up" && current.inputMap?.up) {
-      return false;
-    }
-
-    const options = current.neighbors.filter(
-      n => n !== actor.previousNode && n !== current.inputMap?.up
-    );
-
-    if (options.length === 1) {
-      actor.targetNode = options[0];
-      return true;
-    }
-  }
-
-  if (current.ropePassThrough) {
-    if (queuedDirectionName === "down" && current.inputMap?.down) {
-      return false;
-    }
-
-    const options = current.neighbors.filter(
-      n => n !== actor.previousNode && n !== current.inputMap?.down
-    );
-
-    if (options.length === 1) {
-      actor.targetNode = options[0];
-      return true;
-    }
-  }
-
-  if (current.ladderExit) return false;
   if (current.stopHere) return false;
 
+  const prev = nodeMap[actor.previousNode];
+  if (!prev) return false;
+
   const options = current.neighbors.filter(n => n !== actor.previousNode);
+  if (!options.length) return false;
 
   if (options.length === 1) {
     actor.targetNode = options[0];
+    return true;
+  }
+
+  // preserve current travel direction when possible
+  const travelDx = current.x - prev.x;
+  const travelDy = current.y - prev.y;
+  const travelLen = Math.hypot(travelDx, travelDy);
+  if (!travelLen) return false;
+
+  const tx = travelDx / travelLen;
+  const ty = travelDy / travelLen;
+
+  let bestNeighbor = null;
+  let bestScore = -Infinity;
+
+  for (const neighborId of options) {
+    const neighbor = nodeMap[neighborId];
+    if (!neighbor) continue;
+
+    const dx = neighbor.x - current.x;
+    const dy = neighbor.y - current.y;
+    const len = Math.hypot(dx, dy);
+    if (!len) continue;
+
+    const nx = dx / len;
+    const ny = dy / len;
+    const score = nx * tx + ny * ty;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestNeighbor = neighborId;
+    }
+  }
+
+  // only auto-continue if one option is a clear continuation
+  if (bestScore >= 0.75) {
+    actor.targetNode = bestNeighbor;
     return true;
   }
 
@@ -776,6 +862,8 @@ function startMainScene() {
   state.heartThrowTimer = 2.5;
   state.heartsThrown = 0;
   state.maxHeartsToThrow = 3;
+  state.heartCooldown = 0;
+  state.lastHeartNodeId = null;
 
   state.zookeeper = {
   anim: "idle",
@@ -789,7 +877,7 @@ state.zookeeper2 = {
   frame: 0,
   time: 0,
   timer: rand(2.5, 6),
-  action: "hearts",
+  action: "idle",
   actionTimer: 0
 };
 
@@ -797,6 +885,13 @@ state.zookeeper2 = {
   applyLevelConfig();
   resetScene();
   playSceneMusic({ sounds, isBossScene: false });
+  state.bananaTimestamps = [];
+  state.mainEnding = null;
+  state.mainSecretEntered = false;
+  state.mainMotherPose = "sit";
+  state.mainMotherTimer = 0;
+  state.pendingHeartThrow = null;
+
 }
 
 function startBossMode() {
@@ -815,6 +910,8 @@ function startBossMode() {
   state.heartThrowTimer = 2.5;
   state.heartsThrown = 0;
   state.maxHeartsToThrow = 3;
+  state.heartCooldown = 0;
+  state.lastHeartNodeId = null;
 
 if (!state.player) {
   state.player = new Player(bossConfig.startNode, sharedDeps);
@@ -841,7 +938,7 @@ state.zookeeper2 = {
   frame: 0,
   time: 0,
   timer: rand(2.5, 6),
-  action: "hearts",
+  action: "idle",
   actionTimer: 0
 };
 
@@ -866,6 +963,11 @@ state.zookeeper2 = {
   playerNode: state.player?.currentNode
 });
   spawnBossRoamers();
+  state.bananaTimestamps = [];
+  state.mainEnding = null;
+  state.mainSecretEntered = false;
+  state.mainMotherPose = "sit";
+  state.mainMotherTimer = 0;
 }
 
 function startChillHill() {
@@ -883,6 +985,8 @@ function startChillHill() {
   state.heartThrowTimer = 2.5;
   state.heartsThrown = 0;
   state.maxHeartsToThrow = 3;
+  state.heartCooldown = 0;
+  state.lastHeartNodeId = null;
 
   if (!state.player) {
     state.player = new Player(chillConfig.startNode, sharedDeps);
@@ -902,7 +1006,7 @@ state.zookeeper2 = {
   frame: 0,
   time: 0,
   timer: rand(2.5, 6),
-  action: "hearts",
+  action: "idle",
   actionTimer: 0
 }; 
 
@@ -913,6 +1017,13 @@ state.zookeeper2 = {
     sounds,
     isBossScene: false
   });
+  state.bananaTimestamps = [];
+  state.mainEnding = null;
+  state.mainSecretEntered = false;
+  state.mainMotherPose = "sit";
+  state.mainMotherTimer = 0;
+  state.pendingHeartThrow = null;
+  state.pendingHeartThrow = null;
 }
 
 // ======================================================
@@ -1107,33 +1218,112 @@ function drawHeartShape(x, y, size, alpha = 1) {
   ctx.restore();
 }
 
+function getHeartThrowOrigin() {
+  const sceneKey = getSceneKey();
+  const box = ZOOKEEPER_LAYOUT[sceneKey].z1;
+
+  return {
+    x: box.x + 40,
+    y: box.y + 130 + rand(-12, 12)
+  };
+}
+
 function throwHeartFromZookeeper(zookeeper, targetNodeId) {
   const nodeMap = getCurrentNodeMap();
   const target = nodeMap[targetNodeId];
   if (!target) return;
 
+  const from = getKeeperThrowOrigin(zookeeper);
+
   state.flyingHearts.push({
-    x: zookeeper.x,
-    y: zookeeper.y,
-    startX: zookeeper.x,
-    startY: zookeeper.y,
+    x: from.x,
+    y: from.y,
+    startX: from.x,
+    startY: from.y,
     targetX: target.x,
     targetY: target.y,
     time: 0,
-    duration: 0.8,
+    duration: 1.05,
     targetNodeId
   });
 }
 
-function triggerHeartThrow(z, targetNodeId) {
-  if (!z) return;
+function getKeeperThrowOrigin(keeper) {
+  const sceneKey = getSceneKey();
+  const throwerKey = keeper === state.zookeeper2 ? "z2" : "z1";
+  const box = ZOOKEEPER_LAYOUT[sceneKey][throwerKey];
 
-  if (state.zookeeper2) {
+  return {
+    x: box.x + box.w * 0.5,
+    y: box.y + box.h * 0.45 + rand(-10, 10)
+  };
+}
+
+function triggerHeartThrow(z, targetNodeId) {
+  if (!z || !targetNodeId) return;
+
+  if (z === state.zookeeper2) {
     state.zookeeper2.action = "hearts";
-    state.zookeeper2.actionTimer = 0.5;
+    state.zookeeper2.actionTimer = 0.7;
+    state.zookeeper2.anim = "throw";
+    state.zookeeper2.frame = 0;
+    state.zookeeper2.time = 0;
   }
 
-  throwHeartFromZookeeper(z, targetNodeId);
+  state.pendingHeartThrow = {
+    keeper: z,
+    targetNodeId,
+    delay: 0.65
+  };
+}
+
+function updatePendingHeartThrow(dt) {
+  const p = state.pendingHeartThrow;
+  if (!p) return;
+
+  p.delay -= dt;
+  if (p.delay > 0) return;
+
+  throwHeartFromZookeeper(p.keeper, p.targetNodeId);
+  state.pendingHeartThrow = null;
+}
+
+function canThrowHeart() {
+  if (state.mode !== "playing") return false;
+  if (!state.zookeeper2) return false;
+  if (state.heartsThrown >= state.maxHeartsToThrow) return false;
+  if ((state.heartCooldown || 0) > 0) return false;
+  if (state.pendingHeartThrow) return false;
+  if (hasFlyingHeart()) return false;
+  if (hasActiveGroundHeart()) return false;
+  return true;
+}
+
+function getHeartTargetCandidates() {
+  const nodeIds = getBananaNodeIds();
+  const nodeMap = getCurrentNodeMap();
+  const playerNode = state.player?.currentNode;
+
+  return nodeIds.filter(nodeId => {
+    if (!nodeMap[nodeId]) return false;
+    if (nodeId === playerNode) return false;
+    if (nodeId === state.lastHeartNodeId) return false;
+
+    if (
+      state.lastHeartNodeId &&
+      nodeMap[state.lastHeartNodeId]?.neighbors?.includes(nodeId)
+    ) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+function chooseHeartTargetNodeId() {
+  const candidates = getHeartTargetCandidates();
+  if (!candidates.length) return null;
+  return choose(candidates);
 }
 
 function triggerGiftThrow() {
@@ -1149,7 +1339,10 @@ function updateKeeperAction(keeper, dt) {
   keeper.actionTimer -= dt;
   if (keeper.actionTimer <= 0) {
     keeper.actionTimer = 0;
-    keeper.action = "hearts";
+    keeper.action = "idle";
+    keeper.anim = "idle";
+    keeper.frame = 0;
+    keeper.time = 0;
   }
 }
 
@@ -1161,7 +1354,7 @@ function updateFlyingHearts(dt) {
     h.time += dt;
 
     const t = Math.min(h.time / h.duration, 1);
-    const arc = Math.sin(t * Math.PI) * 80;
+    const arc = Math.sin(t * Math.PI) * 140;
 
     h.x = h.startX + (h.targetX - h.startX) * t;
     h.y = h.startY + (h.targetY - h.startY) * t - arc;
@@ -1169,10 +1362,12 @@ function updateFlyingHearts(dt) {
     if (t >= 1) {
       state.flyingHearts.splice(i, 1);
 
-      state.fieldHearts.push({
-        nodeId: h.targetNodeId,
-        collected: false
-      });
+      if (!getUncollectedHeartAtNode(h.targetNodeId) && !hasActiveGroundHeart()) {
+        state.fieldHearts.push({
+          nodeId: h.targetNodeId,
+          collected: false
+        });
+      }
     }
   }
 }
@@ -1181,10 +1376,16 @@ function drawFlyingHearts() {
   if (!state.flyingHearts?.length) return;
 
   for (const h of state.flyingHearts) {
+    const t = Math.min(h.time / h.duration, 1);
+    const pop = 1 + Math.sin(t * Math.PI) * 0.18;
+
     ctx.save();
-    ctx.font = "28px Arial";
+    ctx.translate(h.x, h.y);
+    ctx.scale(pop, pop);
+    ctx.font = "46px Arial";
     ctx.textAlign = "center";
-    ctx.fillText("❤️", h.x, h.y);
+    ctx.textBaseline = "middle";
+    ctx.fillText("❤️", 0, 0);
     ctx.restore();
   }
 }
@@ -1201,23 +1402,27 @@ function drawFieldHearts() {
     if (!node) continue;
 
     ctx.save();
-    ctx.font = "34px Arial";
+    ctx.font = "48px Arial";
     ctx.textAlign = "center";
-    ctx.fillText("❤️", node.x, node.y - 12);
+    ctx.fillText("❤️", node.x, node.y - 24);
     ctx.restore();
   }
 }
 
-function updateMainHeartCollection() {
+function updateHeartCollection() {
   if (state.mode === "sceneWin" || state.mode === "caveReveal") return;
-  if (state.scene !== "main" || !state.player || !state.fieldHearts) return;
+  if (!state.player || !state.fieldHearts) return;
 
   for (const heart of state.fieldHearts) {
     if (heart.collected) continue;
     if (heart.nodeId !== state.player.currentNode) continue;
 
     heart.collected = true;
+
     state.acceptance = Math.min(3, (state.acceptance || 0) + 1);
+    state.heartCooldown = 1.0;
+    state.lastHeartNodeId = heart.nodeId;
+    state.lastHeartPickupTime = performance.now() / 1000;
 
     sounds.pickup?.play().catch(() => {});
 
@@ -1226,6 +1431,8 @@ function updateMainHeartCollection() {
       y: state.player.y - 10,
       t: 0
     });
+
+    break;
   }
 
   const collected = state.fieldHearts.filter(h => h.collected).length;
@@ -1234,6 +1441,18 @@ function updateMainHeartCollection() {
   }
 }
 
+
+function hasFlyingHeart() {
+  return !!state.flyingHearts?.length;
+}
+
+function hasActiveGroundHeart() {
+  return (state.fieldHearts || []).some(h => !h.collected);
+}
+
+function getUncollectedHeartAtNode(nodeId) {
+  return (state.fieldHearts || []).find(h => !h.collected && h.nodeId === nodeId) || null;
+}
 // ======================================================
 // DRAWING HELPERS
 // ======================================================
@@ -1782,6 +2001,13 @@ function drawParticles() {
       ctx.restore();
     }
 
+    if (state.bananaBunchPopup) {
+    state.bananaBunchPopup.time += dt;
+    if (state.bananaBunchPopup.time >= state.bananaBunchPopup.duration) {
+      state.bananaBunchPopup = null;
+    }
+  }
+
     if (p.kind === "pickupText") {
       const progress = Math.min(p.t / (p.life || 0.9), 1);
 
@@ -2006,30 +2232,61 @@ function handlePortalTravel(actor) {
     return;
   }
 
+  const fromId = actor.currentNode;
+
   actor.currentNode = portal.to;
-  actor.previousNode = null;
-  actor.targetNode = null;
   actor.x = dest.x;
   actor.y = dest.y;
+  actor.targetNode = null;
 
   if (portal.type === "secret") {
-    actor.currentNode = portal.to;
     actor.previousNode = null;
-    actor.targetNode = null;
-    actor.x = dest.x;
-    actor.y = dest.y;
     actor.dir = { x: 0, y: 0 };
 
     if (actor === state.player) {
       state.mainSecretEntered = true;
+      state.mainEnding = {
+        time: 0,
+        phase: "intro",
+        frame: 0
+      };
       state.mainMotherPose = "sit";
       state.mainMotherTimer = 0;
+  stopAllMusic(sounds);
+//  sounds.victory?.currentTime = 0;
+  sounds.victory?.play().catch(() => {});
+      
+      
     }
     return;
   }
 
-  // for seamless wrap, immediately keep moving if possible
-  tryConsumeQueuedTurn(actor) || tryContinueForward(actor);
+  if (portal.type === "wrap") {
+    actor.previousNode = fromId;
+
+    // first honor queued turn on the far side
+    if (tryConsumeQueuedTurn(actor)) return;
+
+    // otherwise preserve current travel direction through the tunnel
+    const dirVec =
+      actor.dir && (Math.abs(actor.dir.x) > 0.001 || Math.abs(actor.dir.y) > 0.001)
+        ? actor.dir
+        : null;
+
+    const nextId = dirVec ? getBestNeighbor(actor.currentNode, dirVec, null) : null;
+
+    if (nextId) {
+      actor.targetNode = nextId;
+      return;
+    }
+
+    tryContinueForward(actor);
+    return;
+  }
+
+  // non-wrap instant teleports
+  actor.previousNode = null;
+  actor.dir = { x: 0, y: 0 };
 }
 
 // ======================================================
@@ -2047,18 +2304,39 @@ function addAcceptance(amount) {
   }
 }
 
-function applyLevelConfig() {
-    if (state.scene === "main") {
-    state.troops = [];
-    return;
-  }
+// function applyLevelConfig() {
+//     if (state.scene === "main") {
+//     state.troops = [];
+//     return;
+//   }
 
+//   const config = getLevelConfig();
+
+//   const baseTroopStarts = ["N", "M", "K", "O", "H", "Q"];
+//   const troopColors = ["#7c5c46", "#6c4d39", "#8d6b52", "#5f4635", "#8b6a50", "#6d5240"];
+
+//   while (state.troops.length < config.troopCount) {
+//     const idx = state.troops.length;
+//     state.troops.push(new Troop(baseTroopStarts[idx], troopColors[idx], sharedDeps));
+//   }
+
+//   while (state.troops.length > config.troopCount) {
+//     state.troops.pop();
+//   }
+
+//   for (const troop of state.troops) {
+//     troop.speedMultiplier = config.speed;
+//     troop.intelligence = config.intelligence;
+//   }
+// }
+
+function applyLevelConfig() {
   const config = getLevelConfig();
 
-  const baseTroopStarts = ["N", "M", "K", "O", "H", "Q"];
-  const troopColors = ["#7c5c46", "#6c4d39", "#8d6b52", "#5f4635", "#8b6a50", "#6d5240"];
+  const baseTroopStarts = ["N13", "N20", "N7"];
+  const troopColors = ["#7c5c46", "#6c4d39", "#8d6b52"];
 
-  while (state.troops.length < config.troopCount) {
+  while (state.troops.length < Math.min(1, config.troopCount)) {
     const idx = state.troops.length;
     state.troops.push(new Troop(baseTroopStarts[idx], troopColors[idx], sharedDeps));
   }
@@ -2068,8 +2346,8 @@ function applyLevelConfig() {
   }
 
   for (const troop of state.troops) {
-    troop.speedMultiplier = config.speed;
-    troop.intelligence = config.intelligence;
+    troop.speedMultiplier = 0.75;
+    troop.intelligence = 0.30;
   }
 }
 
@@ -2114,13 +2392,27 @@ const sharedDeps = {
   drawSheetFrame
 };
 
+// function resetActors() {
+//   clearQueuedDirectionCompat();
+//   queuedDirection = null;
+//   queuedDirectionName = null;
+
+//   state.player = new Player(HOME_NODE, sharedDeps);
+//   state.troops = [];
+// }
+
 function resetActors() {
   clearQueuedDirectionCompat();
   queuedDirection = null;
   queuedDirectionName = null;
 
   state.player = new Player(HOME_NODE, sharedDeps);
-  state.troops = [];
+  state.troops = [
+    new Troop("N13", "#7c5c46", sharedDeps),
+    //new Troop("N33", "#7c5c46", sharedDeps),
+    new Troop("N20", "#6c4d39", sharedDeps)
+
+  ];
 }
 
 function startGame() {
@@ -2156,16 +2448,19 @@ state.zookeeper = {
   didThrowSound: false
 };
 
-state.zookeeper2 = {
-  anim: "idle",
-  frame: 0,
-  time: 0,
-  timer: rand(2.5, 6),
-  action: "hearts",
-  actionTimer: 0
-};  state.heartThrowTimer = 2.5;
+  state.zookeeper2 = {
+    anim: "idle",
+    frame: 0,
+    time: 0,
+    timer: rand(2.5, 6),
+    action: "idle",
+    actionTimer: 0
+  };
+  state.heartThrowTimer = 2.5;
   state.heartsThrown = 0;
   state.maxHeartsToThrow = 3;
+  state.heartCooldown = 0;
+  state.lastHeartNodeId = null;
 
   if (state.zookeeper) {
     state.zookeeper.action = "normal";
@@ -2180,6 +2475,14 @@ state.zookeeper2 = {
     sounds,
     isBossScene: false
   });
+  state.bananaTimestamps = [];
+  state.mainEnding = null;
+  state.mainSecretEntered = false;
+  state.mainMotherPose = "sit";
+  state.mainMotherTimer = 0;
+  state.pendingHeartThrow = null;
+  state.shrubBonusesFound = {};
+state.bananaBunchPopup = null;
 }
 
 function newRound() {
@@ -2318,12 +2621,24 @@ function updateZookeeper2(dt) {
   if (!z) return;
 
   z.time += dt;
+
+  if (z.action === "hearts" || z.action === "gifts") {
+    if (z.time < 0.12) z.frame = 0;
+    else if (z.time < 0.24) z.frame = 1;
+    else if (z.time < 0.38) z.frame = 2;
+    else z.frame = 3;
+
+    updateKeeperAction(z, dt);
+    return;
+  }
+
   z.timer -= dt;
 
-  if (z.anim === "react") {
-    if (z.time < 0.25) z.frame = 1;
-    else if (z.time < 0.9) z.frame = 2;
-    else if (z.time < 1.2) z.frame = 3;
+  if (z.anim === "idlePeek") {
+    if (z.time < 0.18) z.frame = 0;
+    else if (z.time < 0.36) z.frame = 1;
+    else if (z.time < 0.56) z.frame = 2;
+    else if (z.time < 0.80) z.frame = 3;
     else {
       z.anim = "idle";
       z.frame = 0;
@@ -2334,13 +2649,11 @@ function updateZookeeper2(dt) {
     z.frame = 0;
 
     if (z.timer <= 0) {
-      z.anim = "react";
-      z.frame = 1;
+      z.anim = "idlePeek";
+      z.frame = 0;
       z.time = 0;
     }
   }
-
-  updateKeeperAction(z, dt);
 }
 
 function getHeartTargetNodeId() {
@@ -2349,19 +2662,15 @@ function getHeartTargetNodeId() {
 }
 
 function updateHeartThrowing(dt) {
-  if (state.scene !== "main") return;
-  if (state.mode !== "playing") return;
-  if (!state.zookeeper) return;
-
-  if (state.heartsThrown >= state.maxHeartsToThrow) return;
+  if (!canThrowHeart()) return;
 
   state.heartThrowTimer -= dt;
   if (state.heartThrowTimer > 0) return;
 
-  const targetNodeId = getHeartTargetNodeId();
+  const targetNodeId = chooseHeartTargetNodeId();
   if (!targetNodeId) return;
 
-  triggerHeartThrow(state.zookeeper, targetNodeId);
+  triggerHeartThrow(state.zookeeper2, targetNodeId);
 
   state.heartsThrown += 1;
   state.heartThrowTimer = 4.0;
@@ -2403,7 +2712,10 @@ function updateBanana(dt) {
 
     const now = performance.now() / 1000;
 
-    state.bananaTimestamps.push(now);
+  if (!Array.isArray(state.bananaTimestamps)) {
+    state.bananaTimestamps = [];
+  }
+  state.bananaTimestamps.push(now);
 
     state.bananaTimestamps = state.bananaTimestamps.filter(
       t => now - t <= HAT_TRICK_WINDOW
@@ -2513,8 +2825,16 @@ function getZookeeper1Sprite() {
 
 function getZookeeper2Sprite() {
   const key = getSceneKey();
-  const action = state.zookeeper2?.action === "gifts" ? "gifts" : "hearts";
-  return spriteStore[`zookeeper2_${key}_${action}`] || null;
+
+  if (state.zookeeper2?.action === "gifts") {
+    return spriteStore[`zookeeper2_${key}_gifts`] || null;
+  }
+
+  if (state.zookeeper2?.action === "hearts") {
+    return spriteStore[`zookeeper2_${key}_hearts`] || null;
+  }
+
+  return spriteStore[`zookeeper2_${key}_idle`] || spriteStore[`zookeeper2_${key}_hearts`] || null;
 }
 
 function getBossDangerAtPlayer() {
@@ -2716,12 +3036,13 @@ function updatePlayer(dt) {
   if (!state.player) return;
 
   state.player.update(dt);
+  checkShrubBonus();
+  updateHeartCollection();
 
-  if (state.player.movedThisRound && state.roundState === "waiting" && state.banana?.landed) {
+if (state.player.movedThisRound && state.roundState === "waiting" && state.banana?.landed) {
     state.roundState = "chase";
   }
 
-  updateMainHeartCollection();
 
   if (state.banana && !state.banana.collected) {
     const d = Math.hypot(
@@ -2765,7 +3086,7 @@ function startCatch(troop) {
   };
 
   state.player.dir = { x: 0, y: 0 };
-  addAcceptance(-1);
+  // addAcceptance(-1);
   triggerZookeeper2("react");
   sounds.catch?.play().catch(() => {});
 }
@@ -3005,6 +3326,8 @@ function update(dt) {
 
   if (state.mode !== "playing") return;
 
+  state.heartCooldown = Math.max(0, (state.heartCooldown || 0) - dt);
+
   if (state.scene === "boss") {
     updateBossMode(dt);
     return;
@@ -3028,6 +3351,8 @@ function update(dt) {
 
     updateKeeperAction(state.zookeeper, dt);
     // updateKeeperAction(state.zookeeper2, dt);
+    updatePendingHeartThrow(dt);
+    updatePendingHeartThrow(dt);
     updateFlyingHearts(dt);
     updateCatch(dt);
     updateParticles(dt);
@@ -3050,20 +3375,26 @@ function update(dt) {
   updateZookeeper(dt);
   updateZookeeper2(dt);
   updateHeartThrowing(dt);
+  updatePendingHeartThrow(dt);
   updateFlyingHearts(dt);
   updateCatch(dt);
   updateParticles(dt);
 
-  if (state.scene === "main" && state.mainSecretEntered) {
-    state.mainMotherTimer += dt;
+  if (state.scene === "main" && state.mainEnding) {
+    state.mainEnding.time += dt;
 
-    if (state.mainMotherTimer >= 0.6 && state.mainMotherPose === "sit") {
-      state.mainMotherPose = "hug";
-    }
+    if (state.mainEnding.phase === "intro" && state.mainEnding.time >= 0.45) {
+      state.mainEnding.phase = "hug";
+      state.mainEnding.time = 0;
+    } else if (state.mainEnding.phase === "hug") {
+      const fps = 12;
+      state.mainEnding.frame = Math.min(23, Math.floor(state.mainEnding.time * fps));
 
-    if (state.mainMotherTimer >= 1.4) {
-      showSceneWin();
-      return;
+      if (state.mainEnding.time >= 3.0) {
+        state.mainEnding.phase = "done";
+        showSceneWin();
+        return;
+      }
     }
   }
 }
@@ -3071,6 +3402,83 @@ function update(dt) {
 // ======================================================
 // RENDER
 // ======================================================
+function drawMainEndingOverlay() {
+  if (!state.mainEnding) return;
+
+  ctx.save();
+
+  ctx.fillStyle = "rgba(0,0,0,0.45)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2 + 40;
+
+  const glow = ctx.createRadialGradient(cx, cy, 20, cx, cy, 260);
+  glow.addColorStop(0, "rgba(255,255,220,0.85)");
+  glow.addColorStop(0.4, "rgba(255,230,170,0.35)");
+  glow.addColorStop(1, "rgba(255,255,220,0)");
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 260, 0, Math.PI * 2);
+  ctx.fill();
+
+  let img = null;
+
+  if (state.mainEnding.phase === "intro") {
+    img = spriteStore.motherSit || null;
+  } else {
+    img = spriteStore.motherHug || null;
+  }
+
+  if (img && img.complete && img.naturalWidth > 0) {
+    if (state.mainEnding.phase === "hug") {
+      const cols = 8;
+      const rows = 4;
+      const frameCount = 32;
+
+      const frame = Math.min(frameCount - 1, state.mainEnding.frame || 0);
+      const col = frame % cols;
+      const row = Math.floor(frame / cols);
+
+      const frameWidth = img.naturalWidth / cols;
+      const frameHeight = img.naturalHeight / rows;
+
+      const drawW = 420;
+      const drawH = drawW * (frameHeight / frameWidth);
+
+      ctx.drawImage(
+        img,
+        col * frameWidth,
+        row * frameHeight,
+        frameWidth,
+        frameHeight,
+        cx - drawW / 2,
+        cy - drawH / 2,
+        drawW,
+        drawH
+      );
+    } else {
+      const drawW = 280;
+      const drawH = drawW * (img.naturalHeight / img.naturalWidth);
+
+      ctx.drawImage(
+        img,
+        cx - drawW / 2,
+        cy - drawH / 2,
+        drawW,
+        drawH
+      );
+    }
+  }
+
+  ctx.fillStyle = "#fff";
+  ctx.textAlign = "center";
+  ctx.font = "bold 38px Arial";
+  ctx.fillText("Mother Found!", cx, 170);
+
+  ctx.restore();
+}
+
 function drawMainSecretMother() {
   if (state.scene !== "main") return;
   if (!state.mainSecretEntered) return;
@@ -3139,15 +3547,13 @@ if (state.mode === "sceneWin") {
   return;
 }
 
-  drawBackground();
-
 drawBackground();
 drawZookeeper();
 drawZookeeper2();
 drawBananaState();
 drawFlyingHearts();
-drawActors();
 drawFieldHearts();
+drawActors();
 drawMainSecretMother();
 
 if (state.scene === "boss") {
@@ -3164,6 +3570,9 @@ if (state.scene === "boss") {
     drawNodeHighlights();
   }
   // ===
+
+  drawMainEndingOverlay();
+  drawBananaBunchPopup();
   drawHudOverlay();
   drawCavePreview();
   drawOverlay();

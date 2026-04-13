@@ -32,7 +32,21 @@ export function createInitialState() {
     cavePreview: null,
     level: 1,
     levelUp: null,
-    coconuts: []
+    coconuts: [],
+    fieldHearts: [],
+    flyingHearts: [],
+    heartCooldown: 0,
+    lastHeartNodeId: null,
+    lastHeartPickupTime: 0,
+    mainEnding: null,
+    mainSecretUnlocked: false,
+    mainSecretEntered: false,
+    mainMotherPose: "sit",
+    mainMotherTimer: 0,
+    pendingHeartThrow: null,
+    bananaTimestamps: [],
+    shrubBonusesFound: {},
+    bananaBunchPopup: null,
   };
 }
 

@@ -42,11 +42,14 @@ export function loadSprites() {
   spriteStore.zookeeper2_ch_hearts = new Image();
   spriteStore.zookeeper2_ch_hearts.src = "sprites/zookeeper2-ch-hearts.png";
 
-  // spriteStore.zookeeperHearts = new Image();
-  // spriteStore.zookeeperHearts.src = "sprites/zookeeper-hearts.png";
+  spriteStore.zookeeper2_bb_idle = new Image();
+  spriteStore.zookeeper2_bb_idle.src = "sprites/zookeeper2-bb-idle.png";
 
-  // spriteStore.zookeeperGifts = new Image();
-  // spriteStore.zookeeperGifts.src = "sprites/zookeeper-gifts.png";
+  spriteStore.zookeeper2_ck_idle = new Image();
+  spriteStore.zookeeper2_ck_idle.src = "sprites/zookeeper2-ck-idle.png";
+
+  spriteStore.zookeeper2_ch_idle = new Image();
+  spriteStore.zookeeper2_ch_idle.src = "sprites/zookeeper2-ch-idle.png";
 
   spriteStore.levelUpArt = new Image();
   spriteStore.levelUpArt.src = "assets/levelup-monkeys.png";
@@ -96,6 +99,9 @@ export function loadSprites() {
   spriteStore.nanaSnatchersSnatched = new Image();
   spriteStore.nanaSnatchersSnatched.src = "sprites/nana-snatchers-snatched.png";  
 
+  spriteStore.bananaBunch = new Image();
+  spriteStore.bananaBunch.src = "sprites/banana-bunch.png";  
+
   return spriteStore;
 }
 
@@ -103,21 +109,27 @@ export function loadSounds(state) {
   const sounds = {};
 
   sounds.pickup = new Audio("assets/pickup.mp3");
-  sounds.pickup.volume = 0.75;
+  sounds.pickup.volume = 0.15;
 
-  sounds.catch = new Audio("assets/catch.mp3");
+  sounds.catch = new Audio("assets/catch.wav");
   sounds.catch.volume = 0.75;
 
   sounds.score = new Audio("assets/score.mp3");
-  sounds.score.volume = 0.75;
+  sounds.score.volume = 0.20;
 
   sounds.step = new Audio("assets/step.mp3");
+  sounds.step.volume = 0.25;
 
   sounds.panic = new Audio("assets/panic.mp3");
   sounds.panic.volume = 0.75;
 
+  sounds.victory = new Audio("assets/victory.mp3");
+  sounds.victory.volume = 0.75;
+
   sounds.music = new Audio("assets/jungle_jumpin.ogg");
   sounds.music.loop = true;
+  sounds.music.volume = 0.75;
+
 
   sounds.bossMusic = new Audio("assets/boss-loop.ogg");
   sounds.bossMusic.loop = true;
