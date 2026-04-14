@@ -7,6 +7,7 @@ import {
   CANVAS_WIDTH,
   CANVAS_HEIGHT,
   DEBUG,
+  DEBUG_LOOP_MAIN_SCENE,
   NODE_DEBUG,
   HAT_TRICK_WINDOW,
   HAT_TRICK_COUNT,
@@ -112,45 +113,86 @@ Object.defineProperties(window, {
 // NODE GRAPH
 // ======================================================
 
-const nodes = {
-  N1: { id: "N1", x: 920, y: 248, neighbors: ["N11", "N2"], tags: ["ladderExit"] },
-  N2: { id: "N2", x: 736, y: 260, neighbors: ["N1", "N3"], tags: ["banana"] },
-  N3: { id: "N3", x: 545, y: 302, neighbors: ["N2", "N4"], tags: [] },
-  N4: { id: "N4", x: 323, y: 266, neighbors: ["N3", "N10", "N5"], tags: [] },
-  N5: { id: "N5", x: 216, y: 271, neighbors: ["N4", "N6"], tags: ["ladderExit"] },
-  N6: { id: "N6", x: 206, y: 515, neighbors: ["N5", "N22", "N7"], tags: ["ladderExit"] },
-  N7: { id: "N7", x: 370, y: 512, neighbors: ["N10", "N6", "N18"], tags: ["banana"] },
-  N10: { id: "N10", x: 393, y: 380, neighbors: ["N4", "N7"], tags: [] },
-  N11: { id: "N11", x: 950, y: 467, neighbors: ["N1", "N24", "N12"], tags: ["ladderExit"] },
-  N12: { id: "N12", x: 730, y: 465, neighbors: ["N23", "N11"], tags: ["banana"] },
-  N13: { id: "N13", x: 713, y: 1139, neighbors: ["N15", "N37","N29"], tags: ["banana"] },
-  N14: { id: "N14", x: 1008, y: 1151, neighbors: ["N29"], tags: ["portal"] },
-  N15: { id: "N15", x: 522, y: 1168, neighbors: ["N16", "N39", "N13", "N17"], tags: ["ladderExit", "banana"] },
-  N16: { id: "N16", x: 522, y: 1433, neighbors: ["N15", "N35"], tags: ["ladderExit", "banana"] },
-  N17: { id: "N17", x: 549, y: 1056, neighbors: ["N15", "N18"], tags: ["banana"] },
-  N18: { id: "N18", x: 515, y: 775, neighbors: ["N23", "N17", "N32", "N7"], tags: ["ladderExit", "banana"] },
-  N19: { id: "N19", x: -1, y: 787, neighbors: ["N20"], tags: ["portal"] },
-  N20: { id: "N20", x: 132, y: 800, neighbors: ["N19", "N32", "N33"], tags: ["ladderExit", "banana"] },
-  N22: { id: "N22", x: 4, y: 513, neighbors: ["N6"], tags: ["portal"] },
-  N23: { id: "N23", x: 724, y: 736, neighbors: ["N24", "N12", "N37", "N18"], tags: [] },
-  N24: { id: "N24", x: 957, y: 740, neighbors: ["N11", "N25", "N23"], tags: ["ladderExit", "banana"] },
-  N25: { id: "N25", x: 1015, y: 740, neighbors: ["N24"], tags: ["portal"] },
-  N26: { id: "N26", x: 925, y: 1401, neighbors: [], tags: ["portal"] },
-  N28: { id: "N28", x: 199, y: 692, neighbors: ["N32"], tags: ["portal"] },
-  N29: { id: "N29", x: 832, y: 1136, neighbors: ["N13", "N30", "N14"], tags: [] },
-  N33: { id: "N33", x: 130, y: 1170, neighbors: ["N34", "N20", "N39"], tags: [] },
-  N34: { id: "N34", x: 69, y: 1439, neighbors: ["N35", "N33"], tags: [] },
-  N30: { id: "N30", x: 832, y: 1040, neighbors: ["N29"], tags: ["portal"] },
-  N32: { id: "N32", x: 199, y: 793, neighbors: ["N18", "N20", "N28"], tags: [] },
-  N35: { id: "N35", x: 306, y: 1428, neighbors: ["N31", "N16", "N34", "N36"], tags: [] },
-  N31: { id: "N31", x: 312, y: 1319, neighbors: ["N35"], tags: ["portal"] },
-  N36: { id: "N36", x: 302, y: 1478, neighbors: ["N35"], tags: ["portal"] },
-  N37: { id: "N37", x: 728, y: 871, neighbors: ["N13", "N23", "N38"], tags: [] },
-  N38: { id: "N38", x: 863, y: 871, neighbors: ["N37"], tags: [] },
-  N39: { id: "N39", x: 280, y: 1152, neighbors: ["N33", "N15", "N40"], tags: [] },
-  N40: { id: "N40", x: 280, y: 1002, neighbors: ["N39"], tags: [] }
-};
+// const nodes = {
+//   N1: { id: "N1", x: 920, y: 248, neighbors: ["N11", "N2"], tags: ["ladderExit"] },
+//   N2: { id: "N2", x: 736, y: 260, neighbors: ["N1", "N3"], tags: ["banana"] },
+//   N3: { id: "N3", x: 545, y: 302, neighbors: ["N2", "N4"], tags: [] },
+//   N4: { id: "N4", x: 323, y: 266, neighbors: ["N3", "N10", "N5"], tags: [] },
+//   N5: { id: "N5", x: 216, y: 271, neighbors: ["N4", "N6"], tags: ["ladderExit"] },
+//   N6: { id: "N6", x: 206, y: 515, neighbors: ["N5", "N22", "N7"], tags: ["ladderExit"] },
+//   N7: { id: "N7", x: 370, y: 512, neighbors: ["N10", "N6", "N18"], tags: ["banana"] },
+//   N10: { id: "N10", x: 393, y: 380, neighbors: ["N4", "N7"], tags: [] },
+//   N11: { id: "N11", x: 950, y: 467, neighbors: ["N1", "N24", "N12"], tags: ["ladderExit"] },
+//   N12: { id: "N12", x: 730, y: 465, neighbors: ["N23", "N11"], tags: ["banana"] },
+//   N13: { id: "N13", x: 713, y: 1139, neighbors: ["N15", "N37","N29"], tags: ["banana"] },
+//   N14: { id: "N14", x: 1008, y: 1151, neighbors: ["N29"], tags: ["portal"] },
+//   N15: { id: "N15", x: 522, y: 1168, neighbors: ["N16", "N39", "N13", "N17"], tags: ["ladderExit", "banana"] },
+//   N16: { id: "N16", x: 522, y: 1433, neighbors: ["N15", "N35"], tags: ["ladderExit", "banana"] },
+//   N17: { id: "N17", x: 549, y: 1056, neighbors: ["N15", "N18"], tags: ["banana"] },
+//   N18: { id: "N18", x: 515, y: 775, neighbors: ["N23", "N17", "N32", "N7"], tags: ["ladderExit", "banana"] },
+//   N19: { id: "N19", x: -1, y: 787, neighbors: ["N20"], tags: ["portal"] },
+//   N20: { id: "N20", x: 132, y: 800, neighbors: ["N19", "N32", "N33"], tags: ["ladderExit", "banana"] },
+//   N22: { id: "N22", x: 4, y: 513, neighbors: ["N6"], tags: ["portal"] },
+//   N23: { id: "N23", x: 724, y: 736, neighbors: ["N24", "N12", "N37", "N18"], tags: [] },
+//   N24: { id: "N24", x: 957, y: 740, neighbors: ["N11", "N25", "N23"], tags: ["ladderExit", "banana"] },
+//   N25: { id: "N25", x: 1015, y: 740, neighbors: ["N24"], tags: ["portal"] },
+//   N26: { id: "N26", x: 925, y: 1401, neighbors: [], tags: ["portal"] },
+//   N28: { id: "N28", x: 199, y: 692, neighbors: ["N32"], tags: ["portal"] },
+//   N29: { id: "N29", x: 832, y: 1136, neighbors: ["N13", "N30", "N14"], tags: [] },
+//   N33: { id: "N33", x: 130, y: 1170, neighbors: ["N34", "N20", "N39"], tags: [] },
+//   N34: { id: "N34", x: 69, y: 1439, neighbors: ["N35", "N33"], tags: [] },
+//   N30: { id: "N30", x: 832, y: 1040, neighbors: ["N29"], tags: ["portal"] },
+//   N32: { id: "N32", x: 199, y: 793, neighbors: ["N18", "N20", "N28"], tags: [] },
+//   N35: { id: "N35", x: 306, y: 1428, neighbors: ["N31", "N16", "N34", "N36"], tags: [] },
+//   N31: { id: "N31", x: 312, y: 1319, neighbors: ["N35"], tags: ["portal"] },
+//   N36: { id: "N36", x: 302, y: 1478, neighbors: ["N35"], tags: ["portal"] },
+//   N37: { id: "N37", x: 728, y: 871, neighbors: ["N13", "N23", "N38"], tags: [] },
+//   N38: { id: "N38", x: 863, y: 871, neighbors: ["N37"], tags: [] },
+//   N39: { id: "N39", x: 280, y: 1152, neighbors: ["N33", "N15", "N40"], tags: [] },
+//   N40: { id: "N40", x: 280, y: 1002, neighbors: ["N39"], tags: [] }
+// };
 
+const nodes = {
+  N1: { id: "N1", x: 957, y: 357, neighbors: ["N11", "N2"], tags: ["ladderExit"] },
+  N2: { id: "N2", x: 782, y: 320, neighbors: ["N1", "N3", "N12"], tags: ["banana"] },
+  N3: { id: "N3", x: 580, y: 371, neighbors: ["N2", "N4"], tags: [] },
+  N4: { id: "N4", x: 341, y: 326, neighbors: ["N3", "N10", "N5"], tags: [] },
+  N5: { id: "N5", x: 228, y: 331, neighbors: ["N4", "N6"], tags: ["ladderExit"] },
+  N6: { id: "N6", x: 218, y: 644, neighbors: ["N5", "N22", "N7"], tags: ["ladderExit"] },
+  N7: { id: "N7", x: 371, y: 659, neighbors: ["N10", "N6", "N41"], inputMap: { up: "N10", left: "N6", down: "N41" }, tags: ["banana"] },
+  N10: { id: "N10", x: 417, y: 472, neighbors: ["N4", "N7"], tags: [] },
+  N11: { id: "N11", x: 1011, y: 587, neighbors: ["N1", "N24", "N12"], tags: ["ladderExit"] },
+  N12: { id: "N12", x: 775, y: 579, neighbors: ["N23", "N11", "N2"], tags: ["banana"] },
+  N13: { id: "N13", x: 759, y: 1428, neighbors: ["N15", "N37", "N29"], tags: ["banana"] },
+  N14: { id: "N14", x: 1071, y: 1427, neighbors: ["N29"], tags: ["portal"] },
+  N15: { id: "N15", x: 550, y: 1459, neighbors: ["N16", "N39", "N13", "N17"], tags: ["ladderExit", "banana"] },
+  N16: { id: "N16", x: 554, y: 1805, neighbors: ["N15", "N35"], tags: ["ladderExit", "banana"] },
+  N17: { id: "N17", x: 582, y: 1326, neighbors: ["N15", "N18"], tags: ["banana"] },
+  N18: { id: "N18", x: 549, y: 978, neighbors: ["N23", "N17", "N32", "N43"], inputMap: { up: "N43", left: "N32", right: "N23", down: "N17" }, tags: ["ladderExit", "banana"] },
+  N19: { id: "N19", x: -1, y: 994, neighbors: ["N20"], tags: ["portal"] },
+  N20: { id: "N20", x: 138, y: 1008, neighbors: ["N19", "N32", "N33"], tags: ["ladderExit", "banana"] },
+  N22: { id: "N22", x: 4, y: 642, neighbors: ["N6"], tags: ["portal"] },
+  N23: { id: "N23", x: 762, y: 911, neighbors: ["N24", "N12", "N37", "N18"], tags: [] },
+  N24: { id: "N24", x: 1007, y: 942, neighbors: ["N11", "N25", "N23"], tags: ["ladderExit", "banana"] },
+  N25: { id: "N25", x: 1077, y: 931, neighbors: ["N24"], tags: ["portal"] },
+  N26: { id: "N26", x: 982, y: 1779, neighbors: [], tags: ["portal"] },
+  N28: { id: "N28", x: 211, y: 870, neighbors: ["N32"], tags: ["portal"] },
+  N29: { id: "N29", x: 880, y: 1422, neighbors: ["N13", "N30", "N14"], tags: [] },
+  N33: { id: "N33", x: 144, y: 1469, neighbors: ["N34", "N20", "N39"], tags: [] },
+  N34: { id: "N34", x: 95, y: 1811, neighbors: ["N35", "N33"], tags: [] },
+  N30: { id: "N30", x: 883, y: 1317, neighbors: ["N29"], tags: ["portal"] },
+  N32: { id: "N32", x: 211, y: 1000, neighbors: ["N18", "N20", "N28"], tags: [] },
+  N35: { id: "N35", x: 325, y: 1793, neighbors: ["N31", "N16", "N34", "N36"], tags: [] },
+  N31: { id: "N31", x: 324, y: 1637, neighbors: ["N35"], tags: ["portal"] },
+  N36: { id: "N36", x: 323, y: 1852, neighbors: ["N35"], tags: ["portal"] },
+  N37: { id: "N37", x: 762, y: 1045, neighbors: ["N13", "N23", "N38"], tags: [] },
+  N38: { id: "N38", x: 933, y: 1052, neighbors: ["N37"], tags: [] },
+  N39: { id: "N39", x: 294, y: 1450, neighbors: ["N40", "N33", "N15"], tags: [] },
+  N40: { id: "N40", x: 293, y: 1251, neighbors: [], tags: [] },
+  N41: { id: "N41", x: 385, y: 740, neighbors: ["N42", "N7"], inputMap: { up: "N7", down: "N42" }, tags: [] },
+  N42: { id: "N42", x: 374, y: 830, neighbors: ["N41", "N43"], tags: [] },
+  N43: { id: "N43", x: 484, y: 887, neighbors: ["N42", "N18"], inputMap: { up: "N42", down: "N18" }, tags: [] }
+};
 
 const mainCavePortals = {
   // example
@@ -196,7 +238,11 @@ const mainSecretPortals = {
 function resolveMainPortal(nodeId) {
   if (!nodeId) return null;
 
-  if (state.scene === "main" && state.acceptance >= 3 && mainSecretPortals[nodeId]) {
+  if (
+    state.scene === "main" &&
+    state.mainSecretUnlocked &&
+    mainSecretPortals[nodeId]
+  ) {
     return { type: "secret", to: mainSecretPortals[nodeId] };
   }
 
@@ -222,15 +268,15 @@ const SECRET_REWARDS = {
   main: {
     N38: {
       type: "bananaBunch",
-      x: 863,
-      y: 871,
+      x: 933,
+      y: 1052,
       min: 4,
       max: 9
     },
     N40: {
       type: "bananaBunch",
-      x: 284,
-      y: 1002,
+      x: 293,
+      y: 1251,
       min: 4,
       max: 9
     }
@@ -863,6 +909,10 @@ function tryConsumeQueuedTurn(actor) {
   return true;
 }
 
+function isLockedSecretNode(nodeId) {
+  return state.scene === "main" && !state.mainSecretUnlocked && nodeId === "N36";
+}
+
 function tryContinueForward(actor) {
   const nodeMap = getCurrentNodeMap();
   const current = nodeMap[actor.currentNode];
@@ -873,7 +923,9 @@ function tryContinueForward(actor) {
   const prev = nodeMap[actor.previousNode];
   if (!prev) return false;
 
-  const options = current.neighbors.filter(n => n !== actor.previousNode);
+  const options = current.neighbors.filter(
+    n => n !== actor.previousNode && !isLockedSecretNode(n)
+  );
   if (!options.length) return false;
 
   if (options.length === 1) {
@@ -2274,27 +2326,27 @@ function beginCavePreview(fromNodeId, toNodeId) {
   };
 }
 
-function finishCavePreview() {
-  const cp = state.cavePreview;
-  if (!cp) return;
+// function finishCavePreview() {
+//   const cp = state.cavePreview;
+//   if (!cp) return;
 
-  const nodeMap = getCurrentNodeMap();
-  const target = nodeMap[cp.targetNodeId];
-  if (!target || !state.player) {
-    state.cavePreview = null;
-    return;
-  }
+//   const nodeMap = getCurrentNodeMap();
+//   const target = nodeMap[cp.targetNodeId];
+//   if (!target || !state.player) {
+//     state.cavePreview = null;
+//     return;
+//   }
 
-  state.player.currentNode = cp.targetNodeId;
-  state.player.previousNode = null;
-  state.player.targetNode = null;
-  state.player.x = target.x;
-  state.player.y = target.y;
-  state.player.dir = { x: 0, y: 0 };
-  state.player.facing = "down";
+//   state.player.currentNode = cp.targetNodeId;
+//   state.player.previousNode = null;
+//   state.player.targetNode = null;
+//   state.player.x = target.x;
+//   state.player.y = target.y;
+//   state.player.dir = { x: 0, y: 0 };
+//   state.player.facing = "down";
 
-  state.cavePreview = null;
-}
+//   state.cavePreview = null;
+// }
 
 function handlePortalTravel(actor) {
   if (!actor || !actor.currentNode) return;
@@ -2389,6 +2441,34 @@ function handlePortalTravel(actor) {
   // non-wrap instant teleports
   actor.previousNode = null;
   actor.dir = { x: 0, y: 0 };
+}
+
+function finishCavePreview() {
+  const cp = state.cavePreview;
+  if (!cp) return;
+
+  const nodeMap = getCurrentNodeMap();
+  const dest = nodeMap[cp.toNodeId || cp.targetNodeId];
+  if (!dest || !state.player) {
+    state.cavePreview = null;
+    return;
+  }
+
+  const fromId = cp.fromNodeId || cp.sourceNodeId || state.player.currentNode;
+
+  state.player.currentNode = cp.toNodeId || cp.targetNodeId;
+  state.player.previousNode = fromId;
+  state.player.targetNode = null;
+  state.player.x = dest.x;
+  state.player.y = dest.y;
+  state.player.invuln = 0.5;
+
+  state.cavePreview = null;
+
+  // Try queued turn first, then push forward out of the cave
+  if (!tryConsumeQueuedTurn(state.player)) {
+    tryContinueForward(state.player);
+  }
 }
 
 // ======================================================
@@ -2885,6 +2965,11 @@ function goToNextScene() {
   state.mode = "playing";
   state.sceneWinTimer = 0;
 
+  if (DEBUG_LOOP_MAIN_SCENE && state.scene === "main") {
+    startMainScene();
+    return;
+  }
+
   if (state.scene === "main") {
     showBossIntro(state.level);
     return;
@@ -3156,6 +3241,7 @@ function updatePlayer(dt) {
 }
 
 function startCatch(troop) {
+  if (state.player?.invuln > 0) return;
   state.catchAnim = {
     troop,
     startX: state.player.x,
@@ -3460,6 +3546,10 @@ function update(dt) {
 
   if (state.player) {
     updateTroops(dt);
+  }
+
+  if (state.player?.invuln > 0) {
+    state.player.invuln = Math.max(0, state.player.invuln - dt);
   }
 
   updateZookeeper(dt);

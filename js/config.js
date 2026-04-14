@@ -1,9 +1,10 @@
 // config.js
 
-export const CANVAS_WIDTH = 1024;
-export const CANVAS_HEIGHT = 1536;
+export const CANVAS_WIDTH = 1080;
+export const CANVAS_HEIGHT = 1920;
 
 export const DEBUG = false;
+export const DEBUG_LOOP_MAIN_SCENE = true;
 export let NODE_DEBUG = true;
 
 export const SWIPE_THRESHOLD = 24;
