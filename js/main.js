@@ -119,16 +119,16 @@ const nodes = {
   N4: { id: "N4", x: 323, y: 266, neighbors: ["N3", "N10", "N5"], tags: [] },
   N5: { id: "N5", x: 216, y: 271, neighbors: ["N4", "N6"], tags: ["ladderExit"] },
   N6: { id: "N6", x: 206, y: 515, neighbors: ["N5", "N22", "N7"], tags: ["ladderExit"] },
-  N7: { id: "N7", x: 370, y: 512, neighbors: ["N10", "N6"], tags: ["banana"] },
+  N7: { id: "N7", x: 370, y: 512, neighbors: ["N10", "N6", "N18"], tags: ["banana"] },
   N10: { id: "N10", x: 393, y: 380, neighbors: ["N4", "N7"], tags: [] },
   N11: { id: "N11", x: 950, y: 467, neighbors: ["N1", "N24", "N12"], tags: ["ladderExit"] },
   N12: { id: "N12", x: 730, y: 465, neighbors: ["N23", "N11"], tags: ["banana"] },
   N13: { id: "N13", x: 713, y: 1139, neighbors: ["N15", "N37","N29"], tags: ["banana"] },
   N14: { id: "N14", x: 1008, y: 1151, neighbors: ["N29"], tags: ["portal"] },
-  N15: { id: "N15", x: 522, y: 1168, neighbors: ["N16", "N33", "N13", "N17"], tags: ["ladderExit", "banana"] },
+  N15: { id: "N15", x: 522, y: 1168, neighbors: ["N16", "N39", "N13", "N17"], tags: ["ladderExit", "banana"] },
   N16: { id: "N16", x: 522, y: 1433, neighbors: ["N15", "N35"], tags: ["ladderExit", "banana"] },
   N17: { id: "N17", x: 549, y: 1056, neighbors: ["N15", "N18"], tags: ["banana"] },
-  N18: { id: "N18", x: 515, y: 775, neighbors: ["N23", "N17", "N32"], tags: ["ladderExit", "banana"] },
+  N18: { id: "N18", x: 515, y: 775, neighbors: ["N23", "N17", "N32", "N7"], tags: ["ladderExit", "banana"] },
   N19: { id: "N19", x: -1, y: 787, neighbors: ["N20"], tags: ["portal"] },
   N20: { id: "N20", x: 132, y: 800, neighbors: ["N19", "N32", "N33"], tags: ["ladderExit", "banana"] },
   N22: { id: "N22", x: 4, y: 513, neighbors: ["N6"], tags: ["portal"] },
@@ -138,7 +138,7 @@ const nodes = {
   N26: { id: "N26", x: 925, y: 1401, neighbors: [], tags: ["portal"] },
   N28: { id: "N28", x: 199, y: 692, neighbors: ["N32"], tags: ["portal"] },
   N29: { id: "N29", x: 832, y: 1136, neighbors: ["N13", "N30", "N14"], tags: [] },
-  N33: { id: "N33", x: 130, y: 1170, neighbors: ["N34", "N20", "N15"], tags: [] },
+  N33: { id: "N33", x: 130, y: 1170, neighbors: ["N34", "N20", "N39"], tags: [] },
   N34: { id: "N34", x: 69, y: 1439, neighbors: ["N35", "N33"], tags: [] },
   N30: { id: "N30", x: 832, y: 1040, neighbors: ["N29"], tags: ["portal"] },
   N32: { id: "N32", x: 199, y: 793, neighbors: ["N18", "N20", "N28"], tags: [] },
@@ -147,6 +147,8 @@ const nodes = {
   N36: { id: "N36", x: 302, y: 1478, neighbors: ["N35"], tags: ["portal"] },
   N37: { id: "N37", x: 728, y: 871, neighbors: ["N13", "N23", "N38"], tags: [] },
   N38: { id: "N38", x: 863, y: 871, neighbors: ["N37"], tags: [] },
+  N39: { id: "N39", x: 280, y: 1152, neighbors: ["N33", "N15", "N40"], tags: [] },
+  N40: { id: "N40", x: 280, y: 1002, neighbors: ["N39"], tags: [] }
 };
 
 
@@ -215,6 +217,31 @@ const bossPortals = {
 };
 
 const MAIN_HEART_NODE_IDS = ["C", "Q", "J"];
+
+const SECRET_REWARDS = {
+  main: {
+    N38: {
+      type: "bananaBunch",
+      x: 863,
+      y: 871,
+      min: 4,
+      max: 9
+    },
+    N40: {
+      type: "bananaBunch",
+      x: 284,
+      y: 1002,
+      min: 4,
+      max: 9
+    }
+  },
+  boss: {
+    // later
+  },
+  chill: {
+    // later
+  }
+};
 
 const bossNodes = {
   // ======================================================
@@ -387,71 +414,124 @@ function getBananaNodeIds() {
   return getNodeIdsByTag(nodes, "banana");
 }
 
-function checkShrubBonus() {
+// function checkShrubBonus() {
+//   if (!state.player) return;
+
+//   if (!state.shrubBonusesFound) {
+//     state.shrubBonusesFound = {};
+//   }
+
+function checkSecretReward() {
   if (!state.player) return;
+//console.log("SECRET CHECK", state.scene, state.player.currentNode);
+  const sceneRewards = SECRET_REWARDS[state.scene];
+  if (!sceneRewards) return;
 
-  if (!state.shrubBonusesFound) {
-    state.shrubBonusesFound = {};
-  }
+  const nodeId = state.player.currentNode;
+  const reward = sceneRewards[nodeId];
+  if (!reward) return;
 
-  const shrubNodeId = "N38"; // change if needed
-  if (state.player.currentNode !== shrubNodeId) return;
-  if (state.shrubBonusesFound[shrubNodeId]) return;
+  if (!state.secretRewardsFound) state.secretRewardsFound = {};
+  const rewardKey = `${state.scene}:${nodeId}`;
+  if (state.secretRewardsFound[rewardKey]) return;
 
-  const bonus = randInt(4, 9);
+  const bonus = randInt(reward.min, reward.max);
 
+  state.secretRewardsFound[rewardKey] = true;
   state.score += bonus;
   state.bananasCollectedThisScene = (state.bananasCollectedThisScene || 0) + bonus;
 
-  state.shrubBonusesFound[shrubNodeId] = true;
-
-  state.bananaBunchPopup = {
-    nodeId: shrubNodeId,
+  state.secretRewardPopups.push({
+    nodeId,
+    type: reward.type,
     value: bonus,
+    x: reward.x,
+    y: reward.y,
     time: 0,
-    duration: 1.6
-  };
+    duration: 1.8
+  });
 
   sounds.score?.play().catch(() => {});
 }
+// function drawBananaBunchPopup() {
+//   const popup = state.bananaBunchPopup;
+//   if (!popup) return;
 
-function drawBananaBunchPopup() {
-  const popup = state.bananaBunchPopup;
-  if (!popup) return;
+//   const node = getCurrentNodeMap()[popup.nodeId];
+//   if (!node) return;
 
-  const node = getCurrentNodeMap()[popup.nodeId];
-  if (!node) return;
+//   const img = spriteStore.bananaBunch;
+//   const t = popup.time / popup.duration;
+//   const rise = t * 40;
+//   const alpha = 1 - t;
 
-  const img = spriteStore.bananaBunch;
-  const t = popup.time / popup.duration;
-  const rise = t * 40;
-  const alpha = 1 - t;
+//   ctx.save();
+//   ctx.globalAlpha = alpha;
 
-  ctx.save();
-  ctx.globalAlpha = alpha;
+//   if (img && img.complete && img.naturalWidth > 0) {
+//     const w = 84;
+//     const h = w * (img.naturalHeight / img.naturalWidth);
 
-  if (img && img.complete && img.naturalWidth > 0) {
-    const w = 84;
-    const h = w * (img.naturalHeight / img.naturalWidth);
+//     ctx.drawImage(
+//       img,
+//       node.x - w / 2,
+//       node.y - 90 - rise,
+//       w,
+//       h
+//     );
+//   }
 
-    ctx.drawImage(
-      img,
-      node.x - w / 2,
-      node.y - 90 - rise,
-      w,
-      h
-    );
+//   ctx.font = "bold 34px Arial";
+//   ctx.textAlign = "center";
+//   ctx.fillStyle = "#ffe066";
+//   ctx.strokeStyle = "rgba(0,0,0,0.45)";
+//   ctx.lineWidth = 4;
+//   ctx.strokeText(`+${popup.value} 🍌`, node.x, node.y - 110 - rise);
+//   ctx.fillText(`+${popup.value} 🍌`, node.x, node.y - 110 - rise);
+
+//   ctx.restore();
+// }
+
+function drawSecretRewardPopups() {
+  if (!state.secretRewardPopups?.length) return;
+
+  for (const popup of state.secretRewardPopups) {
+    const t = popup.time / popup.duration;
+    const rise = t * 42;
+    const alpha = 1 - t;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    if (
+      popup.type === "bananaBunch" &&
+      spriteStore.bananaBunch &&
+      spriteStore.bananaBunch.complete &&
+      spriteStore.bananaBunch.naturalWidth > 0
+    ) {
+      const img = spriteStore.bananaBunch;
+      const w = 88;
+      const h = w * (img.naturalHeight / img.naturalWidth);
+
+      ctx.drawImage(
+        img,
+        popup.x - w / 2,
+        popup.y - 86 - rise,
+        w,
+        h
+      );
+    }
+
+    ctx.font = "bold 34px Arial";
+    ctx.textAlign = "center";
+    ctx.strokeStyle = "rgba(0,0,0,0.45)";
+    ctx.fillStyle = "#ffe066";
+    ctx.lineWidth = 4;
+    ctx.strokeText(`+${popup.value} 🍌`, popup.x, popup.y - 112 - rise);
+    ctx.fillText(`+${popup.value} 🍌`, popup.x, popup.y - 112 - rise);
+
+    ctx.restore();
   }
-
-  ctx.font = "bold 34px Arial";
-  ctx.textAlign = "center";
-  ctx.fillStyle = "#ffe066";
-  ctx.strokeStyle = "rgba(0,0,0,0.45)";
-  ctx.lineWidth = 4;
-  ctx.strokeText(`+${popup.value} 🍌`, node.x, node.y - 110 - rise);
-  ctx.fillText(`+${popup.value} 🍌`, node.x, node.y - 110 - rise);
-
-  ctx.restore();
 }
 
 function getBossScale(x, y) {
@@ -891,7 +971,9 @@ state.zookeeper2 = {
   state.mainMotherPose = "sit";
   state.mainMotherTimer = 0;
   state.pendingHeartThrow = null;
-
+  state.secretRewardsFound = {};
+  state.secretRewardPopups = [];
+  state.bananaTimestamps = [];
 }
 
 function startBossMode() {
@@ -968,6 +1050,10 @@ state.zookeeper2 = {
   state.mainSecretEntered = false;
   state.mainMotherPose = "sit";
   state.mainMotherTimer = 0;
+  state.secretRewardsFound = {};
+  state.secretRewardPopups = [];
+  state.bananaTimestamps = [];
+
 }
 
 function startChillHill() {
@@ -1024,6 +1110,10 @@ state.zookeeper2 = {
   state.mainMotherTimer = 0;
   state.pendingHeartThrow = null;
   state.pendingHeartThrow = null;
+  state.secretRewardsFound = {};
+  state.secretRewardPopups = [];
+  state.bananaTimestamps = [];
+
 }
 
 // ======================================================
@@ -2030,6 +2120,18 @@ function drawParticles() {
   });
 }
 
+function showFloatingText(x, y, text, color = "#fff", life = 1.8) {
+  state.particles.push({
+    kind: "pickupText",
+    x,
+    y,
+    t: 0,
+    life,
+    text,
+    color
+  });
+}
+
 function drawNodeLabels() {
   if (!DEBUG) return;
 
@@ -2389,7 +2491,8 @@ const sharedDeps = {
   tryContinueForward,
   updateAnim,
   handlePortalTravel,
-  drawSheetFrame
+  drawSheetFrame,
+  drawBanana
 };
 
 // function resetActors() {
@@ -2481,8 +2584,9 @@ state.zookeeper = {
   state.mainMotherPose = "sit";
   state.mainMotherTimer = 0;
   state.pendingHeartThrow = null;
-  state.shrubBonusesFound = {};
-state.bananaBunchPopup = null;
+  state.secretRewardsFound = {};
+  state.secretRewardPopups = [];
+  state.bananaTimestamps = [];
 }
 
 function newRound() {
@@ -2703,62 +2807,63 @@ function updateHand(dt) {
 }
 
 function updateBanana(dt) {
-  if (!state.banana || !state.banana.landed || state.player?.hasBanana) return;
+  if (!state.banana || !state.banana.landed || !state.player) return;
 
   state.banana.age += dt;
   state.banana.size = 1 + Math.sin(state.banana.age * 5) * 0.08;
 
-  if (distance(state.player, state.banana) < 30) {
+  if (distance(state.player, state.banana) >= 30) return;
 
-    const now = performance.now() / 1000;
+  const now = performance.now() / 1000;
 
   if (!Array.isArray(state.bananaTimestamps)) {
     state.bananaTimestamps = [];
   }
+
   state.bananaTimestamps.push(now);
+  state.bananaTimestamps = state.bananaTimestamps.filter(
+    t => now - t <= HAT_TRICK_WINDOW
+  );
 
-    state.bananaTimestamps = state.bananaTimestamps.filter(
-      t => now - t <= HAT_TRICK_WINDOW
-    );
-
-    if (state.bananaTimestamps.length >= HAT_TRICK_COUNT) {
-      onHatTrick();
-      state.bananaTimestamps = [];
-    }
-
-    // 🍌 AWARD BANANA VALUE
-    const ripeness = ripenessLabel(state.banana.age);
-    const value = ripeness.points;
-
-    state.score += value;
-    state.bananasCollectedThisScene += value;
-    // 🍌 POPUP (right here)
-    showBananaPickupPopup(
-      state.banana.x,
-      state.banana.y,
-      state.banana.age
-    );
-
-    // existing logic
-    state.player.hasBanana = true;
-    state.roundState = "chase";
-    sounds.pickup?.play().catch(() => {});
-    triggerZookeeper2("react");
+  if (state.bananaTimestamps.length >= HAT_TRICK_COUNT) {
+    onHatTrick();
+    state.bananaTimestamps = [];
   }
+
+  const ripeness = ripenessLabel(state.banana.age);
+  const value = ripeness.points;
+
+  state.score += value;
+  state.bananasCollectedThisScene = (state.bananasCollectedThisScene || 0) + value;
+
+  showBananaPickupPopup(
+    state.banana.x,
+    state.banana.y,
+    state.banana.age
+  );
+
+  sounds.pickup?.play().catch(() => {});
+  triggerZookeeper2("react");
+
+  state.player.hasBanana = true;
+  state.roundState = "chase";
+
+  state.banana.collected = true;
+  state.banana = null;
+  state.hand = null;
+
+  tossBanana();
 }
 
 function onHatTrick() {
-  // state.bananas += HAT_TRICK_BONUS;
   state.score += HAT_TRICK_BONUS;
-
-  //spawnFloatingText("HAT TRICK!", state.player.x, state.player.y);
-  showBananaPickupPopup(state.player.x, state.player.y, 0, {
-  text: "🎩 HAT TRICK! +10 🍌",
-  color: "#ffd700",
-  life: 2.0
-});
-  // optional later:
-  // playSound("combo");
+  showFloatingText(
+    state.player.x,
+    state.player.y - 20,
+    `🎩 HAT TRICK! +${HAT_TRICK_BONUS} 🍌`,
+    "#ffd700",
+    2.0
+  );
 }
 
 function showChillIntro() {
@@ -3036,36 +3141,12 @@ function updatePlayer(dt) {
   if (!state.player) return;
 
   state.player.update(dt);
-  checkShrubBonus();
+
+  checkSecretReward();
   updateHeartCollection();
 
-if (state.player.movedThisRound && state.roundState === "waiting" && state.banana?.landed) {
+  if (state.player.movedThisRound && state.roundState === "waiting" && state.banana?.landed) {
     state.roundState = "chase";
-  }
-
-
-  if (state.banana && !state.banana.collected) {
-    const d = Math.hypot(
-      state.player.x - state.banana.x,
-      state.player.y - state.banana.y
-    );
-
-    if (d < 36) {
-      state.banana.collected = true;
-
-      const ripeness = ripenessLabel(state.banana.age);
-      const value = ripeness.points;
-
-      state.score += value;
-      state.bananasCollectedThisScene += value;
-
-      showBananaPickupPopup(state.player.x, state.player.y, state.banana.age);
-      sounds.score?.play().catch(() => {});
-
-      state.banana = null;
-      state.hand = null;
-      tossBanana();
-    }
   }
 
   if (state.scene === "chill" && state.player.currentNode === chillConfig.goalNode) {
@@ -3280,6 +3361,15 @@ function updateParticles(dt) {
     const maxLife = p.life ?? 1;
     return p.t < maxLife;
   });
+  if (state.secretRewardPopups?.length) {
+    for (const popup of state.secretRewardPopups) {
+      popup.time += dt;
+    }
+
+    state.secretRewardPopups = state.secretRewardPopups.filter(
+      popup => popup.time < popup.duration
+    );
+  }
 }
 
 function update(dt) {
@@ -3572,7 +3662,8 @@ if (state.scene === "boss") {
   // ===
 
   drawMainEndingOverlay();
-  drawBananaBunchPopup();
+  // drawBananaBunchPopup();
+  drawSecretRewardPopups();
   drawHudOverlay();
   drawCavePreview();
   drawOverlay();

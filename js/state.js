@@ -44,9 +44,11 @@ export function createInitialState() {
     mainMotherPose: "sit",
     mainMotherTimer: 0,
     pendingHeartThrow: null,
+    //shrubBonusesFound: {},
+    //bananaBunchPopup: null,
+    secretRewardsFound: {},
+    secretRewardPopups: [],
     bananaTimestamps: [],
-    shrubBonusesFound: {},
-    bananaBunchPopup: null,
   };
 }
 
