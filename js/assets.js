@@ -111,7 +111,11 @@ export function loadSounds(state) {
   sounds.pickup = new Audio("assets/pickup.mp3");
   sounds.pickup.volume = 0.15;
 
+<<<<<<< HEAD
   sounds.catch = new Audio("assets/catch.wav");
+=======
+  sounds.catch = new Audio("assets/catch.oog");
+>>>>>>> 0247c24 (Refactor game files and replace assets)
   sounds.catch.volume = 0.75;
 
   sounds.score = new Audio("assets/score.mp3");
