@@ -52,7 +52,7 @@ export function loadSprites() {
   spriteStore.zookeeper2_ch_idle.src = "sprites/zookeeper2-ch-idle.png";
 
   spriteStore.levelUpArt = new Image();
-  spriteStore.levelUpArt.src = "assets/levelup-monkeys.png";
+  spriteStore.levelUpArt.src = "assets/levelup-monkeys.webp";
 
   spriteStore.mother = new Image();
   spriteStore.mother.src = "assets/mother-plush.png";

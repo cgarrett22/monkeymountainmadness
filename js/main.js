@@ -188,7 +188,7 @@ const nodes = {
   N37: { id: "N37", x: 762, y: 1045, neighbors: ["N13", "N23", "N38"], tags: [] },
   N38: { id: "N38", x: 933, y: 1052, neighbors: ["N37"], tags: [] },
   N39: { id: "N39", x: 294, y: 1450, neighbors: ["N40", "N33", "N15"], tags: [] },
-  N40: { id: "N40", x: 293, y: 1251, neighbors: [], tags: [] },
+  N40: { id: "N40", x: 293, y: 1251, neighbors: ["N39"], tags: [] },
   N41: { id: "N41", x: 385, y: 740, neighbors: ["N42", "N7"], inputMap: { up: "N7", down: "N42" }, tags: [] },
   N42: { id: "N42", x: 374, y: 830, neighbors: ["N41", "N43"], tags: [] },
   N43: { id: "N43", x: 484, y: 887, neighbors: ["N42", "N18"], inputMap: { up: "N42", down: "N18" }, tags: [] }
@@ -537,6 +537,49 @@ function checkSecretReward() {
 
 //   ctx.restore();
 // }
+
+function drawSecretRewardSparkles() {
+  const sceneRewards = SECRET_REWARDS[state.scene];
+  if (!sceneRewards) return;
+
+  const now = performance.now() * 0.001;
+
+  for (const nodeId in sceneRewards) {
+    const reward = sceneRewards[nodeId];
+    const rewardKey = `${state.scene}:${nodeId}`;
+
+    if (state.secretRewardsFound?.[rewardKey]) continue;
+
+    const cx = reward.x;
+    const cy = reward.y - 30;
+
+    for (let i = 0; i < 2; i++) {
+      const ang = now * 2 + i * Math.PI;
+      const sx = cx + Math.cos(ang) * (12 + i * 8);
+      const sy = cy + Math.sin(ang * 1.2) * (8 + i * 5);
+
+      ctx.save();
+      ctx.globalAlpha = 0.9;
+
+      const glow = ctx.createRadialGradient(sx, sy, 1, sx, sy, 14);
+      glow.addColorStop(0, "rgba(255,255,255,1)");
+      glow.addColorStop(0.35, "rgba(255,220,170,0.95)");
+      glow.addColorStop(1, "rgba(255,220,170,0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 14, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#fff8d6";
+      ctx.beginPath();
+      ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+  }
+}
+//changed
 
 function drawSecretRewardPopups() {
   if (!state.secretRewardPopups?.length) return;
@@ -3006,8 +3049,8 @@ function getSceneKey() {
 
 const ZOOKEEPER_LAYOUT = {
   bb: {
-    z1: { x: 50,  y: 30,  w: 224, h: 224 },
-    z2: { x: 790, y: 250, w: 224, h: 224 }
+    z1: { x: 50,  y: 95,  w: 224, h: 224 },
+    z2: { x: 790, y: 345, w: 224, h: 224 }
   },
   ck: {
     z1: { x: 53,  y: 100,  w: 214, h: 204 },
@@ -3639,33 +3682,6 @@ function update(dt) {
 // ======================================================
 // RENDER
 // ======================================================
-function drawSecretHolePulse(nodeId = "N36") {
-  if (state.scene !== "main") return;
-  if (!state.mainSecretUnlocked) return;
-  if (state.mainEnding) return;
-
-  const node = getCurrentNodeMap()[nodeId];
-  if (!node) return;
-
-  const t = performance.now() * 0.004;
-  const pulse = 0.65 + (Math.sin(t) + 1) * 0.175;
-  const radius = 34 + Math.sin(t) * 6;
-
-  ctx.save();
-  ctx.globalAlpha = pulse;
-
-  const grad = ctx.createRadialGradient(node.x, node.y, 8, node.x, node.y, radius);
-  grad.addColorStop(0, "rgba(255,210,120,0.55)");
-  grad.addColorStop(0.4, "rgba(255,120,220,0.28)");
-  grad.addColorStop(1, "rgba(255,120,220,0)");
-
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.restore();
-}
 
 function drawMainEndingOverlay() {
   if (!state.mainEnding) return;
@@ -3740,6 +3756,59 @@ function drawMainEndingOverlay() {
   ctx.textAlign = "center";
   ctx.font = "bold 38px Arial";
   ctx.fillText("Mother Found!", cx, 170);
+
+  ctx.restore();
+}
+
+function drawSecretHolePulse(nodeId = "N36") {
+  if (state.scene !== "main") return;
+  if (!state.mainSecretUnlocked) return;
+  if (state.mainEnding) return;
+
+  const node = getCurrentNodeMap()[nodeId];
+  if (!node) return;
+
+  const t = performance.now() * 0.0055;
+  const pulse = (Math.sin(t) + 1) * 0.5;
+
+  const radius = 72 + pulse * 20;
+  const x = node.x;
+  const y = node.y - radius * 0.28;
+
+  ctx.save();
+
+  // main hot-pink glow
+  const glow = ctx.createRadialGradient(
+    x, y, 8,
+    x, y, radius
+  );
+  glow.addColorStop(0, "rgba(255,245,210,0.92)");
+  glow.addColorStop(0.18, "rgba(255,170,235,0.72)");
+  glow.addColorStop(0.45, "rgba(255,105,210,0.48)");
+  glow.addColorStop(0.75, "rgba(255,80,190,0.22)");
+  glow.addColorStop(1, "rgba(255,80,190,0)");
+
+  ctx.globalAlpha = 0.82 + pulse * 0.18;
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // bright inner core
+  const coreR = 26 + pulse * 8;
+  const core = ctx.createRadialGradient(
+    x, y, 2,
+    x, y, coreR
+  );
+  core.addColorStop(0, "rgba(255,255,230,0.95)");
+  core.addColorStop(0.35, "rgba(255,210,245,0.78)");
+  core.addColorStop(1, "rgba(255,120,220,0)");
+
+  ctx.globalAlpha = 0.7 + pulse * 0.2;
+  ctx.fillStyle = core;
+  ctx.beginPath();
+  ctx.arc(x, y, coreR, 0, Math.PI * 2);
+  ctx.fill();
 
   ctx.restore();
 }
@@ -3819,7 +3888,7 @@ if (state.mode === "sceneWin") {
   drawFieldHearts();
   drawActors();
   drawMainSecretMother();
-  drawSecretHolePulse();
+  drawSecretHolePulse("N36");
 
 if (state.scene === "boss") {
   for (const coconut of (state.coconuts || [])) {
@@ -3837,6 +3906,7 @@ if (state.scene === "boss") {
   // ===
 
   drawMainEndingOverlay();
+  drawSecretRewardSparkles();
   drawSecretRewardPopups();
   drawHudOverlay();
   drawCavePreview();
