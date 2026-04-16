@@ -581,6 +581,43 @@ function drawSecretRewardSparkles() {
 }
 //changed
 
+function drawMessagePlate(text, x, y, alpha = 1, opts = {}) {
+  const {
+    font = "bold 34px Arial",
+    textColor = "#ffe066",
+    strokeColor = "rgba(0,0,0,0.72)",
+    plateColor = "rgba(0,0,0,0.42)",
+    lineWidth = 5,
+    padX = 14,
+    padY = 10,
+    radius = 12
+  } = opts;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = font;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const metrics = ctx.measureText(text);
+  const boxW = metrics.width + padX * 2;
+  const boxH = 24 + padY * 2;
+
+  // backing plate
+  ctx.fillStyle = plateColor;
+  roundRect(ctx, x - boxW / 2, y - boxH / 2, boxW, boxH, radius);
+  ctx.fill();
+
+  // text
+  ctx.lineWidth = lineWidth;
+  ctx.strokeStyle = strokeColor;
+  ctx.fillStyle = textColor;
+  ctx.strokeText(text, x, y);
+  ctx.fillText(text, x, y);
+
+  ctx.restore();
+}
+
 function drawSecretRewardPopups() {
   if (!state.secretRewardPopups?.length) return;
 
@@ -611,15 +648,19 @@ function drawSecretRewardPopups() {
       );
     }
 
-    ctx.font = "bold 34px Arial";
-    ctx.textAlign = "center";
-    ctx.strokeStyle = "rgba(0,0,0,0.45)";
-    ctx.fillStyle = "#ffe066";
-    ctx.lineWidth = 4;
-    ctx.strokeText(`+${popup.value} 🍌`, popup.x, popup.y - 112 - rise);
-    ctx.fillText(`+${popup.value} 🍌`, popup.x, popup.y - 112 - rise);
-
     ctx.restore();
+
+    drawMessagePlate(
+      `+${popup.value} 🍌`,
+      popup.x,
+      popup.y - 112 - rise,
+      alpha,
+      {
+        font: "bold 48px Arial",
+        textColor: "#ffe066",
+        plateColor: "rgba(0,0,0,0.48)"
+      }
+    );
   }
 }
 
@@ -743,7 +784,9 @@ function showLevelIntro(level, nextScene = "main") {
   state.levelIntro = {
     level,
     time: 0,
-    duration: 2.6,
+    duration: 1.2,
+    hold: 0.45,
+    reveal: 0.75,
     nextScene
   };
 }
@@ -794,6 +837,25 @@ function getNearestNodeId(x, y, nodeMap, maxDist = 40) {
   }
 
   return bestDist <= maxDist ? bestId : null;
+}
+
+function getSceneIntroFocus(nextScene = "main") {
+  if (nextScene === "main") {
+    const node = nodes[HOME_NODE];
+    return node ? { x: node.x, y: node.y } : { x: canvas.width * 0.8, y: 120 };
+  }
+
+  if (nextScene === "boss") {
+    const node = bossNodes[bossConfig.startNode];
+    return node ? { x: node.x, y: node.y } : { x: canvas.width / 2, y: 180 };
+  }
+
+  if (nextScene === "chill") {
+    const node = chillNodes[chillConfig.startNode];
+    return node ? { x: node.x, y: node.y } : { x: canvas.width / 2, y: 180 };
+  }
+
+  return { x: canvas.width / 2, y: 180 };
 }
 
 function drawPathOverlay(nodeMap) {
@@ -1338,18 +1400,10 @@ function drawLevelIntroOverlay() {
   if (!state.levelIntro) return;
 
   const li = state.levelIntro;
-  const t = Math.min(li.time / li.duration, 1);
+  const bg = getCurrentBackgroundImage();
+  const card = state.loadScreenImage || getSceneCard(li.nextScene, li.level);
 
-  const fadeIn = Math.min(t / 0.2, 1);
-  const fadeOut = li.time > li.duration - 0.4
-    ? Math.max((li.duration - li.time) / 0.4, 0)
-    : 1;
-  const alpha = fadeIn * fadeOut;
-
-  ctx.save();
-  ctx.globalAlpha = alpha;
-
-  const bg = state.loadScreenImage || getLevelCardImage(li.level);
+  // draw actual scene first
   if (bg && bg.complete && bg.naturalWidth > 0) {
     ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
   } else {
@@ -1357,24 +1411,46 @@ function drawLevelIntroOverlay() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 
-  ctx.fillStyle = "rgba(0,0,0,0.42)";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (!card || !card.complete || card.naturalWidth <= 0) return;
 
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
+  const focus = getSceneIntroFocus(li.nextScene);
+  const hold = li.hold ?? 0.45;
+  const reveal = li.reveal ?? 0.75;
 
-  ctx.strokeStyle = "rgba(0,0,0,0.35)";
-  ctx.lineWidth = 8;
+  // before reveal starts, card is fully visible
+  if (li.time <= hold) {
+    ctx.save();
+    ctx.drawImage(card, 0, 0, canvas.width, canvas.height);
+    ctx.restore();
+    return;
+  }
 
-  ctx.fillStyle = "#ffe066";
-  ctx.font = "bold 78px Arial";
-  ctx.strokeText(`Level ${li.level}`, canvas.width / 2, 320);
-  ctx.fillText(`Level ${li.level}`, canvas.width / 2, 320);
+  // reveal progress
+  const rt = Math.min((li.time - hold) / reveal, 1);
+  const radius = rt * Math.hypot(canvas.width, canvas.height);
+  const alpha = 1 - rt * 0.9;
 
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 58px Arial";
-  ctx.strokeText("Get Ready", canvas.width / 2, 430);
-  ctx.fillText("Get Ready", canvas.width / 2, 430);
+  ctx.save();
+
+  // draw the transparent card overlay
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(card, 0, 0, canvas.width, canvas.height);
+
+  // cut a soft-edged circular hole centered on Punch
+  ctx.globalCompositeOperation = "destination-out";
+
+  const grad = ctx.createRadialGradient(
+    focus.x, focus.y, Math.max(0, radius - 120),
+    focus.x, focus.y, radius
+  );
+  grad.addColorStop(0, "rgba(0,0,0,1)");
+  grad.addColorStop(0.75, "rgba(0,0,0,1)");
+  grad.addColorStop(1, "rgba(0,0,0,0)");
+
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(focus.x, focus.y, radius, 0, Math.PI * 2);
+  ctx.fill();
 
   ctx.restore();
 }
@@ -2193,25 +2269,32 @@ function drawParticles() {
     }
   }
 
-    if (p.kind === "pickupText") {
-      const progress = Math.min(p.t / (p.life || 0.9), 1);
+  if (p.kind === "pickupText") {
+    const progress = Math.min(p.t / (p.life || 0.9), 1);
+    const alpha = 1 - progress;
+    const scale = 1 + (1 - progress) * 0.18;
+    const px = p.x - 10;
+    const py = p.y - progress * 34;
 
-      ctx.save();
-      ctx.globalAlpha = 1 - progress;
-      ctx.translate(p.x - 10, p.y - progress * 34);
-      ctx.scale(1 + (1 - progress) * 0.3, 1 + (1 - progress) * 0.3);
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.scale(scale, scale);
 
-      ctx.font = "bold 36px Arial";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = "rgba(0,0,0,0.45)";
-      ctx.fillStyle = p.color || "#fff";
+    drawMessagePlate(
+      p.text,
+      0,
+      0,
+      alpha,
+      {
+        font: "bold 48px Arial",
+        textColor: p.color || "#fff",
+        plateColor: "rgba(0,0,0,0.42)",
+        lineWidth: 5
+      }
+    );
 
-      ctx.strokeText(p.text, 0, 0);
-      ctx.fillText(p.text, 0, 0);
-      ctx.restore();
-    }
+    ctx.restore();
+  }
   });
 }
 
