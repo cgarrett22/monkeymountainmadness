@@ -55,7 +55,7 @@ export function loadSprites() {
   spriteStore.levelUpArt.src = "assets/levelup-monkeys.webp";
 
   spriteStore.mother = new Image();
-  spriteStore.mother.src = "assets/mother-plush.png";
+  spriteStore.mother.src = "assets/mother-plush.webp";
 
   spriteStore.bossBackground = new Image();
   spriteStore.bossBackground.src = "assets/boss-mountain.webp";

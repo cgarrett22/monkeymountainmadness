@@ -230,7 +230,7 @@ export class Player {
     if (img?.complete && img.naturalWidth > 0) {
       const frameWidth = img.width / 4;
       const frameHeight = img.height / 3;
-      drawSheetFrame(img, this.frame, this.facing, frameWidth, frameHeight, 108, 108);
+      drawSheetFrame(img, this.frame, this.facing, frameWidth, frameHeight, 148, 148);
     } else {
       // Fallback Drawing (Circle)
       const bob = Math.sin(this.animTime * 8) * 2;
@@ -248,7 +248,7 @@ export class Player {
 
     // Banana Overlay
     if (this.hasBanana) {
-      drawBanana(18, -18, 0.45, state.banana?.age || 0);
+      drawBanana(20, 22, 0.75, state.banana?.age || 0);
     }
 
     ctx.restore();

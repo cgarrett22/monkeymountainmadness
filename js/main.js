@@ -153,7 +153,7 @@ Object.defineProperties(window, {
 // };
 
 const nodes = {
-  N1: { id: "N1", x: 957, y: 357, neighbors: ["N11", "N2"], tags: ["ladderExit"] },
+  N1: { id: "N1", x: 957, y: 220, neighbors: ["N11", "N2"], tags: ["ladderExit"] },
   N2: { id: "N2", x: 782, y: 320, neighbors: ["N1", "N3", "N12"], tags: ["banana"] },
   N3: { id: "N3", x: 580, y: 371, neighbors: ["N2", "N4"], tags: [] },
   N4: { id: "N4", x: 341, y: 326, neighbors: ["N3", "N10", "N5"], tags: [] },
@@ -783,11 +783,10 @@ function showLevelIntro(level, nextScene = "main") {
 
   state.levelIntro = {
     level,
+    nextScene,
+    phase: "card",
     time: 0,
-    duration: 1.2,
-    hold: 0.45,
-    reveal: 0.75,
-    nextScene
+    prepared: false
   };
 }
 
@@ -805,20 +804,29 @@ function updateBossIntro(dt) {
 function updateLevelIntro(dt) {
   if (!state.levelIntro) return;
 
-  state.levelIntro.time += dt;
+  const li = state.levelIntro;
+  li.time += dt;
 
-  if (state.levelIntro.time >= state.levelIntro.duration) {
-    const nextScene = state.levelIntro.nextScene || "main";
-    state.levelIntro = null;
+  if (li.phase === "card") {
+    if (li.time >= SCENE_INTRO_TIMING.cardDuration) {
+      li.phase = "overlay";
+      li.time = 0;
 
-    if (nextScene === "main") {
-      startMainScene();
-      return;
+      if (!li.prepared) {
+        if (li.nextScene === "main") {
+          startMainScene();
+        } else if (li.nextScene === "chill") {
+          startChillHill();
+        }
+        li.prepared = true;
+      }
     }
+    return;
+  }
 
-    if (nextScene === "chill") {
-      startChillHill();
-      return;
+  if (li.phase === "overlay") {
+    if (li.time >= SCENE_INTRO_TIMING.overlayDuration) {
+      state.levelIntro = null;
     }
   }
 }
@@ -1400,59 +1408,72 @@ function drawLevelIntroOverlay() {
   if (!state.levelIntro) return;
 
   const li = state.levelIntro;
-  const bg = getCurrentBackgroundImage();
   const card = state.loadScreenImage || getSceneCard(li.nextScene, li.level);
 
-  // draw actual scene first
-  if (bg && bg.complete && bg.naturalWidth > 0) {
-    ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
-  } else {
+  // PHASE 1: show scene card only
+  if (li.phase === "card") {
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
 
-  if (!card || !card.complete || card.naturalWidth <= 0) return;
+    if (card && card.complete && card.naturalWidth > 0) {
+      ctx.drawImage(card, 0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = "bold 48px Arial";
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = "rgba(0,0,0,0.45)";
+      ctx.fillStyle = "#fff";
+      ctx.strokeText(`Level ${li.level || state.level || 1}`, canvas.width / 2, 110);
+      ctx.fillText(`Level ${li.level || state.level || 1}`, canvas.width / 2, 110);
+      ctx.restore();
+    }
 
-  const focus = getSceneIntroFocus(li.nextScene);
-  const hold = li.hold ?? 0.45;
-  const reveal = li.reveal ?? 0.75;
-
-  // before reveal starts, card is fully visible
-  if (li.time <= hold) {
     ctx.save();
-    ctx.drawImage(card, 0, 0, canvas.width, canvas.height);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "bold 48px Arial";
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = "rgba(0,0,0,0.45)";
+    ctx.fillStyle = "#fff";
+    ctx.strokeText(`Level ${li.level || state.level || 1}`, canvas.width / 2, 110);
+    ctx.fillText(`Level ${li.level || state.level || 1}`, canvas.width / 2, 110);
     ctx.restore();
+
     return;
   }
 
-  // reveal progress
-  const rt = Math.min((li.time - hold) / reveal, 1);
-  const radius = rt * Math.hypot(canvas.width, canvas.height);
-  const alpha = 1 - rt * 0.9;
+// Phase 2: real scene underneath
+drawBackground();
+drawZookeeper();
+drawZookeeper2();
+drawBananaState();
+drawFlyingHearts();
+drawFieldHearts();
+drawActors();
+drawMainSecretMother();
 
-  ctx.save();
+if (state.scene === "boss") {
+  for (const coconut of (state.coconuts || [])) {
+    drawBossCoconut(coconut);
+  }
+  drawBossMother();
+}
 
-  // draw the transparent card overlay
-  ctx.globalAlpha = alpha;
-  ctx.drawImage(card, 0, 0, canvas.width, canvas.height);
+const focus = getSceneIntroFocus(li.nextScene);
+const progress = Math.min(li.time / SCENE_INTRO_TIMING.overlayDuration, 1);
 
-  // cut a soft-edged circular hole centered on Punch
-  ctx.globalCompositeOperation = "destination-out";
+const overlayAlpha = SCENE_INTRO_TIMING.overlayAlpha * (1 - progress);
+const r = SCENE_INTRO_TIMING.spotlightRadius;
 
-  const grad = ctx.createRadialGradient(
-    focus.x, focus.y, Math.max(0, radius - 120),
-    focus.x, focus.y, radius
-  );
-  grad.addColorStop(0, "rgba(0,0,0,1)");
-  grad.addColorStop(0.75, "rgba(0,0,0,1)");
-  grad.addColorStop(1, "rgba(0,0,0,0)");
-
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.arc(focus.x, focus.y, radius, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.restore();
+// full-screen dim layer with one circular hole
+ctx.save();
+ctx.fillStyle = `rgba(0,0,0,${overlayAlpha})`;
+ctx.beginPath();
+ctx.rect(0, 0, canvas.width, canvas.height);
+ctx.arc(focus.x, focus.y, r, 0, Math.PI * 2, true);
+ctx.fill("evenodd");
+ctx.restore();
 }
 
 function easeOutBack(t) {
@@ -2161,6 +2182,13 @@ function spawnMainFieldHearts() {
 
 const CAVE_REVEAL_DURATION = 1.0;
 const SCENE_WIN_DURATION = 3.0;
+const SCENE_INTRO_TIMING = {
+  cardDuration: 1.35,
+  overlayDuration: 0.95,
+  overlayAlpha: 0.72,
+  spotlightRadius: 120,
+  spotlightSoftness: 110
+};
 
 function onSceneWin() {
   state.mode = "caveReveal";
@@ -2261,13 +2289,6 @@ function drawParticles() {
       drawBanana(p.x, p.y, 0.7, 8);
       ctx.restore();
     }
-
-    if (state.bananaBunchPopup) {
-    state.bananaBunchPopup.time += dt;
-    if (state.bananaBunchPopup.time >= state.bananaBunchPopup.duration) {
-      state.bananaBunchPopup = null;
-    }
-  }
 
   if (p.kind === "pickupText") {
     const progress = Math.min(p.t / (p.life || 0.9), 1);
@@ -2652,8 +2673,8 @@ function addAcceptance(amount) {
 function applyLevelConfig() {
   const config = getLevelConfig();
 
-  const baseTroopStarts = ["N13", "N20", "N7"];
-  const troopColors = ["#7c5c46", "#6c4d39", "#8d6b52"];
+  const baseTroopStarts = ["N13", "N20", "N7", "N23"];
+  const troopColors = ["#7c5c46", "#6c4d39", "#8d6b52", "#6f5242"];
 
   while (state.troops.length < config.troopCount) {
     const idx = state.troops.length;

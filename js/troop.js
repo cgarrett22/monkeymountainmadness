@@ -151,7 +151,7 @@ export class Troop {
     if (img?.complete && img.naturalWidth > 0) {
       const frameWidth = img.width / 4;
       const frameHeight = img.height / 3;
-      drawSheetFrame(img, this.frame, this.facing, frameWidth, frameHeight, 128, 128);
+      drawSheetFrame(img, this.frame, this.facing, frameWidth, frameHeight, 176, 176);
     } else {
       // Fallback: Colored Circle
       ctx.fillStyle = this.color;
