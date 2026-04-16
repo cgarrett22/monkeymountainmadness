@@ -248,7 +248,7 @@ export class Player {
 
     // Banana Overlay
     if (this.hasBanana) {
-      drawBanana(20, 22, 0.75, state.banana?.age || 0);
+      drawBanana(26, 28, 0.72, state.banana?.age || 0);
     }
 
     ctx.restore();

@@ -1460,7 +1460,9 @@ if (state.scene === "boss") {
   drawBossMother();
 }
 
+//const focus = getSceneIntroFocus(li.nextScene);
 const focus = getSceneIntroFocus(li.nextScene);
+focus.y -= 20;
 const progress = Math.min(li.time / SCENE_INTRO_TIMING.overlayDuration, 1);
 
 const overlayAlpha = SCENE_INTRO_TIMING.overlayAlpha * (1 - progress);
@@ -1713,6 +1715,12 @@ function updateHeartCollection() {
       y: state.player.y - 10,
       t: 0
     });
+
+    showHeartPickupPopup(
+      state.player.x,
+      state.player.y,
+      state.acceptance
+    );
 
     break;
   }
@@ -2184,9 +2192,9 @@ const CAVE_REVEAL_DURATION = 1.0;
 const SCENE_WIN_DURATION = 3.0;
 const SCENE_INTRO_TIMING = {
   cardDuration: 1.35,
-  overlayDuration: 0.95,
-  overlayAlpha: 0.72,
-  spotlightRadius: 120,
+  overlayDuration: 1.25,
+  overlayAlpha: 0.75,
+  spotlightRadius: 115,
   spotlightSoftness: 110
 };
 
@@ -2329,6 +2337,16 @@ function showFloatingText(x, y, text, color = "#fff", life = 1.8) {
     text,
     color
   });
+}
+
+function showHeartPickupPopup(x, y, count) {
+  showFloatingText(
+    x,
+    y - 64,
+    `❤️ ${count}/3`,
+    "#ff7aa8",
+    1.9
+  );
 }
 
 function drawNodeLabels() {
