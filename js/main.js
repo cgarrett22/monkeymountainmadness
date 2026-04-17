@@ -940,7 +940,8 @@ function getBestNeighbor(currentNodeId, inputVec, inputName) {
   }
 
   // reject weak or backward-ish matches
-  if (bestScore < 0.55) return null;
+  // if (bestScore < 0.55) return null;
+  if (bestScore < 0.42) return null;
 
   return bestNeighbor;
 }
