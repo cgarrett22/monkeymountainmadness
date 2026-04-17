@@ -14,7 +14,7 @@ import {
   HAT_TRICK_BONUS,
   SWIPE_THRESHOLD,
   HOME_NODE,
-  BANANA_NODE_IDS,
+  // BANANA_NODE_IDS,
   MUTE_BUTTON
 } from "./config.js";
 
@@ -109,49 +109,6 @@ Object.defineProperties(window, {
   }
 });
 
-// ======================================================
-// NODE GRAPH
-// ======================================================
-
-// const nodes = {
-//   N1: { id: "N1", x: 920, y: 248, neighbors: ["N11", "N2"], tags: ["ladderExit"] },
-//   N2: { id: "N2", x: 736, y: 260, neighbors: ["N1", "N3"], tags: ["banana"] },
-//   N3: { id: "N3", x: 545, y: 302, neighbors: ["N2", "N4"], tags: [] },
-//   N4: { id: "N4", x: 323, y: 266, neighbors: ["N3", "N10", "N5"], tags: [] },
-//   N5: { id: "N5", x: 216, y: 271, neighbors: ["N4", "N6"], tags: ["ladderExit"] },
-//   N6: { id: "N6", x: 206, y: 515, neighbors: ["N5", "N22", "N7"], tags: ["ladderExit"] },
-//   N7: { id: "N7", x: 370, y: 512, neighbors: ["N10", "N6", "N18"], tags: ["banana"] },
-//   N10: { id: "N10", x: 393, y: 380, neighbors: ["N4", "N7"], tags: [] },
-//   N11: { id: "N11", x: 950, y: 467, neighbors: ["N1", "N24", "N12"], tags: ["ladderExit"] },
-//   N12: { id: "N12", x: 730, y: 465, neighbors: ["N23", "N11"], tags: ["banana"] },
-//   N13: { id: "N13", x: 713, y: 1139, neighbors: ["N15", "N37","N29"], tags: ["banana"] },
-//   N14: { id: "N14", x: 1008, y: 1151, neighbors: ["N29"], tags: ["portal"] },
-//   N15: { id: "N15", x: 522, y: 1168, neighbors: ["N16", "N39", "N13", "N17"], tags: ["ladderExit", "banana"] },
-//   N16: { id: "N16", x: 522, y: 1433, neighbors: ["N15", "N35"], tags: ["ladderExit", "banana"] },
-//   N17: { id: "N17", x: 549, y: 1056, neighbors: ["N15", "N18"], tags: ["banana"] },
-//   N18: { id: "N18", x: 515, y: 775, neighbors: ["N23", "N17", "N32", "N7"], tags: ["ladderExit", "banana"] },
-//   N19: { id: "N19", x: -1, y: 787, neighbors: ["N20"], tags: ["portal"] },
-//   N20: { id: "N20", x: 132, y: 800, neighbors: ["N19", "N32", "N33"], tags: ["ladderExit", "banana"] },
-//   N22: { id: "N22", x: 4, y: 513, neighbors: ["N6"], tags: ["portal"] },
-//   N23: { id: "N23", x: 724, y: 736, neighbors: ["N24", "N12", "N37", "N18"], tags: [] },
-//   N24: { id: "N24", x: 957, y: 740, neighbors: ["N11", "N25", "N23"], tags: ["ladderExit", "banana"] },
-//   N25: { id: "N25", x: 1015, y: 740, neighbors: ["N24"], tags: ["portal"] },
-//   N26: { id: "N26", x: 925, y: 1401, neighbors: [], tags: ["portal"] },
-//   N28: { id: "N28", x: 199, y: 692, neighbors: ["N32"], tags: ["portal"] },
-//   N29: { id: "N29", x: 832, y: 1136, neighbors: ["N13", "N30", "N14"], tags: [] },
-//   N33: { id: "N33", x: 130, y: 1170, neighbors: ["N34", "N20", "N39"], tags: [] },
-//   N34: { id: "N34", x: 69, y: 1439, neighbors: ["N35", "N33"], tags: [] },
-//   N30: { id: "N30", x: 832, y: 1040, neighbors: ["N29"], tags: ["portal"] },
-//   N32: { id: "N32", x: 199, y: 793, neighbors: ["N18", "N20", "N28"], tags: [] },
-//   N35: { id: "N35", x: 306, y: 1428, neighbors: ["N31", "N16", "N34", "N36"], tags: [] },
-//   N31: { id: "N31", x: 312, y: 1319, neighbors: ["N35"], tags: ["portal"] },
-//   N36: { id: "N36", x: 302, y: 1478, neighbors: ["N35"], tags: ["portal"] },
-//   N37: { id: "N37", x: 728, y: 871, neighbors: ["N13", "N23", "N38"], tags: [] },
-//   N38: { id: "N38", x: 863, y: 871, neighbors: ["N37"], tags: [] },
-//   N39: { id: "N39", x: 280, y: 1152, neighbors: ["N33", "N15", "N40"], tags: [] },
-//   N40: { id: "N40", x: 280, y: 1002, neighbors: ["N39"], tags: [] }
-// };
-
 const nodes = {
   N1: { id: "N1", x: 957, y: 220, neighbors: ["N11", "N2"], tags: ["ladderExit"] },
   N2: { id: "N2", x: 782, y: 320, neighbors: ["N1", "N3", "N12"], tags: ["banana"] },
@@ -213,28 +170,6 @@ const mainSecretPortals = {
   N35: "N26" // or whatever your hidden-hole entry node is
 };
 
-// function resolveMainPortal(actor) {
-//   const nodeId = actor?.currentNode;
-//   if (!nodeId) return null;
-
-//   // secret room first
-//   if (state.scene === "main" && state.acceptance >= 3 && mainSecretPortals[nodeId]) {
-//     return { type: "secret", to: mainSecretPortals[nodeId] };
-//   }
-
-//   // cave portals
-//   if (mainCavePortals[nodeId]) {
-//     return { type: "cave", to: mainCavePortals[nodeId] };
-//   }
-
-//   // edge wraps
-//   if (mainWrapPortals[nodeId]) {
-//     return { type: "wrap", to: mainWrapPortals[nodeId] };
-//   }
-
-//   return null;
-// }
-
 function resolveMainPortal(nodeId) {
   if (!nodeId) return null;
 
@@ -261,8 +196,6 @@ const bossPortals = {
   M0C: "M1C",
   M1C: "M0C"
 };
-
-const MAIN_HEART_NODE_IDS = ["C", "Q", "J"];
 
 const SECRET_REWARDS = {
   main: {
@@ -460,13 +393,6 @@ function getBananaNodeIds() {
   return getNodeIdsByTag(nodes, "banana");
 }
 
-// function checkShrubBonus() {
-//   if (!state.player) return;
-
-//   if (!state.shrubBonusesFound) {
-//     state.shrubBonusesFound = {};
-//   }
-
 function checkSecretReward() {
   if (!state.player) return;
 //console.log("SECRET CHECK", state.scene, state.player.currentNode);
@@ -499,44 +425,6 @@ function checkSecretReward() {
 
   sounds.score?.play().catch(() => {});
 }
-// function drawBananaBunchPopup() {
-//   const popup = state.bananaBunchPopup;
-//   if (!popup) return;
-
-//   const node = getCurrentNodeMap()[popup.nodeId];
-//   if (!node) return;
-
-//   const img = spriteStore.bananaBunch;
-//   const t = popup.time / popup.duration;
-//   const rise = t * 40;
-//   const alpha = 1 - t;
-
-//   ctx.save();
-//   ctx.globalAlpha = alpha;
-
-//   if (img && img.complete && img.naturalWidth > 0) {
-//     const w = 84;
-//     const h = w * (img.naturalHeight / img.naturalWidth);
-
-//     ctx.drawImage(
-//       img,
-//       node.x - w / 2,
-//       node.y - 90 - rise,
-//       w,
-//       h
-//     );
-//   }
-
-//   ctx.font = "bold 34px Arial";
-//   ctx.textAlign = "center";
-//   ctx.fillStyle = "#ffe066";
-//   ctx.strokeStyle = "rgba(0,0,0,0.45)";
-//   ctx.lineWidth = 4;
-//   ctx.strokeText(`+${popup.value} 🍌`, node.x, node.y - 110 - rise);
-//   ctx.fillText(`+${popup.value} 🍌`, node.x, node.y - 110 - rise);
-
-//   ctx.restore();
-// }
 
 function drawSecretRewardSparkles() {
   const sceneRewards = SECRET_REWARDS[state.scene];
@@ -662,6 +550,54 @@ function drawSecretRewardPopups() {
       }
     );
   }
+}
+
+function drawHeartProgressPopup() {
+  const p = state.heartProgressPopup;
+  if (!p) return;
+
+  const t = p.time / p.duration;
+  const alpha = 1 - t;
+  const rise = t * 70;
+
+  const x = canvas.width / 2;
+  const y = canvas.height * 0.34 - rise;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  // soft mist / fog backdrop
+  const grad = ctx.createRadialGradient(x, y, 20, x, y, 170);
+  grad.addColorStop(0, "rgba(255,255,255,0.92)");
+  grad.addColorStop(0.35, "rgba(255,255,255,0.55)");
+  grad.addColorStop(0.75, "rgba(255,255,255,0.18)");
+  grad.addColorStop(1, "rgba(255,255,255,0)");
+
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(x, y, 170, 0, Math.PI * 2);
+  ctx.fill();
+
+  // subtle secondary haze
+  ctx.fillStyle = "rgba(255,255,255,0.16)";
+  ctx.beginPath();
+  ctx.ellipse(x, y + 10, 140, 55, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // text
+  ctx.font = "bold 72px Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.lineWidth = 8;
+  ctx.strokeStyle = "rgba(255,255,255,0.95)";
+  ctx.fillStyle = "#ff4f8b";
+
+  const text = `❤️ ${p.count}/3`;
+
+  ctx.strokeText(text, x, y);
+  ctx.fillText(text, x, y);
+
+  ctx.restore();
 }
 
 function getBossScale(x, y) {
@@ -1429,16 +1365,16 @@ function drawLevelIntroOverlay() {
       ctx.restore();
     }
 
-    ctx.save();
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.font = "bold 48px Arial";
-    ctx.lineWidth = 6;
-    ctx.strokeStyle = "rgba(0,0,0,0.45)";
-    ctx.fillStyle = "#fff";
-    ctx.strokeText(`Level ${li.level || state.level || 1}`, canvas.width / 2, 110);
-    ctx.fillText(`Level ${li.level || state.level || 1}`, canvas.width / 2, 110);
-    ctx.restore();
+    // ctx.save();
+    // ctx.textAlign = "center";
+    // ctx.textBaseline = "middle";
+    // ctx.font = "bold 48px Arial";
+    // ctx.lineWidth = 6;
+    // ctx.strokeStyle = "rgba(0,0,0,0.45)";
+    // ctx.fillStyle = "#fff";
+    // ctx.strokeText(`Level ${li.level || state.level || 1}`, canvas.width / 2, 110);
+    // ctx.fillText(`Level ${li.level || state.level || 1}`, canvas.width / 2, 110);
+    // ctx.restore();
 
     return;
   }
@@ -1703,12 +1639,22 @@ function updateHeartCollection() {
 
     heart.collected = true;
 
-    state.acceptance = Math.min(3, (state.acceptance || 0) + 1);
+    const collected = state.fieldHearts.filter(h => h.collected).length;
+    state.acceptance = Math.min(3, collected);
+
     state.heartCooldown = 1.0;
     state.lastHeartNodeId = heart.nodeId;
     state.lastHeartPickupTime = performance.now() / 1000;
 
     sounds.pickup?.play().catch(() => {});
+
+    if (sounds.ahh) {
+      try {
+        sounds.ahh.pause();
+        sounds.ahh.currentTime = 0;
+        sounds.ahh.play().catch(() => {});
+      } catch (err) {}
+    }
 
     state.hearts.push({
       x: state.player.x,
@@ -1716,21 +1662,15 @@ function updateHeartCollection() {
       t: 0
     });
 
-    showHeartPickupPopup(
-      state.player.x,
-      state.player.y,
-      state.acceptance
-    );
+    showHeartProgressPopup(state.acceptance);
+
+    if (collected >= 3) {
+      state.mainSecretUnlocked = true;
+    }
 
     break;
   }
-
-  const collected = state.fieldHearts.filter(h => h.collected).length;
-  if (collected >= 3) {
-    state.mainSecretUnlocked = true;
-  }
 }
-
 
 function hasFlyingHeart() {
   return !!state.flyingHearts?.length;
@@ -2180,19 +2120,11 @@ function drawHearts() {
   });
 }
 
-function spawnMainFieldHearts() {
-  state.fieldHearts = MAIN_HEART_NODE_IDS.map(nodeId => ({
-    nodeId,
-    collected: false,
-    pulse: Math.random() * Math.PI * 2
-  }));
-}
-
 const CAVE_REVEAL_DURATION = 1.0;
 const SCENE_WIN_DURATION = 3.0;
 const SCENE_INTRO_TIMING = {
-  cardDuration: 1.35,
-  overlayDuration: 1.25,
+  cardDuration: 2.35,
+  overlayDuration: 2.0,
   overlayAlpha: 0.75,
   spotlightRadius: 115,
   spotlightSoftness: 110
@@ -2347,6 +2279,14 @@ function showHeartPickupPopup(x, y, count) {
     "#ff7aa8",
     1.9
   );
+}
+
+function showHeartProgressPopup(count) {
+  state.heartProgressPopup = {
+    count,
+    time: 0,
+    duration: 2.5
+  };
 }
 
 function drawNodeLabels() {
@@ -2541,6 +2481,10 @@ function handlePortalTravel(actor) {
 
   const portal = resolveMainPortal(actor.currentNode);
   if (!portal) return;
+
+  if (portal.type === "secret" && actor !== state.player) {
+    return;
+  }
 
   const nodeMap = getCurrentNodeMap();
   const dest = nodeMap[portal.to];
@@ -3792,6 +3736,13 @@ function update(dt) {
     state.player.invuln = Math.max(0, state.player.invuln - dt);
   }
 
+  if (state.heartProgressPopup) {
+    state.heartProgressPopup.time += dt;
+    if (state.heartProgressPopup.time >= state.heartProgressPopup.duration) {
+      state.heartProgressPopup = null;
+    }
+  }
+
   updateZookeeper(dt);
   updateZookeeper2(dt);
   updateHeartThrowing(dt);
@@ -4030,6 +3981,7 @@ if (state.scene === "boss") {
   drawMainEndingOverlay();
   drawSecretRewardSparkles();
   drawSecretRewardPopups();
+  drawHeartProgressPopup();
   drawHudOverlay();
   drawCavePreview();
   drawOverlay();

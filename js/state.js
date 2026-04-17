@@ -17,10 +17,6 @@ export function createInitialState() {
     banana: null,
     hand: null,
     hearts: [],
-    mainSecretUnlocked: false,
-    mainSecretEntered: false,
-    mainMotherPose: "sit", // "sit" | "hug"
-    mainMotherTimer: 0,
     particles: [],
     catchAnim: null,
     zookeeper: { anim: "idle", frame: 0, time: 0, didThrowSound: false },
@@ -49,6 +45,7 @@ export function createInitialState() {
     secretRewardsFound: {},
     secretRewardPopups: [],
     bananaTimestamps: [],
+    heartProgressPopup: null,
   };
 }
 

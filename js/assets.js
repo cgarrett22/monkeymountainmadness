@@ -124,7 +124,8 @@ export function loadSounds(state) {
   sounds.panic.volume = 0.75;
 
   sounds.ahh = new Audio("assets/ahh.mp3");
-  sounds.ahh.volume = 0.75;
+  sounds.ahh.volume = 0.15;
+  sounds.ahh.playbackRate = 2.4;
 
   sounds.victory = new Audio("assets/victory.mp3");
   sounds.victory.volume = 0.75;
