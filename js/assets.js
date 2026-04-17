@@ -111,7 +111,7 @@ export function loadSounds(state) {
   sounds.pickup = new Audio("assets/pickup.mp3");
   sounds.pickup.volume = 0.15;
 
-  sounds.catch = new Audio("assets/catch.wav");
+  sounds.catch = new Audio("assets/catch.mp3");
   sounds.catch.volume = 0.75;
 
   sounds.score = new Audio("assets/score.mp3");
@@ -130,12 +130,12 @@ export function loadSounds(state) {
   sounds.victory = new Audio("assets/victory.mp3");
   sounds.victory.volume = 0.75;
 
-  sounds.music = new Audio("assets/jungle_jumpin.ogg");
+  sounds.music = new Audio("assets/jungle_jumpin.mp3");
   sounds.music.loop = true;
   sounds.music.volume = 0.75;
 
 
-  sounds.bossMusic = new Audio("assets/boss-loop.ogg");
+  sounds.bossMusic = new Audio("assets/boss-loop.mp3");
   sounds.bossMusic.loop = true;
 
   applyMuteState(sounds, state);
