@@ -898,16 +898,18 @@ function updateDeliveryCrate(dt) {
     state.score += c.value;
     state.bananasCollectedThisScene = (state.bananasCollectedThisScene || 0) + c.value;
 
-    state.secretRewardPopups.push({
-      nodeId: "delivery",
-      type: "bananaBunch",
-      value: c.value,
-      x: c.x,
-      y: c.y,
-      time: 0,
-      duration: 1.8
-    });
-
+state.delayedPopups.push({
+  delay: 0.45,
+  popup: {
+    nodeId: "delivery",
+    type: "bananaBunch",
+    value: c.value,
+    x: c.x,
+    y: c.y - 15,
+    time: 0,
+    duration: 2.2
+  }
+});
     playSfx(sounds.score);
     state.deliveryCrate = null;
   }
@@ -3947,6 +3949,18 @@ function update(dt) {
   if (state.deliveryTimer <= 0 && !state.deliveryEvent && !state.deliveryCrate) {
     spawnDeliveryEvent();
   }
+
+  if (state.delayedPopups?.length) {
+  for (let i = state.delayedPopups.length - 1; i >= 0; i--) {
+    const item = state.delayedPopups[i];
+    item.delay -= dt;
+
+    if (item.delay <= 0) {
+      state.secretRewardPopups.push(item.popup);
+      state.delayedPopups.splice(i, 1);
+    }
+  }
+}
 
   updateDeliveryEvent(dt);
   updateDeliveryCrate(dt);

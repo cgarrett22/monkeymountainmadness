@@ -49,6 +49,7 @@ export function createInitialState() {
     deliveryEvent: null,
     deliveryCrate: null,
     deliveryTimer: 18,
+    delayedPopups: [],
   };
 }
 
