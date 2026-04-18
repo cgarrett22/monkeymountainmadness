@@ -1433,6 +1433,28 @@ state.zookeeper2 = {
 
 }
 
+function unlockAudioOnce() {
+  if (inputState.musicStarted) return;
+  inputState.musicStarted = true;
+
+  try {
+    const a = sounds.pickup?.cloneNode();
+    if (!a) return;
+
+    a.volume = 0.001;
+    a.playbackRate = 1;
+    a.muted = state.isMuted;
+
+    const p = a.play();
+    if (p?.then) {
+      p.then(() => {
+        a.pause();
+        a.currentTime = 0;
+      }).catch(() => {});
+    }
+  } catch (_) {}
+}
+
 // ======================================================
 // LEVEL STATE
 // ======================================================
@@ -4295,6 +4317,8 @@ function drawBossCoconut(coconut) {
 // ======================================================
 canvas.addEventListener("pointerdown", (e) => {
   e.preventDefault();
+
+  unlockAudioOnce();
 
   if (state.mode === "caveReveal") {
     showSceneWin();
