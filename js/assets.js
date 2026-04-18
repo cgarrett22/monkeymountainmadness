@@ -183,14 +183,6 @@ export function playSceneMusic({ sounds, isBossScene }) {
   }
 }
 
-export function playMusicOnce(inputState, sounds) {
-  if (inputState.musicStarted || !sounds.music) return;
-
-  inputState.musicStarted = true;
-  sounds.music.currentTime = 0;
-  sounds.music.play().catch(() => {});
-}
-
 export function playSfx(sound, volume = null, debugName = "") {
   if (!sound) return;
 

@@ -33,7 +33,6 @@ import {
   applyMuteState,
   stopAllMusic,
   playSceneMusic,
-  playMusicOnce,
   playSfx
 } from "./assets.js";
 
@@ -83,7 +82,8 @@ function spawnDeliveryEvent() {
     state: "walking", // walking | fainting | fading
     time: 0,
     alpha: 1,
-    crateValue: randInt(10, 18)
+    crateValue: randInt(10, 18),
+    faintGagPlayed: false
   };
 }
 
@@ -181,52 +181,6 @@ const nodes = {
   N41: { id: "N41", x: 385, y: 740, neighbors: ["N42", "N7"], inputMap: { up: "N7", down: "N42" }, tags: [] },
   N42: { id: "N42", x: 374, y: 830, neighbors: ["N41", "N43"], tags: [] },
   N43: { id: "N43", x: 484, y: 887, neighbors: ["N42", "N18"], inputMap: { up: "N42", down: "N18" }, tags: [] }
-};
-
-const mainCavePortals = {
-  // example
-  N31: "N30",
-  N30: "N28",
-  N28: "N31"
-};
-
-const mainWrapPortals = {
-  // example pairs, replace with your actual edge nodes
-  N14: "N19",
-  N19: "N14",
-  N22: "N25",
-  N25: "N22"
-};
-
-const mainSecretPortals = {
-  N35: "N26" // or whatever your hidden-hole entry node is
-};
-
-function resolveMainPortal(nodeId) {
-  if (!nodeId) return null;
-
-  if (
-    state.scene === "main" &&
-    state.mainSecretUnlocked &&
-    mainSecretPortals[nodeId]
-  ) {
-    return { type: "secret", to: mainSecretPortals[nodeId] };
-  }
-
-  if (mainCavePortals[nodeId]) {
-    return { type: "cave", to: mainCavePortals[nodeId] };
-  }
-
-  if (mainWrapPortals[nodeId]) {
-    return { type: "wrap", to: mainWrapPortals[nodeId] };
-  }
-
-  return null;
-}
-
-const bossPortals = {
-  M0C: "M1C",
-  M1C: "M0C"
 };
 
 const SECRET_REWARDS = {
@@ -414,6 +368,109 @@ const chillConfig = {
   startNode: "CS",
   goalNode: "CG"
 };
+
+
+const SCENE_CONFIGS = {
+  main: {
+    nodes,
+    startNode: HOME_NODE,
+    secretRoom: {
+      visibleBeforeUnlock: true,
+      lockedNodeId: "N36",
+      entryNodeId: "N35",
+      destinationNodeId: "N26",
+      unlockCondition: "heartsComplete",
+      pulseAfterUnlock: true,
+      completionType: "sceneEnd",
+      cutsceneBackgroundKey: "mainSecretRoom"
+    },
+    portals: {
+      cave: {
+        N31: "N30",
+        N30: "N28",
+        N28: "N31"
+      },
+      wrap: {
+        N14: "N19",
+        N19: "N14",
+        N22: "N25",
+        N25: "N22"
+      }
+    }
+  },
+
+  boss: {
+    nodes: bossNodes,
+    startNode: bossConfig.startNode,
+    secretRoom: null,
+    portals: {
+      cave: {
+        M0C: "M1C",
+        M1C: "M0C"
+      },
+      wrap: {}
+    }
+  },
+
+  chill: {
+    nodes: chillNodes,
+    startNode: chillConfig.startNode,
+    secretRoom: null,
+    portals: {
+      cave: {},
+      wrap: {}
+    }
+  }
+};
+
+function getSceneConfig() {
+  return SCENE_CONFIGS[state.scene] || SCENE_CONFIGS.main;
+}
+
+function getScenePortals() {
+  return getSceneConfig().portals || { cave: {}, wrap: {} };
+}
+
+function getSecretRoomConfig() {
+  return getSceneConfig().secretRoom || null;
+}
+
+function isSecretRoomUnlocked() {
+  const secret = getSecretRoomConfig();
+  if (!secret) return false;
+
+  if (secret.unlockCondition === "heartsComplete") {
+    return (state.acceptance || 0) >= 3;
+  }
+
+  return false;
+}
+
+function resolveScenePortal(nodeId) {
+  if (!nodeId) return null;
+
+  const portals = getScenePortals();
+  const secret = getSecretRoomConfig();
+
+  if (
+    secret &&
+    nodeId === secret.entryNodeId &&
+    isSecretRoomUnlocked()
+  ) {
+    return { type: "secret", to: secret.destinationNodeId };
+  }
+
+  if (portals.cave?.[nodeId]) {
+    return { type: "cave", to: portals.cave[nodeId] };
+  }
+
+  if (portals.wrap?.[nodeId]) {
+    return { type: "wrap", to: portals.wrap[nodeId] };
+  }
+
+  return null;
+}
+
 
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -698,9 +755,7 @@ function toggleMute() {
 }
 
 function getCurrentNodeMap() {
-  if (state.scene === "boss") return bossNodes;
-  if (state.scene === "chill") return chillNodes;
-  return nodes;
+  return getSceneConfig().nodes;
 }
 
 function getNodeIdsByTag(nodeMap, tag) {
@@ -863,11 +918,17 @@ function updateDeliveryEvent(dt) {
   }
 
   if (d.state === "fainting") {
-    state.hearts.push({ x: d.x, y: d.y - 70, t: 0 });
-    state.hearts.push({ x: d.x - 18, y: d.y - 48, t: 0.1 });
-    state.hearts.push({ x: d.x + 18, y: d.y - 52, t: 0.2 });
-    showFloatingText(d.x, d.y - 455, "Oh the love!! ❤️", "#fff", 1.4);
-    showFloatingText(d.x, d.y - 380, "I.. can't take it!", "#ff7aa8", 1.4);
+    if (!d.faintGagPlayed) {
+      d.faintGagPlayed = true;
+
+      state.hearts.push({ x: d.x, y: d.y - 70, t: 0 });
+      state.hearts.push({ x: d.x - 18, y: d.y - 48, t: 0.1 });
+      state.hearts.push({ x: d.x + 18, y: d.y - 52, t: 0.2 });
+
+      showFloatingText(d.x, d.y - 455, "Oh the love!! ❤️", "#fff", 1.4);
+      showFloatingText(d.x, d.y - 380, "I.. can't take it!", "#ff7aa8", 1.4);
+    }
+
     if (d.time >= 1.0) {
       d.state = "fading";
       d.time = 0;
@@ -1175,7 +1236,9 @@ function tryConsumeQueuedTurn(actor) {
 }
 
 function isLockedSecretNode(nodeId) {
-  return state.scene === "main" && !state.mainSecretUnlocked && nodeId === "N36";
+  const secret = getSecretRoomConfig();
+  if (!secret) return false;
+  return !isSecretRoomUnlocked() && nodeId === secret.lockedNodeId;
 }
 
 function tryContinueForward(actor) {
@@ -2696,29 +2759,7 @@ function handlePortalTravel(actor) {
   if (!actor || !actor.currentNode) return;
   if (state.cavePreview) return;
 
-  if (isBossScene()) {
-    const destinationId = bossPortals[actor.currentNode];
-    if (!destinationId) return;
-
-    const nodeMap = getCurrentNodeMap();
-    const dest = nodeMap[destinationId];
-    if (!dest) return;
-
-    if (actor === state.player) {
-      beginCavePreview(actor.currentNode, destinationId);
-      return;
-    }
-
-    actor.currentNode = destinationId;
-    actor.previousNode = null;
-    actor.targetNode = null;
-    actor.x = dest.x;
-    actor.y = dest.y;
-    actor.dir = { x: 0, y: 0 };
-    return;
-  }
-
-  const portal = resolveMainPortal(actor.currentNode);
+  const portal = resolveScenePortal(actor.currentNode);
   if (!portal) return;
 
   if (portal.type === "secret" && actor !== state.player) {
@@ -3046,8 +3087,7 @@ function resetScene() {
   state.roundState = "waiting";
   state.catchAnim = null;
 
-  const startNode =
-    state.scene === "chill" ? chillConfig.startNode : HOME_NODE;
+  const startNode = getSceneConfig().startNode || HOME_NODE;
 
   state.player.reset(startNode);
   state.troops.forEach(t => t.reset());
@@ -4096,14 +4136,16 @@ function drawMainEndingOverlay() {
   ctx.restore();
 }
 
-function drawSecretHolePulse(nodeId = "N36") {
-  if (state.scene !== "main") return;
-  if (!state.mainSecretUnlocked) return;
+function drawSecretHolePulse() {
+  const secret = getSecretRoomConfig();
+  if (!secret) return;
+  if (!secret.pulseAfterUnlock) return;
+  if (!isSecretRoomUnlocked()) return;
   if (state.mainEnding) return;
 
-  const node = getCurrentNodeMap()[nodeId];
+  const node = getCurrentNodeMap()[secret.lockedNodeId];
   if (!node) return;
-
+  
   const t = performance.now() * 0.0055;
   const pulse = (Math.sin(t) + 1) * 0.5;
 
@@ -4224,7 +4266,7 @@ if (state.mode === "sceneWin") {
   drawFieldHearts();
   drawActors();
   drawMainSecretMother();
-  drawSecretHolePulse("N36");
+  drawSecretHolePulse();
 
 if (state.scene === "boss") {
   for (const coconut of (state.coconuts || [])) {
