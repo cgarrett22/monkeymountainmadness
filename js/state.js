@@ -40,8 +40,6 @@ export function createInitialState() {
     mainMotherPose: "sit",
     mainMotherTimer: 0,
     pendingHeartThrow: null,
-    //shrubBonusesFound: {},
-    //bananaBunchPopup: null,
     secretRewardsFound: {},
     secretRewardPopups: [],
     bananaTimestamps: [],
@@ -50,6 +48,8 @@ export function createInitialState() {
     deliveryCrate: null,
     deliveryTimer: 18,
     delayedPopups: [],
+    debugLogs: [],
+    showDebugConsole: true,
   };
 }
 

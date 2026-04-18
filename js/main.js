@@ -69,7 +69,7 @@ function spawnDeliveryEvent() {
   const route = DELIVERY_ROUTES.main[0];
   const first = nodes[route[0]];
   if (!first) return;
-
+// debugLog("[DELIVERY] spawned", { scene: state.scene, route: route[0], crateValue: state.deliveryEvent?.crateValue });
   state.deliveryEvent = {
     route,
     routeIndex: 0,
@@ -764,6 +764,28 @@ function getNodeIdsByTag(nodeMap, tag) {
     .map(node => node.id);
 }
 
+function debugLog(message, data = null) {
+  const ts = (performance.now() / 1000).toFixed(2);
+  const line = data == null
+    ? `[${ts}] ${message}`
+    : `[${ts}] ${message} ${safeDebugString(data)}`;
+
+  state.debugLogs.push(line);
+
+  if (state.debugLogs.length > 14) {
+    state.debugLogs.shift();
+  }
+}
+
+function safeDebugString(value) {
+  try {
+    if (typeof value === "string") return value;
+    return JSON.stringify(value);
+  } catch {
+    return "[unserializable]";
+  }
+}
+
 function checkChillHillDebugWin() {
   if (!DEBUG) return;
   if (state.scene !== "chill") return;
@@ -1009,6 +1031,44 @@ function getSceneIntroFocus(nextScene = "main") {
   }
 
   return { x: canvas.width / 2, y: 180 };
+}
+
+function drawDebugConsole() {
+  if (!state.showDebugConsole) return;
+  //if (!state.debugLogs?.length) return;
+
+  const x = 96 +512;
+  const y = canvas.height - 420;
+  const w = canvas.width - 96 - 512;
+  const h = 320;
+
+  ctx.save();
+
+  ctx.fillStyle = "rgba(0,0,0,0.72)";
+  ctx.strokeStyle = "rgba(255,255,255,0.22)";
+  ctx.lineWidth = 2;
+  roundRect(ctx, x, y, w, h, 18);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#ffe066";
+  ctx.font = "bold 26px Arial";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillText("DEBUG CONSOLE", x + 18, y + 14);
+
+  ctx.fillStyle = "#e5e7eb";
+  ctx.font = "20px monospace";
+
+  const lines = state.debugLogs.slice(-12);
+  let lineY = y + 52;
+
+  for (const line of lines) {
+    ctx.fillText(line, x + 18, lineY);
+    lineY += 22;
+  }
+
+  ctx.restore();
 }
 
 function drawPathOverlay(nodeMap) {
@@ -1343,9 +1403,9 @@ state.zookeeper2 = {
 
   resetActors();
   applyLevelConfig();
-  resetScene();
-  playSceneMusic({ sounds, isBossScene: false });
-  state.bananaTimestamps = [];
+    resetScene();
+  debugLog("[AUDIO] playSceneMusic main");
+  playSceneMusic({ sounds, isBossScene: false });  state.bananaTimestamps = [];
   state.mainEnding = null;
   state.mainSecretEntered = false;
   state.mainMotherPose = "sit";
@@ -1479,6 +1539,7 @@ state.zookeeper2 = {
   state.troops = [];
   state.player.hasBanana = false;
 
+  debugLog("[AUDIO] playSceneMusic chill");
   playSceneMusic({
     sounds,
     isBossScene: false
@@ -1497,25 +1558,44 @@ state.zookeeper2 = {
 }
 
 function unlockAudioOnce() {
-  if (inputState.musicStarted) return;
+  debugLog("[AUDIO] unlockAudioOnce called");
+
+  if (inputState.musicStarted) {
+    debugLog("[AUDIO] unlock skipped - already unlocked");
+    return;
+  }
+
   inputState.musicStarted = true;
 
   try {
     const a = sounds.pickup?.cloneNode();
-    if (!a) return;
+    if (!a) {
+      debugLog("[AUDIO] unlock failed - no pickup sound available");
+      return;
+    }
 
     a.volume = 0.001;
     a.playbackRate = 1;
     a.muted = state.isMuted;
 
+    debugLog("[AUDIO] attempting silent unlock");
+
     const p = a.play();
+
     if (p?.then) {
       p.then(() => {
+        debugLog("[AUDIO] silent unlock success");
         a.pause();
         a.currentTime = 0;
-      }).catch(() => {});
+      }).catch(err => {
+        debugLog("[AUDIO] silent unlock failed", err?.message || String(err));
+      });
+    } else {
+      debugLog("[AUDIO] silent unlock play() returned no promise");
     }
-  } catch (_) {}
+  } catch (err) {
+    debugLog("[AUDIO] unlock threw error", err?.message || String(err));
+  }
 }
 
 // ======================================================
@@ -2940,6 +3020,7 @@ function ripenessLabel(age) {
 }
 
 function beginGame() {
+  debugLog("[FLOW] beginGame called", { mode: state.mode, scene: state.scene });
   if (state.mode === "start") {
     state.mode = "levelIntro";
     showLevelIntro(state.level);
@@ -3054,6 +3135,7 @@ state.zookeeper = {
   applyLevelConfig();
   // newRound();
   resetScene();
+  debugLog("[AUDIO] playSceneMusic startGame/main");
   playSceneMusic({
     sounds,
     isBossScene: false
@@ -4291,6 +4373,7 @@ if (state.scene === "boss") {
   drawDeliveryCrate();
   drawHudOverlay();
   drawCavePreview();
+  drawDebugConsole();
   drawOverlay();
 }
 
@@ -4359,7 +4442,7 @@ function drawBossCoconut(coconut) {
 // ======================================================
 canvas.addEventListener("pointerdown", (e) => {
   e.preventDefault();
-
+  debugLog("[INPUT] pointerdown");
   unlockAudioOnce();
 
   if (state.mode === "caveReveal") {
@@ -4398,12 +4481,16 @@ canvas.addEventListener("pointercancel", () => {
 }, { passive: true });
 
 document.addEventListener("keydown", (e) => {
-  if(DEBUG){
-    if (e.key === "c" || e.key === "C") {
-      startChillHill();
-      e.preventDefault();
-    }
-  }
+  // if(DEBUG){
+  //   if (e.key === "c" || e.key === "C") {
+  //     startChillHill();
+  //     e.preventDefault();
+  //   }
+  // }
+if (e.key === "`" || e.key === "~") {
+  state.showDebugConsole = !state.showDebugConsole;
+  e.preventDefault();
+}  
 if (state.mode === "caveReveal") {
   showSceneWin();
   return;
@@ -4513,4 +4600,5 @@ function loop(ts) {
 // ======================================================
 validateGraph();
 state.loadScreenImage = getLevelCardImage(1);
+debugLog("[BOOT] game initialized");
 requestAnimationFrame(loop);
