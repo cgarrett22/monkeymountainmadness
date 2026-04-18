@@ -100,7 +100,16 @@ export function loadSprites() {
   spriteStore.nanaSnatchersSnatched.src = "sprites/nana-snatchers-snatched.webp";  
 
   spriteStore.bananaBunch = new Image();
-  spriteStore.bananaBunch.src = "sprites/banana-bunch.png";  
+  spriteStore.bananaBunch.src = "sprites/banana-bunch.webp";  
+
+  spriteStore.deliveryCrate = new Image();
+  spriteStore.deliveryCrate.src = "sprites/banana-crate.webp";  
+
+  spriteStore.deliveryDude = new Image();
+  spriteStore.deliveryDude.src = "sprites/delivery-dude.webp";  
+
+  spriteStore.deliveryDudeFaints = new Image();
+  spriteStore.deliveryDudeFaints.src = "sprites/delivery-faint.webp";  
 
   return spriteStore;
 }
@@ -129,6 +138,8 @@ export function loadSounds(state) {
 
   sounds.victory = new Audio("assets/victory.mp3");
   sounds.victory.volume = 0.75;
+
+  sounds.eOh = new Audio("assets/e-oh.mp3");
 
   sounds.music = new Audio("assets/jungle_jumpin.mp3");
   sounds.music.loop = true;
@@ -178,4 +189,27 @@ export function playMusicOnce(inputState, sounds) {
   inputState.musicStarted = true;
   sounds.music.currentTime = 0;
   sounds.music.play().catch(() => {});
+}
+
+export function playSfx(sound, volume = null, debugName = "") {
+  if (!sound) return;
+
+  try {
+    const s = sound.cloneNode();
+
+    s.volume = volume != null ? volume : sound.volume;
+    s.playbackRate = sound.playbackRate || 1;
+    s.muted = !!sound.muted;
+    s.preservesPitch = sound.preservesPitch ?? true;
+
+    const p = s.play();
+
+    if (debugName && p?.catch) {
+      p.catch(err => console.log(`${debugName} failed`, err));
+    }
+  } catch (err) {
+    if (debugName) {
+      console.log(`${debugName} clone/play failed`, err);
+    }
+  }
 }

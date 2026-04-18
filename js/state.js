@@ -46,6 +46,9 @@ export function createInitialState() {
     secretRewardPopups: [],
     bananaTimestamps: [],
     heartProgressPopup: null,
+    deliveryEvent: null,
+    deliveryCrate: null,
+    deliveryTimer: 18,
   };
 }
 
