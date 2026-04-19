@@ -4859,7 +4859,7 @@ canvas.addEventListener("pointermove", (e) => {
   const x = (e.clientX - rect.left) * scaleX;
   const y = (e.clientY - rect.top) * scaleY;
 
-  handleSwipeMove(x, y);
+  //handleSwipeMove(x, y);
 }, { passive: false });
 
 function handleSwipeMove(x, y) {
