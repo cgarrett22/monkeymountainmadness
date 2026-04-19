@@ -120,27 +120,23 @@ export function loadSprites() {
 export function loadSounds(state) {
   const sounds = {};
 
-  sounds.pickup = new Audio("assets/pickup.mp3");
-  sounds.pickup.volume = 0.15;
+  // sounds.pickup = new Audio("assets/pickup.mp3");
+  sounds.pickup = createAudioPool("assets/monkey-squeak.mp3", 4, 0.45);
+
+  sounds.score = createAudioPool("assets/score.mp3", 4, 0.20, 2);
+
+  sounds.ahh = createAudioPool("assets/ahh.mp3", 3, 0.10, 4.4);
+  
+  sounds.victory = createAudioPool("assets/victory.mp3", 2, 0.75);
 
   sounds.catch = new Audio("assets/catch.mp3");
   sounds.catch.volume = 0.75;
-
-  sounds.score = new Audio("assets/score.mp3");
-  sounds.score.volume = 0.20;
 
   sounds.step = new Audio("assets/step.mp3");
   sounds.step.volume = 0.25;
 
   sounds.panic = new Audio("assets/panic.mp3");
   sounds.panic.volume = 0.75;
-
-  sounds.ahh = new Audio("assets/ahh.mp3");
-  sounds.ahh.volume = 0.15;
-  sounds.ahh.playbackRate = 3.6;
-
-  sounds.victory = new Audio("assets/victory.mp3");
-  sounds.victory.volume = 0.75;
 
   sounds.eOh = new Audio("assets/e-oh.mp3");
 
@@ -159,8 +155,12 @@ export function loadSounds(state) {
 
 export function applyMuteState(sounds, state) {
   for (const key in sounds) {
-    if (sounds[key]) {
-      sounds[key].muted = state.isMuted;
+    const sound = sounds[key];
+
+    if (sound?.pool) {
+      applyMuteToPool(sound, state.isMuted);
+    } else if (sound) {
+      sound.muted = state.isMuted;
     }
   }
 }
@@ -190,21 +190,60 @@ export function playSfx(sound, volume = null, debugName = "") {
   if (!sound) return;
 
   try {
-    const s = sound.cloneNode();
+    // pooled sound
+    if (sound.pool && sound.pool.length) {
+      const a = sound.pool[sound.index];
+      sound.index = (sound.index + 1) % sound.pool.length;
 
-    s.volume = volume != null ? volume : sound.volume;
-    s.playbackRate = sound.playbackRate || 1;
-    s.muted = !!sound.muted;
-    s.preservesPitch = sound.preservesPitch ?? true;
+      a.pause();
+      a.currentTime = 0;
 
-    const p = s.play();
+      if (volume != null) {
+        a.volume = volume;
+      }
+
+      const p = a.play();
+
+      if (debugName && p?.catch) {
+        p.catch(err => console.log(`${debugName} failed`, err));
+      }
+
+      return;
+    }
+
+    // fallback single audio
+    const p = sound.play();
 
     if (debugName && p?.catch) {
       p.catch(err => console.log(`${debugName} failed`, err));
     }
   } catch (err) {
     if (debugName) {
-      console.log(`${debugName} clone/play failed`, err);
+      console.log(`${debugName} play failed`, err);
     }
+  }
+}
+
+function createAudioPool(src, size, volume = 1, playbackRate = 1) {
+  const pool = [];
+
+  for (let i = 0; i < size; i++) {
+    const a = new Audio(src);
+    a.preload = "auto";
+    a.volume = volume;
+    a.playbackRate = playbackRate;
+    pool.push(a);
+  }
+
+  return {
+    pool,
+    index: 0
+  };
+}
+
+function applyMuteToPool(poolObj, muted) {
+  if (!poolObj?.pool) return;
+  for (const a of poolObj.pool) {
+    a.muted = muted;
   }
 }

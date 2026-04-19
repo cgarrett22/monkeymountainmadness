@@ -1660,6 +1660,33 @@ function unlockAudioOnce() {
 
   if (inputState.musicStarted) {
     // debugLog("[AUDIO] unlock skipped - already unlocked");
+    function warmSoundPool(sound) {
+      if (!sound?.pool) return;
+
+      for (const a of sound.pool) {
+        try {
+          const oldMuted = a.muted;
+          const oldVolume = a.volume;
+
+          a.muted = true;
+          a.volume = 0.001;
+
+          const p = a.play();
+          if (p?.then) {
+            p.then(() => {
+              a.pause();
+              a.currentTime = 0;
+              a.muted = oldMuted;
+              a.volume = oldVolume;
+            }).catch(() => {});
+          }
+        } catch (_) {}
+      }
+    }
+    warmSoundPool(sounds.pickup);
+    warmSoundPool(sounds.score);
+    warmSoundPool(sounds.ahh);
+    warmSoundPool(sounds.victory);
     return;
   }
 
@@ -2014,6 +2041,7 @@ function updatePendingHeartThrow(dt) {
 function canThrowHeart() {
   if (state.mode !== "playing") return false;
   if (!state.zookeeper2) return false;
+  if (state.acceptance >= state.maxHeartsToThrow) return false;
   if ((state.heartCooldown || 0) > 0) return false;
   if (state.pendingHeartThrow) return false;
 
@@ -2191,15 +2219,16 @@ function updateHeartCollection() {
     state.lastHeartPickupTime = performance.now() / 1000;
 
     // sounds.pickup?.play().catch(() => {});
-    playSfx(sounds.pickup);
+    // playSfx(sounds.pickup);
+    playSfx(sounds.ahh);
 
-    if (sounds.ahh) {
-      try {
-        sounds.ahh.pause();
-        sounds.ahh.currentTime = 0;
-        sounds.ahh.play().catch(() => {});
-      } catch (err) {}
-    }
+    // if (sounds.ahh) {
+    //   try {
+    //     sounds.ahh.pause();
+    //     sounds.ahh.currentTime = 0;
+    //     sounds.ahh.play().catch(() => {});
+    //   } catch (err) {}
+    // }
 
     state.hearts.push({
       x: state.player.x,
