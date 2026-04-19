@@ -104,7 +104,7 @@ export class Player {
           forwardX * inputState.queuedDirection.x +
           forwardY * inputState.queuedDirection.y;
 
-        if (dot < -0.82) {
+        if (dot < -0.85) {
           const oldCurrent = this.currentNode;
           this.currentNode = this.targetNode;
           this.targetNode = oldCurrent;
@@ -248,7 +248,7 @@ export class Player {
 
     // Banana Overlay
     if (this.hasBanana) {
-      drawBanana(26, 28, 0.72, state.banana?.age || 0);
+      drawBanana(26, 28, 0.72, 6);
     }
 
     ctx.restore();

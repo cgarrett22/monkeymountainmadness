@@ -12,6 +12,9 @@ import {
   HAT_TRICK_WINDOW,
   HAT_TRICK_COUNT,
   HAT_TRICK_BONUS,
+  HIGH_FIVE_WINDOW,
+  HIGH_FIVE_COUNT,
+  HIGH_FIVE_BONUS,
   SWIPE_THRESHOLD,
   HOME_NODE,
   // BANANA_NODE_IDS,
@@ -54,6 +57,10 @@ state.mode = "start";
 state.cardBackground = spriteStore.gameStartCard;
 
 const muteButton = { ...MUTE_BUTTON };
+
+const MAX_ACTIVE_BANANAS = 3;
+
+const CLOUD_SCROLL_SPEED = 14;
 
 const DELIVERY_ROUTES = {
   main: [
@@ -857,6 +864,19 @@ function showLevelIntro(level, nextScene = "main") {
   };
 }
 
+function updateClouds(dt) {
+  if (state.scene !== "main") return;
+
+  const img = spriteStore.clouds;
+  if (!img || !img.complete || img.naturalWidth <= 0) return;
+
+  state.cloudOffset -= CLOUD_SCROLL_SPEED * dt;
+
+  if (state.cloudOffset <= -canvas.width) {
+    state.cloudOffset += canvas.width;
+  }
+}
+
 function updateBossIntro(dt) {
   if (!state.bossIntro) return;
 
@@ -953,7 +973,7 @@ function updateDeliveryEvent(dt) {
         x: d.x,
         y: d.y + 24,
         value: d.crateValue,
-        ttl: 5.5
+        ttl: 3.5
       };
     }
 
@@ -1077,6 +1097,13 @@ function drawDebugConsole() {
   ctx.textBaseline = "top";
   ctx.fillText("DEBUG CONSOLE", x + 18, y + 14);
 
+  const testBtn = {
+    x: x + w - 222,
+    y: y + 12,
+    w: 62,
+    h: 28
+  };
+
   const copyBtn = {
     x: x + w - 150,
     y: y + 12,
@@ -1091,12 +1118,17 @@ function drawDebugConsole() {
     h: 28
   };
 
+  state.debugTestButton = testBtn;
   state.debugCopyButton = copyBtn;
   state.debugClearButton = clearBtn;
 
   ctx.fillStyle = "rgba(255,255,255,0.12)";
   ctx.strokeStyle = "rgba(255,255,255,0.25)";
   ctx.lineWidth = 1.5;
+
+  roundRect(ctx, testBtn.x, testBtn.y, testBtn.w, testBtn.h, 8);
+  ctx.fill();
+  ctx.stroke();
 
   roundRect(ctx, copyBtn.x, copyBtn.y, copyBtn.w, copyBtn.h, 8);
   ctx.fill();
@@ -1110,6 +1142,7 @@ function drawDebugConsole() {
   ctx.font = "bold 16px Arial";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+  ctx.fillText("TEST", testBtn.x + testBtn.w / 2, testBtn.y + testBtn.h / 2 + 1);
   ctx.fillText("COPY", copyBtn.x + copyBtn.w / 2, copyBtn.y + copyBtn.h / 2 + 1);
   ctx.fillText("CLEAR", clearBtn.x + clearBtn.w / 2, clearBtn.y + clearBtn.h / 2 + 1);
 
@@ -1312,7 +1345,7 @@ function getBestNeighbor(currentNodeId, inputVec, inputName) {
 
   // reject weak or backward-ish matches
   // if (bestScore < 0.55) return null;
-  if (bestScore < 0.38) return null;
+  if (bestScore < 0.36) return null;
 
   return bestNeighbor;
 }
@@ -1410,13 +1443,13 @@ function startMainScene() {
   state.mainMotherPose = "sit";
   state.mainMotherTimer = 0;
   state.particles = [];
-  state.hand = null;
-  state.banana = null;
+  state.hands = [];
+  state.bananas = [];
   state.sceneWinAwarded = false;
   state.bananasCollectedThisScene = 0;
   state.heartThrowTimer = 2.5;
   state.heartsThrown = 0;
-  state.maxHeartsToThrow = 3;
+  state.maxActiveHearts = 1;
   state.heartCooldown = 0;
   state.lastHeartNodeId = null;
 
@@ -1460,13 +1493,13 @@ function startBossMode() {
   state.fieldHearts = [];
   state.flyingHearts = [];
   state.particles = [];
-  state.banana = null;
   state.sceneWinAwarded = false;
   state.bananasCollectedThisScene = 0;
-  state.hand = null;
+  state.hands = [];
+  state.bananas = [];
   state.heartThrowTimer = 2.5;
   state.heartsThrown = 0;
-  state.maxHeartsToThrow = 3;
+  state.maxActiveHearts = 1;
   state.heartCooldown = 0;
   state.lastHeartNodeId = null;
 
@@ -1540,12 +1573,13 @@ function startChillHill() {
   state.fieldHearts = [];
   state.flyingHearts = [];
   state.particles = [];
-  state.hand = null;
-  state.banana = null;state.sceneWinAwarded = false;
+  state.hands = [];
+  state.bananas = [];
+  state.sceneWinAwarded = false;
   state.bananasCollectedThisScene = 0;
   state.heartThrowTimer = 2.5;
   state.heartsThrown = 0;
-  state.maxHeartsToThrow = 3;
+  state.maxActiveHearts = 1;
   state.heartCooldown = 0;
   state.lastHeartNodeId = null;
 
@@ -1590,6 +1624,25 @@ state.zookeeper2 = {
   state.secretRewardPopups = [];
   state.bananaTimestamps = [];
 
+}
+
+function runAudioTest() {
+  debugLog("[AUDIO] test start");
+
+  setTimeout(() => {
+    debugLog("[AUDIO] test pickup");
+    playSfx(sounds.pickup, null, "pickup");
+  }, 100);
+
+  setTimeout(() => {
+    debugLog("[AUDIO] test score");
+    playSfx(sounds.score, null, "score");
+  }, 500);
+
+  setTimeout(() => {
+    debugLog("[AUDIO] test ahh");
+    playSfx(sounds.ahh, null, "ahh");
+  }, 900);
 }
 
 function unlockAudioOnce() {
@@ -1797,6 +1850,7 @@ function drawLevelIntroOverlay() {
 
 // Phase 2: real scene underneath
 drawBackground();
+drawCloudLayer();
 drawZookeeper();
 drawZookeeper2();
 drawBananaState();
@@ -1884,14 +1938,37 @@ function throwHeartFromZookeeper(zookeeper, targetNodeId) {
   });
 }
 
+function updateFieldHeartLifetime(dt) {
+  if (!state.fieldHearts?.length) return;
+
+  for (let i = state.fieldHearts.length - 1; i >= 0; i--) {
+    const heart = state.fieldHearts[i];
+    if (heart.collected) continue;
+
+    heart.age = (heart.age || 0) + dt;
+
+    if (heart.age >= (heart.life || 6.5)) {
+      state.fieldHearts.splice(i, 1);
+    }
+  }
+}
+
 function getKeeperThrowOrigin(keeper) {
   const sceneKey = getSceneKey();
   const throwerKey = keeper === state.zookeeper2 ? "z2" : "z1";
   const box = ZOOKEEPER_LAYOUT[sceneKey][throwerKey];
 
+  let offsetX = 0;
+  let offsetY = 0;
+
+  if (keeper === state.zookeeper2) {
+    offsetX = -56;
+    offsetY = -30;
+  }
+
   return {
-    x: box.x + box.w * 0.5,
-    y: box.y + box.h * 0.45 + rand(-10, 10)
+    x: box.x + box.w * 0.5 + offsetX,
+    y: box.y + box.h * 0.45 + offsetY + rand(-10, 10)
   };
 }
 
@@ -1909,7 +1986,7 @@ function triggerHeartThrow(z, targetNodeId) {
   state.pendingHeartThrow = {
     keeper: z,
     targetNodeId,
-    delay: 0.65
+    delay: 0.75
   };
 }
 
@@ -1927,12 +2004,10 @@ function updatePendingHeartThrow(dt) {
 function canThrowHeart() {
   if (state.mode !== "playing") return false;
   if (!state.zookeeper2) return false;
-  if (state.heartsThrown >= state.maxHeartsToThrow) return false;
   if ((state.heartCooldown || 0) > 0) return false;
   if (state.pendingHeartThrow) return false;
-  if (hasFlyingHeart()) return false;
-  if (hasActiveGroundHeart()) return false;
-  return true;
+
+  return getActiveHeartCount() < state.maxActiveHearts;
 }
 
 function getHeartTargetCandidates() {
@@ -2001,7 +2076,9 @@ function updateFlyingHearts(dt) {
       if (!getUncollectedHeartAtNode(h.targetNodeId) && !hasActiveGroundHeart()) {
         state.fieldHearts.push({
           nodeId: h.targetNodeId,
-          collected: false
+          collected: false,
+          age: 0,
+          life: 6.5
         });
       }
     }
@@ -2018,7 +2095,7 @@ function drawFlyingHearts() {
     ctx.save();
     ctx.translate(h.x, h.y);
     ctx.scale(pop, pop);
-    ctx.font = "46px Arial";
+    ctx.font = "54px Arial";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText("❤️", 0, 0);
@@ -2037,10 +2114,51 @@ function drawFieldHearts() {
     const node = nodeMap[heart.nodeId];
     if (!node) continue;
 
+    const age = heart.age || 0;
+    const life = heart.life || 6.5;
+
+    const warningStart = life * 0.68;
+    const fadeStart = life * 0.84;
+
+    let alpha = 1;
+    if (age > fadeStart) {
+      alpha = Math.max(0, 1 - (age - fadeStart) / (life - fadeStart));
+    }
+
+    let pulseAmount = 0.06;
+    let pulseSpeed = 0.008;
+
+    if (age > warningStart && age <= fadeStart) {
+      pulseAmount = 0.28;
+      pulseSpeed = 0.020;
+    } else if (age > fadeStart) {
+      pulseAmount = 0.34;
+      pulseSpeed = 0.028;
+    }
+
+    const pulse = 1 + Math.sin(performance.now() * pulseSpeed) * pulseAmount;
+
     ctx.save();
-    ctx.font = "48px Arial";
+    ctx.globalAlpha = alpha;
+    ctx.translate(node.x, node.y - 24);
+    ctx.scale(pulse, pulse);
+
+    if (age > warningStart) {
+      const glow = ctx.createRadialGradient(0, 0, 4, 0, 0, 34);
+      glow.addColorStop(0, "rgba(255,255,255,0.45)");
+      glow.addColorStop(0.45, "rgba(255,120,170,0.22)");
+      glow.addColorStop(1, "rgba(255,120,170,0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(0, 0, 34, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.font = "60px Arial";
     ctx.textAlign = "center";
-    ctx.fillText("❤️", node.x, node.y - 24);
+    ctx.textBaseline = "middle";
+    ctx.fillText("❤️", 0, 0);
+
     ctx.restore();
   }
 }
@@ -2345,6 +2463,21 @@ function drawBackground() {
     ctx.fillStyle = "#273b59";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
+}
+
+function drawCloudLayer() {
+  if (state.scene !== "main") return;
+
+  const img = spriteStore.clouds;
+  if (!img || !img.complete || img.naturalWidth <= 0) return;
+
+  const y = 0;
+  const w = canvas.width;
+  const h = 225;
+  const x = state.cloudOffset || 0;
+
+  ctx.drawImage(img, x, y, w, h);
+  ctx.drawImage(img, x + w, y, w, h);
 }
 
 function drawAcceptanceHearts() {
@@ -2759,8 +2892,12 @@ function drawNodeHighlights() {
 }
 
 function drawBananaState() {
-  if (!state.banana || state.player?.hasBanana) return;
-  drawBanana(state.banana.x, state.banana.y, state.banana.size || 1, state.banana.age || 0);
+  if (!state.bananas?.length) return;
+
+  for (const banana of state.bananas) {
+    if (!banana || banana.collected) continue;
+    drawBanana(banana.x, banana.y, banana.size || 1, banana.age || 0);
+  }
 }
 
 function drawZookeeper() {
@@ -3137,16 +3274,15 @@ function startGame() {
   state.levelUp = null;
   state.levelIntro = null;
   state.bossIntro = null;
-  state.hand = null;
-  state.banana = null;
+  state.hands = [];
+  state.bananas = [];
   state.bananaTimestamps = [];
-state.zookeeper = {
-  anim: "idle",
-  frame: 0,
-  time: 0,
-  didThrowSound: false
-};
-
+  state.zookeeper = {
+    anim: "idle",
+    frame: 0,
+    time: 0,
+    didThrowSound: false
+  };
   state.zookeeper2 = {
     anim: "idle",
     frame: 0,
@@ -3157,7 +3293,7 @@ state.zookeeper = {
   };
   state.heartThrowTimer = 2.5;
   state.heartsThrown = 0;
-  state.maxHeartsToThrow = 3;
+  state.maxActiveHearts = 1;
   state.heartCooldown = 0;
   state.lastHeartNodeId = null;
 
@@ -3165,7 +3301,7 @@ state.zookeeper = {
     state.zookeeper.action = "normal";
     state.zookeeper.actionTimer = 0;
   }
-
+  refillBananas();
   resetActors();
   applyLevelConfig();
   // newRound();
@@ -3213,6 +3349,7 @@ function resetScene() {
     state.fieldHearts = [];
     state.acceptance = 0;
   }
+    refillBananas();
     tossBanana();
 }
 
@@ -3226,16 +3363,20 @@ function getZookeeperThrowOrigin() {
 }
 
 function spawnNextBanana() {
-  state.roundState = "waiting";
-  state.catchAnim = null;
-  state.banana = null;
-  state.hand = null;
-  tossBanana();
+  refillBananas();
 }
 
 function tossBanana() {
   const nodeMap = getCurrentNodeMap();
-  const targetNodeId = choose(getBananaNodeIds());
+
+  const occupiedNodeIds = new Set(
+    (state.bananas || []).map(b => b.nodeId)
+  );
+
+  const candidateNodeIds = getBananaNodeIds().filter(id => !occupiedNodeIds.has(id));
+  if (!candidateNodeIds.length) return;
+
+  const targetNodeId = choose(candidateNodeIds);
   const to = nodeMap[targetNodeId];
 
   if (!to) {
@@ -3243,26 +3384,27 @@ function tossBanana() {
     return;
   }
 
-if (!state.zookeeper) {
-  state.zookeeper = {
-    anim: "idle",
-    frame: 0,
-    time: 0,
-    didThrowSound: false
-  };
-}
+  if (!state.zookeeper) {
+    state.zookeeper = {
+      anim: "idle",
+      frame: 0,
+      time: 0,
+      didThrowSound: false
+    };
+  }
 
-state.zookeeper.anim = "throw";
-state.zookeeper.frame = 0;
-state.zookeeper.time = 0;
-state.zookeeper.didThrowSound = false;
+  state.zookeeper.anim = "throw";
+  state.zookeeper.frame = 0;
+  state.zookeeper.time = 0;
+  state.zookeeper.didThrowSound = false;
 
-  // existing banana/hand setup...
+  const throwFrom = getZookeeperThrowOrigin();
 
-  state.banana = {
+  const banana = {
+    id: `banana_${performance.now()}_${Math.random().toString(36).slice(2, 7)}`,
     nodeId: targetNodeId,
-    x: to.x,
-    y: to.y,
+    x: throwFrom.x,
+    y: throwFrom.y,
     targetX: to.x,
     targetY: to.y,
     landed: false,
@@ -3270,15 +3412,24 @@ state.zookeeper.didThrowSound = false;
     size: 1,
     collected: false
   };
-  const throwFrom = getZookeeperThrowOrigin();
 
-  state.hand = {
+  const hand = {
+    id: banana.id,
     active: true,
     t: 0,
     duration: 0.9,
     from: throwFrom,
     to: { x: to.x, y: to.y }
   };
+
+  state.bananas.push(banana);
+  state.hands.push(hand);
+}
+
+function refillBananas() {
+  while ((state.bananas?.length || 0) + (state.hands?.length || 0) < MAX_ACTIVE_BANANAS) {
+    tossBanana();
+  }
 }
 
 function triggerZookeeper2(type = "react") {
@@ -3373,84 +3524,133 @@ function updateHeartThrowing(dt) {
 
   triggerHeartThrow(state.zookeeper2, targetNodeId);
 
-  state.heartsThrown += 1;
   state.heartThrowTimer = 4.0;
 }
 
-function updateHand(dt) {
-  if (!state.hand?.active || !state.banana) return;
+function getActiveHeartCount() {
+  const flying = state.flyingHearts?.length || 0;
+  const grounded = (state.fieldHearts || []).filter(h => !h.collected).length;
+  return flying + grounded;
+}
 
-  state.hand.t += dt / state.hand.duration;
-  const t = clamp(state.hand.t, 0, 1);
+function updateHands(dt) {
+  if (!state.hands?.length || !state.bananas?.length) return;
 
-  const p0 = state.hand.from;
-  const p2 = state.hand.to;
-  const peak = {
-    x: (p0.x + p2.x) / 2 - 40,
-    y: Math.min(p0.y, p2.y) - 140 - rand(0, 20)
-  };
+  for (let i = state.hands.length - 1; i >= 0; i--) {
+    const hand = state.hands[i];
+    const banana = state.bananas.find(b => b.id === hand.id);
 
-  const inv = 1 - t;
-  state.banana.x = inv * inv * p0.x + 2 * inv * t * peak.x + t * t * p2.x;
-  state.banana.y = inv * inv * p0.y + 2 * inv * t * peak.y + t * t * p2.y;
+    if (!banana) {
+      state.hands.splice(i, 1);
+      continue;
+    }
 
-  if (t >= 1) {
-    state.hand.active = false;
-    state.banana.landed = true;
-    state.banana.x = state.banana.targetX;
-    state.banana.y = state.banana.targetY;
-    state.particles.push({ kind: "bounce", x: state.banana.x, y: state.banana.y + 12, t: 0 });
+    hand.t += dt / hand.duration;
+    const t = clamp(hand.t, 0, 1);
+
+    const p0 = hand.from;
+    const p2 = hand.to;
+    const peak = {
+      x: (p0.x + p2.x) / 2 - 40,
+      y: Math.min(p0.y, p2.y) - 140 - rand(0, 20)
+    };
+
+    const inv = 1 - t;
+    banana.x = inv * inv * p0.x + 2 * inv * t * peak.x + t * t * p2.x;
+    banana.y = inv * inv * p0.y + 2 * inv * t * peak.y + t * t * p2.y;
+
+    if (t >= 1) {
+      hand.active = false;
+      banana.landed = true;
+      banana.x = banana.targetX;
+      banana.y = banana.targetY;
+
+      state.particles.push({
+        kind: "bounce",
+        x: banana.x,
+        y: banana.y + 12,
+        t: 0
+      });
+
+      state.hands.splice(i, 1);
+    }
   }
 }
 
-function updateBanana(dt) {
-  if (!state.banana || !state.banana.landed || !state.player) return;
+function updateBananas(dt) {
+  if (!state.bananas?.length || !state.player) return;
 
-  state.banana.age += dt;
-  state.banana.size = 1 + Math.sin(state.banana.age * 5) * 0.08;
+  for (let i = state.bananas.length - 1; i >= 0; i--) {
+    const banana = state.bananas[i];
 
-  if (distance(state.player, state.banana) >= 30) return;
+    if (!banana.landed) continue;
 
-  const now = performance.now() / 1000;
+    banana.age += dt;
+    banana.size = 1 + Math.sin(banana.age * 5) * 0.08;
 
-  if (!Array.isArray(state.bananaTimestamps)) {
-    state.bananaTimestamps = [];
+    if (distance(state.player, banana) >= 30) continue;
+
+    const now = performance.now() / 1000;
+
+    if (!Array.isArray(state.bananaTimestamps)) {
+      state.bananaTimestamps = [];
+    }
+
+    state.bananaTimestamps.push(now);
+    state.bananaTimestamps = state.bananaTimestamps.filter(
+      t => now - t <= HIGH_FIVE_WINDOW
+    );
+
+    const highFiveCount = state.bananaTimestamps.filter(
+      t => now - t <= HIGH_FIVE_WINDOW
+    ).length;
+
+    const hatTrickCount = state.bananaTimestamps.filter(
+      t => now - t <= HAT_TRICK_WINDOW
+    ).length;
+
+    if (highFiveCount >= HIGH_FIVE_COUNT) {
+      onHighFive();
+      state.bananaTimestamps = [];
+    } else if (hatTrickCount >= HAT_TRICK_COUNT) {
+      onHatTrick();
+      state.bananaTimestamps = [];
+    }
+    const ripeness = ripenessLabel(banana.age);
+    const value = ripeness.points;
+
+    state.score += value;
+    state.bananasCollectedThisScene = (state.bananasCollectedThisScene || 0) + value;
+
+    showBananaPickupPopup(
+      banana.x,
+      banana.y,
+      banana.age
+    );
+
+    playSfx(sounds.pickup);
+    triggerZookeeper2("react");
+
+    state.player.hasBanana = true;
+    state.roundState = "chase";
+
+    banana.collected = true;
+    state.bananas.splice(i, 1);
+
+    refillBananas();
+    break;
   }
+}
 
-  state.bananaTimestamps.push(now);
-  state.bananaTimestamps = state.bananaTimestamps.filter(
-    t => now - t <= HAT_TRICK_WINDOW
+function onHighFive() {
+  state.score += HIGH_FIVE_BONUS;
+  showFloatingText(
+    state.player.x,
+    state.player.y - 70,
+    `🖐️ HIGH FIVE! +${HIGH_FIVE_BONUS} 🍌`,
+    "#7df9ff",
+    2.2
   );
-
-  if (state.bananaTimestamps.length >= HAT_TRICK_COUNT) {
-    onHatTrick();
-    state.bananaTimestamps = [];
-  }
-
-  const ripeness = ripenessLabel(state.banana.age);
-  const value = ripeness.points;
-
-  state.score += value;
-  state.bananasCollectedThisScene = (state.bananasCollectedThisScene || 0) + value;
-
-  showBananaPickupPopup(
-    state.banana.x,
-    state.banana.y,
-    state.banana.age
-  );
-
-  // sounds.pickup?.play().catch(() => {});
-  playSfx(sounds.pickup);
-  triggerZookeeper2("react");
-
-  state.player.hasBanana = true;
-  state.roundState = "chase";
-
-  state.banana.collected = true;
-  state.banana = null;
-  state.hand = null;
-
-  tossBanana();
 }
 
 function onHatTrick() {
@@ -3749,7 +3949,11 @@ function updatePlayer(dt) {
   checkSecretReward();
   updateHeartCollection();
 
-  if (state.player.movedThisRound && state.roundState === "waiting" && state.banana?.landed) {
+  if (
+    state.player.movedThisRound &&
+    state.roundState === "waiting" &&
+    (state.bananas || []).some(b => b.landed)
+  ) {
     state.roundState = "chase";
   }
 
@@ -3867,10 +4071,11 @@ function respawnPlayerHome() {
   queuedDirectionName = null;
 
   state.catchAnim = null;
-  state.hand = null;
-  state.banana = null;
+  state.hands = [];
+  state.bananas = [];
 
   state.player.reset(HOME_NODE);
+  refillBananas();
   spawnNextBanana();
 }
 
@@ -3957,8 +4162,8 @@ function updateBossCoconuts(dt) {
 
 function updateBossMode(dt) {
   if (!state.boss) return;
-  updateHand(dt);
-  updateBanana(dt);
+  updateHands(dt);
+  updateBananas(dt);
   updateZookeeper(dt);
   updateZookeeper2(dt);
   updatePlayer(dt);
@@ -4095,8 +4300,8 @@ function update(dt) {
   }
 
   if (state.scene === "chill") {
-    updateHand(dt);
-    updateBanana(dt);
+    updateHands(dt);
+    updateBananas(dt);
 
     if (!state.catchAnim) {
       updatePlayer(dt);
@@ -4114,15 +4319,16 @@ function update(dt) {
     // updateKeeperAction(state.zookeeper2, dt);
     updatePendingHeartThrow(dt);
     updateFlyingHearts(dt);
+    updateFieldHeartLifetime(dt);
     updateCatch(dt);
     updateParticles(dt);
 
     checkChillHillDebugWin();
     return;
   }
-
-  updateHand(dt);
-  updateBanana(dt);
+  updateClouds(dt);
+  updateHands(dt);
+  updateBananas(dt);
 
   state.deliveryTimer -= dt;
   if (state.deliveryTimer <= 0 && !state.deliveryEvent && !state.deliveryCrate) {
@@ -4168,6 +4374,7 @@ function update(dt) {
   updateHeartThrowing(dt);
   updatePendingHeartThrow(dt);
   updateFlyingHearts(dt);
+  updateFieldHeartLifetime(dt);
   updateCatch(dt);
   updateParticles(dt);
 }
@@ -4376,6 +4583,7 @@ if (state.mode === "sceneWin") {
   return;
 }
   drawBackground();
+  drawCloudLayer();
   drawZookeeper();
   drawZookeeper2();
   drawBananaState();
@@ -4500,16 +4708,20 @@ canvas.addEventListener("pointerdown", (e) => {
     return;
   }
 
-  if (state.showDebugConsole && state.debugCopyButton && pointInRect(x, y, state.debugCopyButton)) {
-    copyDebugLogsToClipboard();
-    return;
-  }
+if (state.showDebugConsole && state.debugTestButton && pointInRect(x, y, state.debugTestButton)) {
+  runAudioTest();
+  return;
+}
 
-  if (state.showDebugConsole && state.debugClearButton && pointInRect(x, y, state.debugClearButton)) {
-    clearDebugLogs();
-    return;
-  }
+if (state.showDebugConsole && state.debugCopyButton && pointInRect(x, y, state.debugCopyButton)) {
+  copyDebugLogsToClipboard();
+  return;
+}
 
+if (state.showDebugConsole && state.debugClearButton && pointInRect(x, y, state.debugClearButton)) {
+  clearDebugLogs();
+  return;
+}
   touchStart = { x, y };
   swipeHandled = false;
 }, { passive: false });

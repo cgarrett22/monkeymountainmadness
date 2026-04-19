@@ -14,14 +14,15 @@ export function createInitialState() {
     nextAcceptanceUnlock: 3,
     player: null,
     troops: [],
-    banana: null,
-    hand: null,
+    bananas: [],
+    hands: [],
     hearts: [],
     particles: [],
     catchAnim: null,
     zookeeper: { anim: "idle", frame: 0, time: 0, didThrowSound: false },
     zookeeper2: { anim: "idle", frame: 0, time: 0, timer: 3.5 },
     scene: "main",
+    cloudOffset: 0,
     boss: null,
     bossIntro: null,
     roundState: "waiting",
@@ -52,6 +53,7 @@ export function createInitialState() {
     showDebugConsole: true,
     debugCopyButton: null,
     debugClearButton: null,
+    debugTestButton: null,
   };
 }
 
