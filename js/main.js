@@ -1643,6 +1643,11 @@ function runAudioTest() {
     debugLog("[AUDIO] test ahh");
     playSfx(sounds.ahh, null, "ahh");
   }, 900);
+
+  setTimeout(() => {
+    debugLog("[AUDIO] test victory");
+    playSfx(sounds.victory, null, "victory");
+  }, 1300);
 }
 
 function unlockAudioOnce() {
@@ -3059,10 +3064,8 @@ function handlePortalTravel(actor) {
       state.catchAnim = null;
   
       stopAllMusic(sounds);
-      if (sounds.victory) {
-        sounds.victory.currentTime = 0;
-        sounds.victory.play().catch(() => {});
-      }
+      debugLog("[AUDIO] victory attempt");
+      playSfx(sounds.victory, null, "victory");
     }
     return;
   }
