@@ -4863,7 +4863,7 @@ canvas.addEventListener("pointermove", (e) => {
 }, { passive: false });
 
 function handleSwipeMove(x, y) {
-  if (!touchStart || swipeHandled) return;
+  if (!touchStart) return;
 
   const dx = x - touchStart.x;
   const dy = y - touchStart.y;
@@ -4886,8 +4886,7 @@ function handleSwipeMove(x, y) {
     }
   }
 
-touchStart = { x, y };
-swipeHandled = false;
+  touchStart = { x, y };
 }
 
   canvas.addEventListener("touchstart", (e) => {
