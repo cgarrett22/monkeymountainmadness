@@ -4886,7 +4886,8 @@ function handleSwipeMove(x, y) {
     }
   }
 
-  swipeHandled = true;
+touchStart = { x, y };
+swipeHandled = false;
 }
 
   canvas.addEventListener("touchstart", (e) => {
