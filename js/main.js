@@ -968,8 +968,8 @@ function updateDeliveryEvent(dt) {
       state.hearts.push({ x: d.x - 18, y: d.y - 48, t: 0.1 });
       state.hearts.push({ x: d.x + 18, y: d.y - 52, t: 0.2 });
 
-      showFloatingText(d.x, d.y - 455, "Oh the love!! ❤️", "#fff", 1.4);
-      showFloatingText(d.x, d.y - 380, "I.. can't take it!", "#ff7aa8", 1.4);
+      showFloatingText(d.x, d.y - 455, "Oh the love!! ❤️", "#fff", 3.4);
+      showFloatingText(d.x, d.y - 380, "I.. can't take it!", "#ff7aa8", 3.4);
     }
 
     if (d.time >= 1.0) {
@@ -1003,7 +1003,7 @@ function updateDeliveryCrate(dt) {
     state.bananasCollectedThisScene = (state.bananasCollectedThisScene || 0) + c.value;
 
 state.delayedPopups.push({
-  delay: 0.45,
+  delay: 1.15,
   popup: {
     nodeId: "delivery",
     type: "bananaBunch",
@@ -1011,7 +1011,7 @@ state.delayedPopups.push({
     x: c.x,
     y: c.y - 15,
     time: 0,
-    duration: 2.2
+    duration: 3.2
   }
 });
     playSfx(sounds.score);
