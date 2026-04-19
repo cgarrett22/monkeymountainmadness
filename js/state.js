@@ -50,7 +50,7 @@ export function createInitialState() {
     deliveryTimer: 18,
     delayedPopups: [],
     debugLogs: [],
-    showDebugConsole: true,
+    showDebugConsole: false,
     debugCopyButton: null,
     debugClearButton: null,
     debugTestButton: null,

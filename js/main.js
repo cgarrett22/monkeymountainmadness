@@ -1074,6 +1074,11 @@ function getSceneIntroFocus(nextScene = "main") {
   return { x: canvas.width / 2, y: 180 };
 }
 
+function toggleDebugConsole() {
+  state.showDebugConsole = !state.showDebugConsole;
+  debugLog(state.showDebugConsole ? "[DEBUG] console shown" : "[DEBUG] console hidden");
+}
+
 function drawDebugConsole() {
   if (!state.showDebugConsole) return;
 
@@ -4686,6 +4691,8 @@ function drawBossCoconut(coconut) {
 // ======================================================
 // INPUT
 // ======================================================
+let threeFingerGestureArmed = false;
+
 canvas.addEventListener("pointerdown", (e) => {
   e.preventDefault();
   unlockAudioOnce();
@@ -4834,6 +4841,26 @@ function handleSwipeMove(x, y) {
 
   swipeHandled = true;
 }
+
+  canvas.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 3 && !threeFingerGestureArmed) {
+      e.preventDefault();
+      threeFingerGestureArmed = true;
+      toggleDebugConsole();
+    }
+  }, { passive: false });
+
+  canvas.addEventListener("touchend", () => {
+    if (threeFingerGestureArmed) {
+      threeFingerGestureArmed = false;
+    }
+  }, { passive: true });
+
+  canvas.addEventListener("touchcancel", () => {
+    if (threeFingerGestureArmed) {
+      threeFingerGestureArmed = false;
+    }
+  }, { passive: true });
 // ======================================================
 // LOOP
 // ======================================================
