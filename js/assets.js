@@ -121,14 +121,10 @@ export function loadSounds(state) {
   const sounds = {};
 
   // sounds.pickup = new Audio("assets/pickup.mp3");
-  sounds.pickup = createAudioPool("assets/monkey-squeak.mp3", 4, 0.45);
-
-  sounds.score = createAudioPool("assets/score.mp3", 4, 0.20, 2);
-
-  sounds.ahh = createAudioPool("assets/ahh.mp3", 3, 0.10, 4.4);
-  
-  sounds.victory = createAudioPool("assets/victory.mp3", 2, 0.75);
-
+sounds.pickup = createAudioPool("assets/monkey-squeak.mp3", 2, 0.45);
+sounds.score = createAudioPool("assets/score.mp3", 2, 0.20, 2);
+sounds.ahh = createAudioPool("assets/ahh.mp3", 2, 0.10, 4.4);
+sounds.victory = createAudioPool("assets/victory.mp3", 2, 0.75);
   sounds.catch = new Audio("assets/catch.mp3");
   sounds.catch.volume = 0.75;
 

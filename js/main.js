@@ -1632,27 +1632,45 @@ state.zookeeper2 = {
 }
 
 function runAudioTest() {
+  cancelAudioTest();
+
+  state.audioTestActive = true;
+  state.audioTestTimers = [];
+
   debugLog("[AUDIO] test start");
 
-  setTimeout(() => {
+  state.audioTestTimers.push(setTimeout(() => {
     debugLog("[AUDIO] test pickup");
     playSfx(sounds.pickup, null, "pickup");
-  }, 100);
+  }, 100));
 
-  setTimeout(() => {
+  state.audioTestTimers.push(setTimeout(() => {
     debugLog("[AUDIO] test score");
     playSfx(sounds.score, null, "score");
-  }, 500);
+  }, 500));
 
-  setTimeout(() => {
+  state.audioTestTimers.push(setTimeout(() => {
     debugLog("[AUDIO] test ahh");
     playSfx(sounds.ahh, null, "ahh");
-  }, 900);
+  }, 900));
 
-  setTimeout(() => {
+  state.audioTestTimers.push(setTimeout(() => {
     debugLog("[AUDIO] test victory");
     playSfx(sounds.victory, null, "victory");
-  }, 1300);
+    state.audioTestActive = false;
+    state.audioTestTimers = [];
+  }, 1300));
+}
+
+function cancelAudioTest() {
+  if (state.audioTestTimers?.length) {
+    for (const id of state.audioTestTimers) {
+      clearTimeout(id);
+    }
+  }
+
+  state.audioTestTimers = [];
+  state.audioTestActive = false;
 }
 
 function unlockAudioOnce() {

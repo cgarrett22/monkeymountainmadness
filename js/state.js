@@ -54,6 +54,8 @@ export function createInitialState() {
     debugCopyButton: null,
     debugClearButton: null,
     debugTestButton: null,
+    audioTestTimers: [],
+    audioTestActive: false,
   };
 }
 
