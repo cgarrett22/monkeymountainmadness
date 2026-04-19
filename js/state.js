@@ -50,6 +50,8 @@ export function createInitialState() {
     delayedPopups: [],
     debugLogs: [],
     showDebugConsole: true,
+    debugCopyButton: null,
+    debugClearButton: null,
   };
 }
 

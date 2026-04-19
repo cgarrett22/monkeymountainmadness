@@ -104,7 +104,7 @@ export class Player {
           forwardX * inputState.queuedDirection.x +
           forwardY * inputState.queuedDirection.y;
 
-        if (dot < -0.65) {
+        if (dot < -0.82) {
           const oldCurrent = this.currentNode;
           this.currentNode = this.targetNode;
           this.targetNode = oldCurrent;

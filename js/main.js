@@ -178,9 +178,9 @@ const nodes = {
   N38: { id: "N38", x: 933, y: 1052, neighbors: ["N37"], tags: [] },
   N39: { id: "N39", x: 294, y: 1450, neighbors: ["N40", "N33", "N15"], tags: [] },
   N40: { id: "N40", x: 293, y: 1251, neighbors: ["N39"], tags: [] },
-  N41: { id: "N41", x: 385, y: 740, neighbors: ["N42", "N7"], inputMap: { up: "N7", down: "N42" }, tags: [] },
-  N42: { id: "N42", x: 374, y: 830, neighbors: ["N41", "N43"], tags: [] },
-  N43: { id: "N43", x: 484, y: 887, neighbors: ["N42", "N18"], inputMap: { up: "N42", down: "N18" }, tags: [] }
+  N41: { id: "N41", x: 385, y: 740, neighbors: ["N42", "N7"], inputMap: { up: "N7", down: "N42" }, allowedInputs: ["up", "down"], tags: [] },
+  N42: { id: "N42", x: 374, y: 830, neighbors: ["N41", "N43"], inputMap: { up: "N41", down: "N43" }, allowedInputs: ["up", "down"], tags: [] },
+  N43: { id: "N43", x: 484, y: 887, neighbors: ["N42", "N18"], inputMap: { up: "N42", down: "N18" }, allowedInputs: ["up", "down"], tags: [] }
 };
 
 const SECRET_REWARDS = {
@@ -786,6 +786,27 @@ function safeDebugString(value) {
   }
 }
 
+async function copyDebugLogsToClipboard() {
+  const text = (state.debugLogs || []).join("\n");
+
+  if (!text.trim()) {
+    debugLog("[DEBUG] copy skipped - no logs");
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(text);
+    debugLog("[DEBUG] logs copied to clipboard");
+  } catch (err) {
+    debugLog("[DEBUG] clipboard copy failed", err?.message || String(err));
+  }
+}
+
+function clearDebugLogs() {
+  state.debugLogs = [];
+  debugLog("[DEBUG] logs cleared");
+}
+
 function checkChillHillDebugWin() {
   if (!DEBUG) return;
   if (state.scene !== "chill") return;
@@ -1035,11 +1056,10 @@ function getSceneIntroFocus(nextScene = "main") {
 
 function drawDebugConsole() {
   if (!state.showDebugConsole) return;
-  //if (!state.debugLogs?.length) return;
 
-  const x = 96 +512;
+  const x = canvas.width / 2 + 48;
   const y = canvas.height - 420;
-  const w = canvas.width - 96 - 512;
+  const w = canvas.width / 2 - 48;
   const h = 320;
 
   ctx.save();
@@ -1057,46 +1077,53 @@ function drawDebugConsole() {
   ctx.textBaseline = "top";
   ctx.fillText("DEBUG CONSOLE", x + 18, y + 14);
 
+  const copyBtn = {
+    x: x + w - 150,
+    y: y + 12,
+    w: 62,
+    h: 28
+  };
+
+  const clearBtn = {
+    x: x + w - 78,
+    y: y + 12,
+    w: 62,
+    h: 28
+  };
+
+  state.debugCopyButton = copyBtn;
+  state.debugClearButton = clearBtn;
+
+  ctx.fillStyle = "rgba(255,255,255,0.12)";
+  ctx.strokeStyle = "rgba(255,255,255,0.25)";
+  ctx.lineWidth = 1.5;
+
+  roundRect(ctx, copyBtn.x, copyBtn.y, copyBtn.w, copyBtn.h, 8);
+  ctx.fill();
+  ctx.stroke();
+
+  roundRect(ctx, clearBtn.x, clearBtn.y, clearBtn.w, clearBtn.h, 8);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 16px Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("COPY", copyBtn.x + copyBtn.w / 2, copyBtn.y + copyBtn.h / 2 + 1);
+  ctx.fillText("CLEAR", clearBtn.x + clearBtn.w / 2, clearBtn.y + clearBtn.h / 2 + 1);
+
   ctx.fillStyle = "#e5e7eb";
   ctx.font = "20px monospace";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
 
-  const lines = state.debugLogs.slice(-12);
+  const lines = (state.debugLogs || []).slice(-11);
   let lineY = y + 52;
 
   for (const line of lines) {
     ctx.fillText(line, x + 18, lineY);
     lineY += 22;
-  }
-
-  ctx.restore();
-}
-
-function drawPathOverlay(nodeMap) {
-  if (!NODE_DEBUG) return;
-
-  ctx.save();
-  ctx.strokeStyle = "rgba(255, 80, 80, 0.9)";
-  ctx.lineWidth = 4;
-
-  const drawn = new Set();
-
-  for (const id in nodeMap) {
-    const node = nodeMap[id];
-
-    for (const neighborId of node.neighbors) {
-      const neighbor = nodeMap[neighborId];
-      if (!neighbor) continue;
-
-      const key = [id, neighborId].sort().join("|");
-      if (drawn.has(key)) continue;
-
-      ctx.beginPath();
-      ctx.moveTo(node.x, node.y);
-      ctx.lineTo(neighbor.x, neighbor.y);
-      ctx.stroke();
-
-      drawn.add(key);
-    }
   }
 
   ctx.restore();
@@ -1244,6 +1271,14 @@ function getBestNeighbor(currentNodeId, inputVec, inputName) {
   const current = nodeMap[currentNodeId];
   if (!current) return null;
 
+  if (
+    inputName &&
+    current.allowedInputs &&
+    !current.allowedInputs.includes(inputName)
+  ) {
+    return null;
+  }
+
   if (inputName && current.inputMap && current.inputMap[inputName]) {
     const forced = current.inputMap[inputName];
     if (current.neighbors.includes(forced)) {
@@ -1277,7 +1312,7 @@ function getBestNeighbor(currentNodeId, inputVec, inputName) {
 
   // reject weak or backward-ish matches
   // if (bestScore < 0.55) return null;
-  if (bestScore < 0.42) return null;
+  if (bestScore < 0.38) return null;
 
   return bestNeighbor;
 }
@@ -1404,7 +1439,7 @@ state.zookeeper2 = {
   resetActors();
   applyLevelConfig();
     resetScene();
-  debugLog("[AUDIO] playSceneMusic main");
+  // debugLog("[AUDIO] playSceneMusic main");
   playSceneMusic({ sounds, isBossScene: false });  state.bananaTimestamps = [];
   state.mainEnding = null;
   state.mainSecretEntered = false;
@@ -1539,7 +1574,7 @@ state.zookeeper2 = {
   state.troops = [];
   state.player.hasBanana = false;
 
-  debugLog("[AUDIO] playSceneMusic chill");
+  // debugLog("[AUDIO] playSceneMusic chill");
   playSceneMusic({
     sounds,
     isBossScene: false
@@ -1558,10 +1593,10 @@ state.zookeeper2 = {
 }
 
 function unlockAudioOnce() {
-  debugLog("[AUDIO] unlockAudioOnce called");
+  // debugLog("[AUDIO] unlockAudioOnce called");
 
   if (inputState.musicStarted) {
-    debugLog("[AUDIO] unlock skipped - already unlocked");
+    // debugLog("[AUDIO] unlock skipped - already unlocked");
     return;
   }
 
@@ -4442,7 +4477,6 @@ function drawBossCoconut(coconut) {
 // ======================================================
 canvas.addEventListener("pointerdown", (e) => {
   e.preventDefault();
-  debugLog("[INPUT] pointerdown");
   unlockAudioOnce();
 
   if (state.mode === "caveReveal") {
@@ -4463,6 +4497,16 @@ canvas.addEventListener("pointerdown", (e) => {
 
   if (pointInRect(x, y, muteButton)) {
     toggleMute();
+    return;
+  }
+
+  if (state.showDebugConsole && state.debugCopyButton && pointInRect(x, y, state.debugCopyButton)) {
+    copyDebugLogsToClipboard();
+    return;
+  }
+
+  if (state.showDebugConsole && state.debugClearButton && pointInRect(x, y, state.debugClearButton)) {
+    clearDebugLogs();
     return;
   }
 
