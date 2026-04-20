@@ -1102,12 +1102,12 @@ function drawDebugConsole() {
   ctx.textBaseline = "top";
   ctx.fillText("DEBUG CONSOLE", x + 18, y + 14);
 
-  const testBtn = {
-    x: x + w - 222,
-    y: y + 12,
-    w: 62,
-    h: 28
-  };
+  // const testBtn = {
+  //   x: x + w - 222,
+  //   y: y + 12,
+  //   w: 62,
+  //   h: 28
+  // };
 
   const copyBtn = {
     x: x + w - 150,
@@ -1123,7 +1123,7 @@ function drawDebugConsole() {
     h: 28
   };
 
-  state.debugTestButton = testBtn;
+  //state.debugTestButton = testBtn;
   state.debugCopyButton = copyBtn;
   state.debugClearButton = clearBtn;
 
@@ -1131,9 +1131,9 @@ function drawDebugConsole() {
   ctx.strokeStyle = "rgba(255,255,255,0.25)";
   ctx.lineWidth = 1.5;
 
-  roundRect(ctx, testBtn.x, testBtn.y, testBtn.w, testBtn.h, 8);
-  ctx.fill();
-  ctx.stroke();
+  // roundRect(ctx, testBtn.x, testBtn.y, testBtn.w, testBtn.h, 8);
+  // ctx.fill();
+  // ctx.stroke();
 
   roundRect(ctx, copyBtn.x, copyBtn.y, copyBtn.w, copyBtn.h, 8);
   ctx.fill();
@@ -1631,47 +1631,47 @@ state.zookeeper2 = {
 
 }
 
-function runAudioTest() {
-  cancelAudioTest();
+// function runAudioTest() {
+//   cancelAudioTest();
 
-  state.audioTestActive = true;
-  state.audioTestTimers = [];
+//   state.audioTestActive = true;
+//   state.audioTestTimers = [];
 
-  debugLog("[AUDIO] test start");
+//   debugLog("[AUDIO] test start");
 
-  state.audioTestTimers.push(setTimeout(() => {
-    debugLog("[AUDIO] test pickup");
-    playSfx(sounds.pickup, null, "pickup");
-  }, 100));
+//   state.audioTestTimers.push(setTimeout(() => {
+//     debugLog("[AUDIO] test pickup");
+//     playSfx(sounds.pickup, null, "pickup");
+//   }, 100));
 
-  state.audioTestTimers.push(setTimeout(() => {
-    debugLog("[AUDIO] test score");
-    playSfx(sounds.score, null, "score");
-  }, 500));
+//   state.audioTestTimers.push(setTimeout(() => {
+//     debugLog("[AUDIO] test score");
+//     playSfx(sounds.score, null, "score");
+//   }, 500));
 
-  state.audioTestTimers.push(setTimeout(() => {
-    debugLog("[AUDIO] test ahh");
-    playSfx(sounds.ahh, null, "ahh");
-  }, 900));
+//   state.audioTestTimers.push(setTimeout(() => {
+//     debugLog("[AUDIO] test ahh");
+//     playSfx(sounds.ahh, null, "ahh");
+//   }, 900));
 
-  state.audioTestTimers.push(setTimeout(() => {
-    debugLog("[AUDIO] test victory");
-    playSfx(sounds.victory, null, "victory");
-    state.audioTestActive = false;
-    state.audioTestTimers = [];
-  }, 1300));
-}
+//   state.audioTestTimers.push(setTimeout(() => {
+//     debugLog("[AUDIO] test victory");
+//     playSfx(sounds.victory, null, "victory");
+//     state.audioTestActive = false;
+//     state.audioTestTimers = [];
+//   }, 1300));
+// }
 
-function cancelAudioTest() {
-  if (state.audioTestTimers?.length) {
-    for (const id of state.audioTestTimers) {
-      clearTimeout(id);
-    }
-  }
+// function cancelAudioTest() {
+//   if (state.audioTestTimers?.length) {
+//     for (const id of state.audioTestTimers) {
+//       clearTimeout(id);
+//     }
+//   }
 
-  state.audioTestTimers = [];
-  state.audioTestActive = false;
-}
+//   state.audioTestTimers = [];
+//   state.audioTestActive = false;
+// }
 
 function warmSoundPool(sound) {
   if (!sound?.pool) return;
@@ -4738,7 +4738,7 @@ let threeFingerGestureArmed = false;
 
 canvas.addEventListener("pointerdown", (e) => {
   e.preventDefault();
-  unlockAudioOnce();
+  //unlockAudioOnce();
 
   if (state.mode === "caveReveal") {
     showSceneWin();
