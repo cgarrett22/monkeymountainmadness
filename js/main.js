@@ -2742,7 +2742,7 @@ function showSceneWin() {
   state.mode = "sceneWin";
   state.sceneWinTimer = 0;
 
-  const completionBonus = 200;
+  const completionBonus = 100;
 
   // prevent double-add if function fires twice
   if (!state.sceneWinAwarded) {
