@@ -123,7 +123,7 @@ export function loadSounds(state) {
   // Short SFX via Howler
   sounds.pickup = new Howl({
     src: ["assets/squeak.m4a"],
-    volume: 0.65,
+    volume: 0.55,
     rate: 0.5,
     preload: true
   });
@@ -137,7 +137,7 @@ export function loadSounds(state) {
 
   sounds.ahh = new Howl({
     src: ["assets/ahh.m4a"],
-    volume: 0.10,
+    volume: 0.2,
     rate: 3.4,
     preload: true
   });
