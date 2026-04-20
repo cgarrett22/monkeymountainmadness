@@ -4761,10 +4761,10 @@ canvas.addEventListener("pointerdown", (e) => {
     return;
   }
 
-if (state.showDebugConsole && state.debugTestButton && pointInRect(x, y, state.debugTestButton)) {
-  runAudioTest();
-  return;
-}
+// if (state.showDebugConsole && state.debugTestButton && pointInRect(x, y, state.debugTestButton)) {
+//   runAudioTest();
+//   return;
+// }
 
 if (state.showDebugConsole && state.debugCopyButton && pointInRect(x, y, state.debugCopyButton)) {
   copyDebugLogsToClipboard();
