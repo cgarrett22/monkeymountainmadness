@@ -1,37 +1,43 @@
-    function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
-    function rand(min, max) { return Math.random() * (max - min) + min; }
-    function choose(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+// utils.js
 
-    function distance(a, b) {
-      return Math.hypot(a.x - b.x, a.y - b.y);
-    }
+export function randInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
 
-    function tileCenter(c, r) {
-      return {
-        x: BOARD_X + c * TILE + TILE / 2,
-        y: BOARD_Y + r * TILE + TILE / 2
-      };
-    }
+export function rand(min, max) {
+  return Math.random() * (max - min) + min;
+}
 
-    function pointToTile(x, y) {
-      return {
-        c: Math.floor((x - BOARD_X) / TILE),
-        r: Math.floor((y - BOARD_Y) / TILE)
-      };
-    }
+export function choose(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
 
-    function getCell(c, r) {
-      const row = LEVEL[r];
-      return row ? row[c] : '#';
-    }
+export function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
 
-    function walkable(c, r) {
-      return ['.', 'C'].includes(getCell(c, r));
-    }
+export function distance(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
 
-    function pathBias(enemy, dir, target) {
-      const nx = enemy.tile.c + dir.x;
-      const ny = enemy.tile.r + dir.y;
-      const targetTile = pointToTile(target.x, target.y);
-      return Math.abs(nx - targetTile.c) + Math.abs(ny - targetTile.r);
+export function getNearestNodeId(x, y, nodeMap, maxDist = 40) {
+  let bestId = null;
+  let bestDist = Infinity;
+
+  for (const id in nodeMap) {
+    const n = nodeMap[id];
+    const d = Math.hypot(x - n.x, y - n.y);
+    if (d < bestDist) {
+      bestDist = d;
+      bestId = id;
     }
+  }
+
+  return bestDist <= maxDist ? bestId : null;
+}
+
+export function getNodeIdsByTag(nodeMap, tag) {
+    return Object.values(nodeMap)
+        .filter(node => Array.isArray(node.tags) && node.tags.includes(tag))
+        .map(node => node.id);
+}
