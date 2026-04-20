@@ -7,7 +7,7 @@ export const DEBUG = false;
 export const DEBUG_LOOP_MAIN_SCENE = true;
 export let NODE_DEBUG = true;
 
-export const SWIPE_THRESHOLD = 20;
+export const SWIPE_THRESHOLD = 16;
 
 export const HAT_TRICK_WINDOW = 3; // seconds
 export const HAT_TRICK_COUNT = 3;
