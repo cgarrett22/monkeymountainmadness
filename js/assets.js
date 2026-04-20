@@ -124,7 +124,7 @@ export function loadSounds(state) {
 sounds.pickup = createAudioPool("assets/squeak.mp3", 2, 0.65, 0.5);
 sounds.score = createAudioPool("assets/score.mp3", 2, 0.20, 2);
 sounds.ahh = createAudioPool("assets/ahh.mp3", 2, 0.10, 4.4);
-sounds.victory = createAudioPool("assets/victory.mp3", 2, 0.75);
+sounds.victory = createAudioPool("assets/victory.m4a", 2, 0.75);
   sounds.catch = new Audio("assets/catch.mp3");
   sounds.catch.volume = 0.75;
 
