@@ -63,7 +63,8 @@ import {
   clamp,
   distance,
   getNearestNodeId,
-  getNodeIdsByTag
+  getNodeIdsByTag,
+  getSafeSpawnNodeId
 } from "./utils.js";
 
 import { roundRect, drawHeart, drawHeartShape } from "./draw-primitives.js";
@@ -72,9 +73,12 @@ import {
   debugLog,
   safeDebugString,
   copyDebugLogsToClipboard,
-  clearDebugLogs
+  clearDebugLogs,
+  drawPathOverlay
 } from "./debug-utils.js";
 
+import { createButterfly, updateButterfly, drawButterfly } from "./npc-butterfly.js";
+import { createPJ, updatePJ, drawPJ } from "./npc-pj.js";
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -1171,6 +1175,8 @@ function startMainScene() {
         sounds,
         isBossScene: false
     });
+    state.butterfly = createButterfly("N5", getCurrentNodeMap());
+    state.pj = createPJ("N24", getCurrentNodeMap());
     state.bananaTimestamps = [];
     state.mainEnding = null;
     state.mainSecretEntered = false;
@@ -2818,6 +2824,33 @@ function addAcceptance(amount) {
     }
 }
 
+const MAIN_TROOP_SPAWN_NODE_IDS = ["N13", "N20", "N23", "N7"];
+
+function respawnTroopSafely(troop) {
+  if (!troop || state.scene !== "main") return;
+
+  const nodeMap = getCurrentNodeMap();
+
+  const spawnNodeId = getSafeSpawnNodeId(
+    MAIN_TROOP_SPAWN_NODE_IDS,
+    nodeMap,
+    state.player,
+    choose,
+    220
+  );
+
+  if (!spawnNodeId || !nodeMap[spawnNodeId]) return;
+
+  troop.currentNode = spawnNodeId;
+  troop.previousNode = null;
+  troop.targetNode = null;
+  troop.x = nodeMap[spawnNodeId].x;
+  troop.y = nodeMap[spawnNodeId].y;
+  troop.dir = { x: 0, y: 0 };
+  troop.frame = 0;
+  troop.animTime = 0;
+}
+
 function applyLevelConfig() {
     const config = getLevelConfig();
 
@@ -3666,17 +3699,28 @@ function updateMainEnding(dt) {
 }
 
 function updateTroops(dt) {
-    state.troops.forEach(t => t.update(dt));
+  state.troops.forEach(t => t.update(dt));
 
-    if (state.catchAnim) return;
-    if (state.player?.invuln > 0) return; // main-scene invulnerability
-
-    for (const troop of state.troops) {
-        if (distance(state.player, troop) < 34) {
-            startCatch(troop);
-            break;
-        }
+  for (const troop of state.troops) {
+    if (
+      state.scene === "main" &&
+      state.pj?.active &&
+      Math.hypot(state.pj.x - troop.x, state.pj.y - troop.y) < 42
+    ) {
+      showFloatingText(troop.x, troop.y - 40, "Shoo!", "#fff", 1.0);
+      playSfx(sounds.grunt);
+      respawnTroopSafely(troop);
+      continue;
     }
+
+    if (state.catchAnim) continue;
+    if (state.player?.invuln > 0) continue;
+
+    if (distance(state.player, troop) < 34) {
+      startCatch(troop);
+      break;
+    }
+  }
 }
 
 function restartBossLevel() {
@@ -3958,6 +4002,15 @@ function update(dt) {
         spawnDeliveryEvent();
     }
 
+    if (state.scene === "main" && state.butterfly) {
+      updateButterfly(state.butterfly, dt, getCurrentNodeMap(), choose);
+    }
+
+    if (state.scene === "main" && state.pj) {
+      // updatePJ(state.pj, dt, getCurrentNodeMap(), choose);
+      updatePJ(state.pj, dt, getCurrentNodeMap(), state.butterfly, choose);
+    }
+
     if (state.delayedPopups?.length) {
         for (let i = state.delayedPopups.length - 1; i >= 0; i--) {
             const item = state.delayedPopups[i];
@@ -4223,7 +4276,7 @@ function draw() {
     }
     // === debug
     if (DEBUG) {
-        drawPathOverlay(getCurrentNodeMap());
+        drawPathOverlay(ctx, getCurrentNodeMap());
         drawNodeDebugOverlay(getCurrentNodeMap());
         drawNodeLabels();
         drawNodeHighlights();
@@ -4234,6 +4287,12 @@ function draw() {
     drawSecretRewardSparkles();
     drawSecretRewardPopups();
     drawHeartProgressPopup();
+    if (state.butterfly) {
+      drawButterfly(ctx, state.butterfly, spriteStore);
+    }
+    if (state.pj) {
+      drawPJ(ctx, state.pj, spriteStore);
+    }
     drawDeliveryEvent();
     drawDeliveryCrate();
     drawHudOverlay();

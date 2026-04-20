@@ -1,4 +1,4 @@
-// debug-utils.js
+import { NODE_DEBUG } from "./config.js";
 
 export function safeDebugString(value) {
   try {
@@ -42,4 +42,35 @@ export async function copyDebugLogsToClipboard(state) {
 export function clearDebugLogs(state) {
   state.debugLogs = [];
   debugLog(state, "[DEBUG] logs cleared");
+}
+
+export function drawPathOverlay(ctx, nodeMap) {
+  if (!NODE_DEBUG) return;
+
+  ctx.save();
+  ctx.strokeStyle = "rgba(255, 80, 80, 0.9)";
+  ctx.lineWidth = 4;
+
+  const drawn = new Set();
+
+  for (const id in nodeMap) {
+    const node = nodeMap[id];
+
+    for (const neighborId of node.neighbors) {
+      const neighbor = nodeMap[neighborId];
+      if (!neighbor) continue;
+
+      const key = [id, neighborId].sort().join("|");
+      if (drawn.has(key)) continue;
+
+      ctx.beginPath();
+      ctx.moveTo(node.x, node.y);
+      ctx.lineTo(neighbor.x, neighbor.y);
+      ctx.stroke();
+
+      drawn.add(key);
+    }
+  }
+
+  ctx.restore();
 }

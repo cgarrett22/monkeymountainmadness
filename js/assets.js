@@ -113,6 +113,18 @@ export function loadSprites() {
 
   spriteStore.clouds = new Image();
   spriteStore.clouds.src = "sprites/clouds.webp";  
+  
+  spriteStore.butterfly = new Image();
+  spriteStore.butterfly.src = "sprites/butterfly-sprite.webp";  
+
+  spriteStore.palPJ = new Image();
+  spriteStore.palPJ.src = "sprites/pj-sprite.webp";  
+
+  spriteStore.nanaSnatchers = new Image();
+  spriteStore.nanaSnatchers.src = "sprites/nanasnatchers-sprite.webp";  
+
+  spriteStore.nanaSnatchersSnatched = new Image();
+  spriteStore.nanaSnatchersSnatched.src = "sprites/nanasnatchers-snatched-sprite.webp";  
 
   return spriteStore;
 }
@@ -168,6 +180,12 @@ export function loadSounds(state) {
 
   sounds.eOh = new Howl({
     src: ["assets/e-oh.m4a"],
+    volume: 0.75,
+    preload: true
+  });
+
+  sounds.grunt = new Howl({
+    src: ["assets/grunt.m4a"],
     volume: 0.75,
     preload: true
   });

@@ -41,3 +41,18 @@ export function getNodeIdsByTag(nodeMap, tag) {
         .filter(node => Array.isArray(node.tags) && node.tags.includes(tag))
         .map(node => node.id);
 }
+
+export function getSafeSpawnNodeId(candidateIds, nodeMap, player, choose, minDist = 180) {
+  if (!candidateIds?.length) return null;
+  if (!player) return choose(candidateIds);
+
+  const safeIds = candidateIds.filter(id => {
+    const node = nodeMap[id];
+    if (!node) return false;
+
+    const d = Math.hypot(node.x - player.x, node.y - player.y);
+    return d >= minDist;
+  });
+
+  return choose(safeIds.length ? safeIds : candidateIds);
+}
