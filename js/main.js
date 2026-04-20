@@ -1673,71 +1673,67 @@ function cancelAudioTest() {
   state.audioTestActive = false;
 }
 
-function unlockAudioOnce() {
-  // debugLog("[AUDIO] unlockAudioOnce called");
+function warmSoundPool(sound) {
+  if (!sound?.pool) return;
 
-  if (inputState.musicStarted) {
-    // debugLog("[AUDIO] unlock skipped - already unlocked");
-    function warmSoundPool(sound) {
-      if (!sound?.pool) return;
+  for (const a of sound.pool) {
+    try {
+      const oldMuted = a.muted;
+      const oldVolume = a.volume;
 
-      for (const a of sound.pool) {
-        try {
-          const oldMuted = a.muted;
-          const oldVolume = a.volume;
+      a.muted = true;
+      a.volume = 0.001;
 
-          a.muted = true;
-          a.volume = 0.001;
-
-          const p = a.play();
-          if (p?.then) {
-            p.then(() => {
-              a.pause();
-              a.currentTime = 0;
-              a.muted = oldMuted;
-              a.volume = oldVolume;
-            }).catch(() => {});
-          }
-        } catch (_) {}
+      const p = a.play();
+      if (p?.then) {
+        p.then(() => {
+          a.pause();
+          a.currentTime = 0;
+          a.muted = oldMuted;
+          a.volume = oldVolume;
+        }).catch(() => {});
       }
-    }
+    } catch (_) {}
+  }
+}
+
+function unlockAudioOnce() {
+  if (inputState.musicStarted) return;
+
+  inputState.musicStarted = true;
+
+  debugLog("[AUDIO] attempting silent unlock");
+
+  try {
     warmSoundPool(sounds.pickup);
     warmSoundPool(sounds.score);
     warmSoundPool(sounds.ahh);
     warmSoundPool(sounds.victory);
-    return;
-  }
 
-  inputState.musicStarted = true;
+    const musicTracks = [sounds.music, sounds.bossMusic].filter(Boolean);
+    for (const track of musicTracks) {
+      try {
+        const oldMuted = track.muted;
+        const oldVolume = track.volume;
 
-  try {
-    const a = sounds.pickup?.cloneNode();
-    if (!a) {
-      debugLog("[AUDIO] unlock failed - no pickup sound available");
-      return;
+        track.muted = true;
+        track.volume = 0.001;
+
+        const p = track.play();
+        if (p?.then) {
+          p.then(() => {
+            track.pause();
+            track.currentTime = 0;
+            track.muted = oldMuted;
+            track.volume = oldVolume;
+          }).catch(() => {});
+        }
+      } catch (_) {}
     }
 
-    a.volume = 0.001;
-    a.playbackRate = 1;
-    a.muted = state.isMuted;
-
-    debugLog("[AUDIO] attempting silent unlock");
-
-    const p = a.play();
-
-    if (p?.then) {
-      p.then(() => {
-        debugLog("[AUDIO] silent unlock success");
-        a.pause();
-        a.currentTime = 0;
-      }).catch(err => {
-        debugLog("[AUDIO] silent unlock failed", err?.message || String(err));
-      });
-    } else {
-      debugLog("[AUDIO] silent unlock play() returned no promise");
-    }
+    debugLog("[AUDIO] silent unlock success");
   } catch (err) {
-    debugLog("[AUDIO] unlock threw error", err?.message || String(err));
+    debugLog("[AUDIO] silent unlock failed", err?.message || String(err));
   }
 }
 
@@ -4859,7 +4855,7 @@ canvas.addEventListener("pointermove", (e) => {
   const x = (e.clientX - rect.left) * scaleX;
   const y = (e.clientY - rect.top) * scaleY;
 
-  //handleSwipeMove(x, y);
+  handleSwipeMove(x, y);
 }, { passive: false });
 
 function handleSwipeMove(x, y) {
