@@ -3054,6 +3054,7 @@ function beginCavePreview(fromNodeId, toNodeId) {
 
 function handlePortalTravel(actor) {
   if (!actor || !actor.currentNode) return;
+  if (actor === state.player && actor.portalCooldown > 0) return;
   if (state.cavePreview) return;
 
   const portal = resolveScenePortal(actor.currentNode);
@@ -3108,6 +3109,7 @@ function handlePortalTravel(actor) {
       state.catchAnim = null;
   
       stopAllMusic(sounds);
+      cancelDeliveryAhh();
       debugLog("[AUDIO] victory attempt");
       playSfx(sounds.victory, null, "victory");
     }
@@ -3161,7 +3163,7 @@ function finishCavePreview() {
   state.player.x = dest.x;
   state.player.y = dest.y;
   state.player.invuln = 0.5;
-
+  state.player.portalCooldown = 0.35;
   state.cavePreview = null;
 
   // Try queued turn first, then push forward out of the cave
@@ -3995,6 +3997,10 @@ function updatePlayer(dt) {
 
   checkSecretReward();
   updateHeartCollection();
+
+  if (state.player.portalCooldown > 0) {
+    state.player.portalCooldown = Math.max(0, state.player.portalCooldown - dt);
+  }
 
   if (
     state.player.movedThisRound &&
