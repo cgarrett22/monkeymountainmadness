@@ -967,8 +967,13 @@ function updateDeliveryEvent(dt) {
       d.frame = 0;
 
       playSfx(sounds.eOh);
-      setTimeout(() => playSfx(sounds.ahh), 180);
-
+      if (state.deliveryAhhTimer) {
+        clearTimeout(state.deliveryAhhTimer);
+      }
+      state.deliveryAhhTimer = setTimeout(() => {
+        playSfx(sounds.ahh, null, "ahh");
+        state.deliveryAhhTimer = null;
+      }, 180);
       state.deliveryCrate = {
         x: d.x,
         y: d.y + 24,
@@ -3081,6 +3086,10 @@ function handlePortalTravel(actor) {
   
     if (actor === state.player) {
       state.mode = "sceneEnding";
+      if (state.deliveryAhhTimer) {
+        clearTimeout(state.deliveryAhhTimer);
+        state.deliveryAhhTimer = null;
+      }
       state.mainSecretEntered = true;
       state.mainEnding = {
         time: 0,
