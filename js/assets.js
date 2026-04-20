@@ -121,22 +121,22 @@ export function loadSounds(state) {
   const sounds = {};
 
   // sounds.pickup = new Audio("assets/pickup.mp3");
-sounds.pickup = createAudioPool("assets/squeak.mp3", 2, 0.65, 0.5);
-sounds.score = createAudioPool("assets/score.mp3", 2, 0.20, 2);
-sounds.ahh = createAudioPool("assets/ahh.mp3", 2, 0.10, 4.4);
+sounds.pickup = createAudioPool("assets/squeak.m4a", 2, 0.65, 0.5);
+sounds.score = createAudioPool("assets/score.m4a", 2, 0.20, 2);
+sounds.ahh = createAudioPool("assets/ahh.m4a", 2, 0.10, 4.4);
 sounds.victory = createAudioPool("assets/victory.m4a", 2, 0.75);
-  sounds.catch = new Audio("assets/catch.mp3");
+  sounds.catch = new Audio("assets/catch.m4a");
   sounds.catch.volume = 0.75;
 
-  sounds.step = new Audio("assets/step.mp3");
+  sounds.step = new Audio("assets/step.m4a");
   sounds.step.volume = 0.25;
 
-  sounds.panic = new Audio("assets/panic.mp3");
+  sounds.panic = new Audio("assets/panic.m4a");
   sounds.panic.volume = 0.75;
 
-  sounds.eOh = new Audio("assets/e-oh.mp3");
+  sounds.eOh = new Audio("assets/e-oh.m4a");
 
-  sounds.music = new Audio("assets/jungle_jumpin.mp3");
+  sounds.music = new Audio("assets/jungle_jumpin.m4a");
   sounds.music.loop = true;
   sounds.music.volume = 0.75;
 
