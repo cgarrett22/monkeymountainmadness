@@ -1705,11 +1705,10 @@ function warmSoundPool(sound) {
 function unlockAudioOnce() {
   if (inputState.musicStarted) return;
 
-  inputState.musicStarted = true;
   debugLog("[AUDIO] attempting silent unlock");
 
   try {
-    const a = new Audio("assets/pickup.m4a"); // or pickup.mp3 if that file still exists
+    const a = new Audio("assets/squeak.m4a"); // use a file you know exists
     a.preload = "auto";
     a.muted = true;
     a.volume = 0.001;
@@ -1719,6 +1718,7 @@ function unlockAudioOnce() {
       p.then(() => {
         a.pause();
         a.currentTime = 0;
+        inputState.musicStarted = true;
         debugLog("[AUDIO] silent unlock success");
       }).catch(err => {
         debugLog("[AUDIO] silent unlock failed", err?.message || String(err));
@@ -4032,7 +4032,7 @@ function startCatch(troop) {
   state.player.dir = { x: 0, y: 0 };
   // addAcceptance(-1);
   // triggerZookeeper2("react");
-  sounds.catch?.play().catch(() => {});
+  //sounds.catch?.play().catch(() => {});
   playSfx(sounds.catch);
 }
 
