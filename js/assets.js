@@ -138,7 +138,7 @@ export function loadSounds(state) {
   sounds.ahh = new Howl({
     src: ["assets/ahh.m4a"],
     volume: 0.10,
-    rate: 4.4,
+    rate: 3.4,
     preload: true
   });
 
