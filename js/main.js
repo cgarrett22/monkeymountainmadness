@@ -967,19 +967,7 @@ function updateDeliveryEvent(dt) {
       d.frame = 0;
 
       playSfx(sounds.eOh);
-      if (state.deliveryAhhTimer) {
-        clearTimeout(state.deliveryAhhTimer);
-      }
-      state.deliveryAhhTimer = setTimeout(() => {
-        playSfx(sounds.ahh, null, "ahh");
-        state.deliveryAhhTimer = null;
-      }, 180);
-      state.deliveryCrate = {
-        x: d.x,
-        y: d.y + 24,
-        value: d.crateValue,
-        ttl: 3.5
-      };
+      scheduleDeliveryAhh();
     }
 
     return;
@@ -1678,6 +1666,23 @@ function cancelAudioTest() {
   state.audioTestActive = false;
 }
 
+function scheduleDeliveryAhh() {
+  if (state.deliveryAhhTimer) {
+    clearTimeout(state.deliveryAhhTimer);
+  }
+
+  state.deliveryAhhTimer = setTimeout(() => {
+    playSfx(sounds.ahh, null, "ahh");
+    state.deliveryAhhTimer = null;
+  }, 180);
+}
+
+function cancelDeliveryAhh() {
+  if (state.deliveryAhhTimer) {
+    clearTimeout(state.deliveryAhhTimer);
+    state.deliveryAhhTimer = null;
+  }
+}
 function warmSoundPool(sound) {
   if (!sound?.pool) return;
 
@@ -2047,7 +2052,8 @@ function updatePendingHeartThrow(dt) {
 function canThrowHeart() {
   if (state.mode !== "playing") return false;
   if (!state.zookeeper2) return false;
-  if (state.acceptance >= state.maxHeartsToThrow) return false;
+  // if (state.acceptance >= state.maxHeartsToThrow) return false;
+  if ((state.acceptance || 0) >= 3) return false;
   if ((state.heartCooldown || 0) > 0) return false;
   if (state.pendingHeartThrow) return false;
 
