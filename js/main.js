@@ -520,7 +520,7 @@ function checkSecretReward() {
   });
 
   //sounds.score?.play().catch(() => {});
-  ////playSfx(sounds.score);
+  playSfx(sounds.score);
 }
 
 function drawSecretRewardSparkles() {
@@ -967,7 +967,7 @@ function updateDeliveryEvent(dt) {
       d.frame = 0;
 
       playSfx(sounds.eOh);
-      ////setTimeout(() => playSfx(sounds.ahh), 180);
+      setTimeout(() => playSfx(sounds.ahh), 180);
 
       state.deliveryCrate = {
         x: d.x,
@@ -1034,7 +1034,7 @@ state.delayedPopups.push({
     duration: 3.2
   }
 });
-    ////playSfx(sounds.score);
+    playSfx(sounds.score);
     state.deliveryCrate = null;
   }
 }
@@ -1646,12 +1646,12 @@ function runAudioTest() {
 
   state.audioTestTimers.push(setTimeout(() => {
     debugLog("[AUDIO] test score");
-    ////playSfx(sounds.score, null, "score");
+    playSfx(sounds.score, null, "score");
   }, 500));
 
   state.audioTestTimers.push(setTimeout(() => {
     debugLog("[AUDIO] test ahh");
-    ////playSfx(sounds.ahh, null, "ahh");
+    playSfx(sounds.ahh, null, "ahh");
   }, 900));
 
   state.audioTestTimers.push(setTimeout(() => {
@@ -2234,7 +2234,7 @@ function updateHeartCollection() {
 
     // sounds.pickup?.play().catch(() => {});
     // playSfx(sounds.pickup);
-    ////playSfx(sounds.ahh);
+    playSfx(sounds.ahh);
 
     // if (sounds.ahh) {
     //   try {
@@ -3511,7 +3511,7 @@ function updateZookeeper(dt) {
 
     if (z.frame === 1 && !z.didThrowSound) {
       // sounds.step?.play().catch(() => {});
-      ////playSfx(sounds.step);
+      playSfx(sounds.step);
       z.didThrowSound = true;
     }
   } else {
@@ -4762,7 +4762,7 @@ canvas.addEventListener("pointerdown", (e) => {
   }
 
 if (state.showDebugConsole && state.debugTestButton && pointInRect(x, y, state.debugTestButton)) {
-  ////runAudioTest();
+  runAudioTest();
   return;
 }
 
