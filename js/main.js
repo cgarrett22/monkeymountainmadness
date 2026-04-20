@@ -1701,37 +1701,26 @@ function unlockAudioOnce() {
   if (inputState.musicStarted) return;
 
   inputState.musicStarted = true;
-
   debugLog("[AUDIO] attempting silent unlock");
 
   try {
-    warmSoundPool(sounds.pickup);
-    warmSoundPool(sounds.score);
-    warmSoundPool(sounds.ahh);
-    warmSoundPool(sounds.victory);
+    const a = new Audio("assets/pickup.mp3");
+    a.muted = true;
+    a.volume = 0.001;
+    a.preload = "auto";
 
-    const musicTracks = [sounds.music, sounds.bossMusic].filter(Boolean);
-    for (const track of musicTracks) {
-      try {
-        const oldMuted = track.muted;
-        const oldVolume = track.volume;
-
-        track.muted = true;
-        track.volume = 0.001;
-
-        const p = track.play();
-        if (p?.then) {
-          p.then(() => {
-            track.pause();
-            track.currentTime = 0;
-            track.muted = oldMuted;
-            track.volume = oldVolume;
-          }).catch(() => {});
-        }
-      } catch (_) {}
+    const p = a.play();
+    if (p?.then) {
+      p.then(() => {
+        a.pause();
+        a.currentTime = 0;
+        debugLog("[AUDIO] silent unlock success");
+      }).catch(err => {
+        debugLog("[AUDIO] silent unlock failed", err?.message || String(err));
+      });
+    } else {
+      debugLog("[AUDIO] silent unlock no promise");
     }
-
-    debugLog("[AUDIO] silent unlock success");
   } catch (err) {
     debugLog("[AUDIO] silent unlock failed", err?.message || String(err));
   }
