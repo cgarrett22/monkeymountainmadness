@@ -1102,12 +1102,12 @@ function drawDebugConsole() {
   ctx.textBaseline = "top";
   ctx.fillText("DEBUG CONSOLE", x + 18, y + 14);
 
-  // const testBtn = {
-  //   x: x + w - 222,
-  //   y: y + 12,
-  //   w: 62,
-  //   h: 28
-  // };
+  const testBtn = {
+    x: x + w - 222,
+    y: y + 12,
+    w: 62,
+    h: 28
+  };
 
   const copyBtn = {
     x: x + w - 150,
@@ -1123,7 +1123,7 @@ function drawDebugConsole() {
     h: 28
   };
 
-  //state.debugTestButton = testBtn;
+  state.debugTestButton = testBtn;
   state.debugCopyButton = copyBtn;
   state.debugClearButton = clearBtn;
 
@@ -1131,9 +1131,9 @@ function drawDebugConsole() {
   ctx.strokeStyle = "rgba(255,255,255,0.25)";
   ctx.lineWidth = 1.5;
 
-  // roundRect(ctx, testBtn.x, testBtn.y, testBtn.w, testBtn.h, 8);
-  // ctx.fill();
-  // ctx.stroke();
+  roundRect(ctx, testBtn.x, testBtn.y, testBtn.w, testBtn.h, 8);
+  ctx.fill();
+  ctx.stroke();
 
   roundRect(ctx, copyBtn.x, copyBtn.y, copyBtn.w, copyBtn.h, 8);
   ctx.fill();
@@ -1631,47 +1631,47 @@ state.zookeeper2 = {
 
 }
 
-// function runAudioTest() {
-//   cancelAudioTest();
+function runAudioTest() {
+  cancelAudioTest();
 
-//   state.audioTestActive = true;
-//   state.audioTestTimers = [];
+  state.audioTestActive = true;
+  state.audioTestTimers = [];
 
-//   debugLog("[AUDIO] test start");
+  debugLog("[AUDIO] test start");
 
-//   state.audioTestTimers.push(setTimeout(() => {
-//     debugLog("[AUDIO] test pickup");
-//     playSfx(sounds.pickup, null, "pickup");
-//   }, 100));
+  state.audioTestTimers.push(setTimeout(() => {
+    debugLog("[AUDIO] test pickup");
+    playSfx(sounds.pickup, null, "pickup");
+  }, 100));
 
-//   state.audioTestTimers.push(setTimeout(() => {
-//     debugLog("[AUDIO] test score");
-//     playSfx(sounds.score, null, "score");
-//   }, 500));
+  state.audioTestTimers.push(setTimeout(() => {
+    debugLog("[AUDIO] test score");
+    playSfx(sounds.score, null, "score");
+  }, 500));
 
-//   state.audioTestTimers.push(setTimeout(() => {
-//     debugLog("[AUDIO] test ahh");
-//     playSfx(sounds.ahh, null, "ahh");
-//   }, 900));
+  state.audioTestTimers.push(setTimeout(() => {
+    debugLog("[AUDIO] test ahh");
+    playSfx(sounds.ahh, null, "ahh");
+  }, 900));
 
-//   state.audioTestTimers.push(setTimeout(() => {
-//     debugLog("[AUDIO] test victory");
-//     playSfx(sounds.victory, null, "victory");
-//     state.audioTestActive = false;
-//     state.audioTestTimers = [];
-//   }, 1300));
-// }
+  state.audioTestTimers.push(setTimeout(() => {
+    debugLog("[AUDIO] test victory");
+    playSfx(sounds.victory, null, "victory");
+    state.audioTestActive = false;
+    state.audioTestTimers = [];
+  }, 1300));
+}
 
-// function cancelAudioTest() {
-//   if (state.audioTestTimers?.length) {
-//     for (const id of state.audioTestTimers) {
-//       clearTimeout(id);
-//     }
-//   }
+function cancelAudioTest() {
+  if (state.audioTestTimers?.length) {
+    for (const id of state.audioTestTimers) {
+      clearTimeout(id);
+    }
+  }
 
-//   state.audioTestTimers = [];
-//   state.audioTestActive = false;
-// }
+  state.audioTestTimers = [];
+  state.audioTestActive = false;
+}
 
 function warmSoundPool(sound) {
   if (!sound?.pool) return;
@@ -1704,10 +1704,10 @@ function unlockAudioOnce() {
   debugLog("[AUDIO] attempting silent unlock");
 
   try {
-    const a = new Audio("assets/pickup.mp3");
+    const a = new Audio("assets/pickup.m4a"); // or pickup.mp3 if that file still exists
+    a.preload = "auto";
     a.muted = true;
     a.volume = 0.001;
-    a.preload = "auto";
 
     const p = a.play();
     if (p?.then) {
@@ -1718,8 +1718,6 @@ function unlockAudioOnce() {
       }).catch(err => {
         debugLog("[AUDIO] silent unlock failed", err?.message || String(err));
       });
-    } else {
-      debugLog("[AUDIO] silent unlock no promise");
     }
   } catch (err) {
     debugLog("[AUDIO] silent unlock failed", err?.message || String(err));
@@ -4727,7 +4725,7 @@ let threeFingerGestureArmed = false;
 
 canvas.addEventListener("pointerdown", (e) => {
   e.preventDefault();
-  //unlockAudioOnce();
+  unlockAudioOnce();
 
   if (state.mode === "caveReveal") {
     showSceneWin();
@@ -4750,10 +4748,10 @@ canvas.addEventListener("pointerdown", (e) => {
     return;
   }
 
-// if (state.showDebugConsole && state.debugTestButton && pointInRect(x, y, state.debugTestButton)) {
-//   runAudioTest();
-//   return;
-// }
+if (state.showDebugConsole && state.debugTestButton && pointInRect(x, y, state.debugTestButton)) {
+  runAudioTest();
+  return;
+}
 
 if (state.showDebugConsole && state.debugCopyButton && pointInRect(x, y, state.debugCopyButton)) {
   copyDebugLogsToClipboard();
@@ -4779,11 +4777,6 @@ canvas.addEventListener("pointercancel", () => {
 }, { passive: true });
 
 document.addEventListener("keydown", (e) => {
-  // if(DEBUG){
-  //   if (e.key === "c" || e.key === "C") {
-  //     startChillHill();
-  //     e.preventDefault();
-  //   }
   // }
 if (e.key === "`" || e.key === "~") {
   state.showDebugConsole = !state.showDebugConsole;
