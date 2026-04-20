@@ -1708,28 +1708,33 @@ function warmSoundPool(sound) {
 }
 
 function unlockAudioOnce() {
-  if (inputState.musicStarted) return;
+  if (inputState.musicStarted || inputState.audioUnlockInProgress) return;
 
+  inputState.audioUnlockInProgress = true;
   debugLog("[AUDIO] attempting silent unlock");
 
   try {
-    const a = new Audio("assets/squeak.m4a"); // use a file you know exists
-    a.preload = "auto";
-    a.muted = true;
-    a.volume = 0.001;
+    const unlockSound = new Howl({
+      src: ["assets/squeak.m4a"],
+      volume: 0,
+      preload: true
+    });
 
-    const p = a.play();
-    if (p?.then) {
-      p.then(() => {
-        a.pause();
-        a.currentTime = 0;
-        inputState.musicStarted = true;
-        debugLog("[AUDIO] silent unlock success");
-      }).catch(err => {
-        debugLog("[AUDIO] silent unlock failed", err?.message || String(err));
-      });
-    }
+    unlockSound.once("play", () => {
+      unlockSound.stop();
+      inputState.musicStarted = true;
+      inputState.audioUnlockInProgress = false;
+      debugLog("[AUDIO] silent unlock success");
+    });
+
+    unlockSound.once("playerror", (_, err) => {
+      inputState.audioUnlockInProgress = false;
+      debugLog("[AUDIO] silent unlock failed", String(err));
+    });
+
+    unlockSound.play();
   } catch (err) {
+    inputState.audioUnlockInProgress = false;
     debugLog("[AUDIO] silent unlock failed", err?.message || String(err));
   }
 }
@@ -4038,7 +4043,6 @@ function startCatch(troop) {
   state.player.dir = { x: 0, y: 0 };
   // addAcceptance(-1);
   // triggerZookeeper2("react");
-  //sounds.catch?.play().catch(() => {});
   playSfx(sounds.catch);
 }
 

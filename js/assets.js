@@ -120,42 +120,83 @@ export function loadSprites() {
 export function loadSounds(state) {
   const sounds = {};
 
-  // sounds.pickup = new Audio("assets/pickup.mp3");
-sounds.pickup = createAudioPool("assets/squeak.m4a", 2, 0.65, 0.5);
-sounds.score = createAudioPool("assets/score.m4a", 2, 0.20, 2);
-sounds.ahh = createAudioPool("assets/ahh.m4a", 2, 0.10, 4.4);
-sounds.victory = createAudioPool("assets/victory.m4a", 2, 0.75);
-  sounds.catch = new Audio("assets/catch.m4a");
-  sounds.catch.volume = 0.75;
+  // Short SFX via Howler
+  sounds.pickup = new Howl({
+    src: ["assets/squeak.m4a"],
+    volume: 0.65,
+    rate: 0.5,
+    preload: true
+  });
 
-  sounds.step = new Audio("assets/step.m4a");
-  sounds.step.volume = 0.25;
+  sounds.score = new Howl({
+    src: ["assets/score.m4a"],
+    volume: 0.20,
+    rate: 2,
+    preload: true
+  });
 
-  sounds.panic = new Audio("assets/panic.m4a");
-  sounds.panic.volume = 0.75;
+  sounds.ahh = new Howl({
+    src: ["assets/ahh.m4a"],
+    volume: 0.10,
+    rate: 4.4,
+    preload: true
+  });
 
-  sounds.eOh = new Audio("assets/e-oh.m4a");
+  sounds.victory = new Howl({
+    src: ["assets/victory.m4a"],
+    volume: 0.75,
+    preload: true
+  });
 
+  sounds.catch = new Howl({
+    src: ["assets/catch.m4a"],
+    volume: 0.75,
+    preload: true
+  });
+
+  sounds.step = new Howl({
+    src: ["assets/step.m4a"],
+    volume: 0.25,
+    preload: true
+  });
+
+  sounds.panic = new Howl({
+    src: ["assets/panic.m4a"],
+    volume: 0.75,
+    preload: true
+  });
+
+  sounds.eOh = new Howl({
+    src: ["assets/e-oh.m4a"],
+    volume: 0.75,
+    preload: true
+  });
+
+  // Keep music as HTMLAudio for now
   sounds.music = new Audio("assets/jungle_jumpin.m4a");
   sounds.music.loop = true;
   sounds.music.volume = 0.75;
-
 
   sounds.bossMusic = new Audio("assets/boss-loop.mp3");
   sounds.bossMusic.loop = true;
 
   applyMuteState(sounds, state);
-
   return sounds;
 }
 
 export function applyMuteState(sounds, state) {
   for (const key in sounds) {
     const sound = sounds[key];
+    if (!sound) continue;
 
-    if (sound?.pool) {
-      applyMuteToPool(sound, state.isMuted);
-    } else if (sound) {
+    // Howler sound
+    if (typeof sound.mute === "function") {
+      sound.mute(state.isMuted);
+      continue;
+    }
+
+    // HTMLAudio element
+    if ("muted" in sound) {
       sound.muted = state.isMuted;
     }
   }
@@ -186,19 +227,27 @@ export function playSfx(sound, volume = null, debugName = "") {
   if (!sound) return;
 
   try {
-    // pooled sound
-    if (sound.pool && sound.pool.length) {
-      const a = sound.pool[sound.index];
-      sound.index = (sound.index + 1) % sound.pool.length;
-
-      a.pause();
-      a.currentTime = 0;
+    // Howler
+    if (typeof sound.play === "function" && typeof sound.volume === "function" && !(sound instanceof HTMLAudioElement)) {
+      const id = sound.play();
 
       if (volume != null) {
-        a.volume = volume;
+        sound.volume(volume, id);
       }
 
-      const p = a.play();
+      return id;
+    }
+
+    // HTMLAudio fallback
+    if (sound instanceof HTMLAudioElement) {
+      sound.pause();
+      sound.currentTime = 0;
+
+      if (volume != null) {
+        sound.volume = volume;
+      }
+
+      const p = sound.play();
 
       if (debugName && p?.catch) {
         p.catch(err => console.log(`${debugName} failed`, err));
@@ -206,40 +255,9 @@ export function playSfx(sound, volume = null, debugName = "") {
 
       return;
     }
-
-    // fallback single audio
-    const p = sound.play();
-
-    if (debugName && p?.catch) {
-      p.catch(err => console.log(`${debugName} failed`, err));
-    }
   } catch (err) {
     if (debugName) {
       console.log(`${debugName} play failed`, err);
     }
-  }
-}
-
-function createAudioPool(src, size, volume = 1, playbackRate = 1) {
-  const pool = [];
-
-  for (let i = 0; i < size; i++) {
-    const a = new Audio(src);
-    a.preload = "auto";
-    a.volume = volume;
-    a.playbackRate = playbackRate;
-    pool.push(a);
-  }
-
-  return {
-    pool,
-    index: 0
-  };
-}
-
-function applyMuteToPool(poolObj, muted) {
-  if (!poolObj?.pool) return;
-  for (const a of poolObj.pool) {
-    a.muted = muted;
   }
 }
