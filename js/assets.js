@@ -120,6 +120,9 @@ export function loadSprites() {
   spriteStore.palPJ = new Image();
   spriteStore.palPJ.src = "sprites/pj-sprite.webp";  
 
+  spriteStore.pjSwat = new Image();
+  spriteStore.pjSwat.src = "sprites/pj-swat-sprite.webp";  
+
   spriteStore.nanaSnatchers = new Image();
   spriteStore.nanaSnatchers.src = "sprites/nanasnatchers-sprite.webp";  
 

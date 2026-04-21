@@ -78,7 +78,7 @@ import {
 } from "./debug-utils.js";
 
 import { createButterfly, updateButterfly, drawButterfly } from "./npc-butterfly.js";
-import { createPJ, updatePJ, drawPJ } from "./npc-pj.js";
+import { createPJ, updatePJ, drawPJ, triggerPJSwat } from "./npc-pj.js";
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -3701,20 +3701,21 @@ function updateMainEnding(dt) {
 function updateTroops(dt) {
   state.troops.forEach(t => t.update(dt));
 
+  if (state.catchAnim) return;
+  if (state.player?.invuln > 0) return;
+
   for (const troop of state.troops) {
     if (
       state.scene === "main" &&
       state.pj?.active &&
       Math.hypot(state.pj.x - troop.x, state.pj.y - troop.y) < 42
     ) {
-      showFloatingText(troop.x, troop.y - 40, "Shoo!", "#fff", 1.0);
+      triggerPJSwat(state.pj);
       playSfx(sounds.grunt);
+      showFloatingText(troop.x, troop.y - 36, "Shoo!", "#fff", 0.9);
       respawnTroopSafely(troop);
       continue;
     }
-
-    if (state.catchAnim) continue;
-    if (state.player?.invuln > 0) continue;
 
     if (distance(state.player, troop) < 34) {
       startCatch(troop);
