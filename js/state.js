@@ -8,8 +8,14 @@ export function createInitialState() {
     levelIntro: null,
     lastTime: 0,
     score: 0,
+    acceptanceScore: 0,
     lives: 3,
     acceptance: 0,
+    leaderboard: [],
+    enteringHighScore: false,
+    highScoreInitials: "",
+    pendingHighScore: null,
+    leaderboardLoaded: false,
     isMuted: false,
     nextAcceptanceUnlock: 3,
     player: null,
@@ -59,6 +65,15 @@ export function createInitialState() {
     audioUnlockInProgress: false,
     butterfly: null,
     pj: null,
+    enemyRelease: null,
+    nanaSnatchers: [],
+    snatcherRelease: null,
+    unlocks: {
+    butterfly: true,
+    pj: true,
+    lantern: false,
+    tireSwing: false
+  },
   };
 }
 

@@ -139,7 +139,7 @@ export class Troop {
   // ======================================================
   draw() {
     const { ctx, getBossScale, spriteStore, drawSheetFrame } = this.deps;
-
+    if (this.hidden) return;
     ctx.save();
     ctx.translate(this.x, this.y);
 

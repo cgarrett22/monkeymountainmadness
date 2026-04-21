@@ -156,7 +156,7 @@ export function drawPJ(ctx, pj, spriteStore) {
     const frameHeight = img.naturalHeight;
     const frame = pj.frame % cols;
 
-    const drawW = 220;
+    const drawW = 260;
     const drawH = drawW * (frameHeight / frameWidth);
 
     ctx.save();
@@ -196,8 +196,8 @@ export function drawPJ(ctx, pj, spriteStore) {
   else if (pj.facing === "up") row = 2;
 
   const frame = pj.frame % cols;
-  const drawW = 180;
-  const drawH = 180;
+  const drawW = 250;
+  const drawH = 250;
 
   ctx.save();
   ctx.translate(pj.x, pj.y - 70);

@@ -13,6 +13,8 @@ export const bananaBonanzaPortals = {
   }
 };
 
+export const bananaBonanzaEnemyEntryNodeIds = ["N31", "N30", "N28"];
+
 export const bananaBonanzaSecretRoom = {
   visibleBeforeUnlock: true,
   lockedNodeId: "N36",

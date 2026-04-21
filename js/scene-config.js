@@ -3,7 +3,8 @@
 import { HOME_NODE } from "./config.js";
 import {
   bananaBonanzaSecretRoom,
-  bananaBonanzaPortals
+  bananaBonanzaPortals,
+  bananaBonanzaEnemyEntryNodeIds
 } from "./scene-data-banana-bonanza.js";
 import { bananaBonanzaNodes } from "./scene-data-banana-bonanza-nodes.js";
 import { bossNodes } from "./scene-data-boss-nodes.js";
@@ -16,9 +17,9 @@ export const SCENE_CONFIGS = {
     nodes: bananaBonanzaNodes,
     startNode: HOME_NODE,
     secretRoom: bananaBonanzaSecretRoom,
-    portals: bananaBonanzaPortals
+    portals: bananaBonanzaPortals,
+    enemyEntryNodeIds: bananaBonanzaEnemyEntryNodeIds
   },
-
   boss: {
     nodes: bossNodes,
     startNode: bossConfig.startNode,

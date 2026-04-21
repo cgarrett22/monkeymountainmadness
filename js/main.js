@@ -9,6 +9,7 @@ import {
     CANVAS_WIDTH,
     CANVAS_HEIGHT,
     DEBUG,
+    DEBUG_TEST_LEVEL,
     DEBUG_LOOP_MAIN_SCENE,
     NODE_DEBUG,
     HAT_TRICK_WINDOW,
@@ -80,6 +81,20 @@ import {
 import { createButterfly, updateButterfly, drawButterfly } from "./npc-butterfly.js";
 import { createPJ, updatePJ, drawPJ, triggerPJSwat } from "./npc-pj.js";
 
+import {
+  createNanaSnatcher,
+  updateNanaSnatcher,
+  drawNanaSnatcher
+} from "./npc-nanasnatchers.js";
+
+import {
+  loadLeaderboard,
+  saveLeaderboard,
+  isHighScore,
+  insertHighScore,
+  normalizeInitials
+} from "./leaderboard.js";
+
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
@@ -88,6 +103,8 @@ canvas.height = CANVAS_HEIGHT;
 
 const keys = createKeysState();
 const state = createInitialState();
+state.leaderboard = loadLeaderboard();
+
 const inputState = createInputState();
 
 const spriteStore = loadSprites();
@@ -141,6 +158,42 @@ function drawStartCard(ctx) {
         canvas.width,
         canvas.height
     );
+    drawLeaderboardPanel();
+}
+
+function drawLeaderboardPanel() {
+  const entries = state.leaderboard || [];
+  if (!entries.length) return;
+
+
+  const cw = canvas.width;
+  const w = 330;
+  const h = 280;
+  const x = cw / 2 - w / 2;
+  const y = 1320;
+
+  ctx.save();
+
+  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  roundRect(ctx, x, y, w, h, 18);
+  ctx.fill();
+
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 34px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText("MOST ACCEPTED", cw/2, 1365);
+
+  ctx.font = "bold 28px Arial";
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    ctx.fillText(
+      `${e.initials}   ❤️ ${e.score}`,
+      cw/2,
+      1415 + i * 38
+    );
+  }
+
+  ctx.restore();
 }
 
 function setQueuedDirectionCompat(x, y, name) {
@@ -273,7 +326,7 @@ function checkSecretReward() {
     state.secretRewardsFound[rewardKey] = true;
     state.score += bonus;
     state.bananasCollectedThisScene = (state.bananasCollectedThisScene || 0) + bonus;
-
+    addAcceptanceScore(bonus, "secret reward");
     state.secretRewardPopups.push({
         nodeId,
         type: reward.type,
@@ -460,6 +513,14 @@ function drawHeartProgressPopup() {
     ctx.restore();
 }
 
+function addAcceptanceScore(amount, reason = "") {
+  if (!amount) return;
+  state.acceptanceScore = (state.acceptanceScore || 0) + amount;
+
+  // Optional debug:
+  // if (reason) debugLog(state, `[ACCEPTANCE] +${amount} ${reason}`);
+}
+
 function getBossScale(x, y) {
     return 1;
 }
@@ -527,6 +588,31 @@ function getCurrentBackgroundImage() {
     if (state.scene === "boss") return spriteStore.bossBackground;
     if (state.scene === "chill") return spriteStore.chillHillBackground || backgroundImage;
     return backgroundImage;
+}
+
+function getCurrentEnemyEntryNodeId() {
+  const sceneConfig = getSceneConfig();
+  const candidateIds = sceneConfig.enemyEntryNodeIds || [];
+  const nodeMap = getCurrentNodeMap();
+
+  if (!candidateIds.length) return null;
+  if (!state.player) return candidateIds[0];
+
+  let bestId = candidateIds[0];
+  let bestDist = -Infinity;
+
+  for (const id of candidateIds) {
+    const node = nodeMap[id];
+    if (!node) continue;
+
+    const d = Math.hypot(node.x - state.player.x, node.y - state.player.y);
+    if (d > bestDist) {
+      bestDist = d;
+      bestId = id;
+    }
+  }
+
+  return bestId;
 }
 
 function showBossIntro(level) {
@@ -724,7 +810,7 @@ function updateDeliveryCrate(dt) {
     if (state.player && Math.hypot(state.player.x - c.x, state.player.y - c.y) < 48) {
         state.score += c.value;
         state.bananasCollectedThisScene = (state.bananasCollectedThisScene || 0) + c.value;
-
+        addAcceptanceScore(c.value, "delivery crate");
         state.delayedPopups.push({
             delay: 1.15,
             popup: {
@@ -1175,8 +1261,8 @@ function startMainScene() {
         sounds,
         isBossScene: false
     });
-    state.butterfly = createButterfly("N5", getCurrentNodeMap());
-    state.pj = createPJ("N24", getCurrentNodeMap());
+    state.butterfly = null;
+    state.pj = null;
     state.bananaTimestamps = [];
     state.mainEnding = null;
     state.mainSecretEntered = false;
@@ -1186,6 +1272,8 @@ function startMainScene() {
     state.secretRewardsFound = {};
     state.secretRewardPopups = [];
     state.bananaTimestamps = [];
+
+    state.nanaSnatchers = [];
 }
 
 function startBossMode() {
@@ -1907,7 +1995,7 @@ function updateHeartCollection() {
 
         const collected = state.fieldHearts.filter(h => h.collected).length;
         state.acceptance = Math.min(3, collected);
-
+        addAcceptanceScore(50, "heart pickup");
         state.heartCooldown = 1.0;
         state.lastHeartNodeId = heart.nodeId;
         state.lastHeartPickupTime = performance.now() / 1000;
@@ -2252,7 +2340,11 @@ function drawHudOverlay() {
     // LEFT: banana score + level
     ctx.textAlign = "left";
     ctx.font = "28px Arial";
-    ctx.fillText(`🍌 ${state.score}   ⛰️ ${state.level ?? 1}`, leftX, h / 2);
+    ctx.fillText(
+      `❤️ ${state.acceptanceScore || 0}   🍌 ${state.score}   ⛰️ ${state.level ?? 1}`,
+        leftX,
+        h / 2
+      );
 
     // CENTER-ish: hearts
     if (isBossScene() && state.boss) {
@@ -2392,6 +2484,7 @@ function showSceneWin() {
         state.score += completionBonus;
         state.sceneWinBonus = completionBonus;
         state.sceneWinAwarded = true;
+        addAcceptanceScore(100 + ((state.level || 1) * 25), "scene clear");
     }
 
     state.loadScreenImage =
@@ -2824,24 +2917,33 @@ function addAcceptance(amount) {
     }
 }
 
-const MAIN_TROOP_SPAWN_NODE_IDS = ["N13", "N20", "N23", "N7"];
+function releaseTroopFromEntry() {
+  const nodeMap = getCurrentNodeMap();
+  const spawnNodeId = getCurrentEnemyEntryNodeId();
+  if (!spawnNodeId || !nodeMap[spawnNodeId]) return;
+
+  const colors = ["#7c5c46", "#6c4d39", "#8d6b52", "#6f5242"];
+  const troop = new Troop(spawnNodeId, choose(colors), sharedDeps);
+  troop.startNodeId = spawnNodeId;
+  troop.speedMultiplier = 0.75;
+  troop.intelligence = 0.30;
+  troop.speed = troop.baseSpeed * troop.speedMultiplier;
+  troop.hidden = false;
+  troop.respawnTimer = 0;
+
+  state.troops.push(troop);
+}
 
 function respawnTroopSafely(troop) {
   if (!troop || state.scene !== "main") return;
 
   const nodeMap = getCurrentNodeMap();
-
-  const spawnNodeId = getSafeSpawnNodeId(
-    MAIN_TROOP_SPAWN_NODE_IDS,
-    nodeMap,
-    state.player,
-    choose,
-    220
-  );
+  const spawnNodeId = getCurrentEnemyEntryNodeId();
 
   if (!spawnNodeId || !nodeMap[spawnNodeId]) return;
-
+  troop.startNodeId = spawnNodeId;
   troop.currentNode = spawnNodeId;
+  troop.speed = troop.baseSpeed * troop.speedMultiplier;
   troop.previousNode = null;
   troop.targetNode = null;
   troop.x = nodeMap[spawnNodeId].x;
@@ -2851,25 +2953,123 @@ function respawnTroopSafely(troop) {
   troop.animTime = 0;
 }
 
+function updateEnemyRelease(dt) {
+  if (state.scene !== "main") return;
+  if (!state.enemyRelease) return;
+
+  const r = state.enemyRelease;
+
+  if (r.releasedCount < r.targetCount) {
+    r.releaseTimer -= dt;
+    if (r.releaseTimer <= 0) {
+      releaseTroopFromEntry();
+      r.releasedCount += 1;
+      r.releaseTimer = r.releaseInterval;
+
+      if (r.butterflyUnlocked && !r.butterflyReleased && r.releasedCount >= 1) {
+        state.butterfly = createButterfly("N5", getCurrentNodeMap());
+        r.butterflyReleased = true;
+      }
+
+      if (r.pjUnlocked && !r.pjReleased && r.releasedCount >= 2) {
+        state.pj = createPJ("N24", getCurrentNodeMap());
+        r.pjReleased = true;
+      }
+    }
+    return;
+  }
+
+  r.reinforcementTimer -= dt;
+  if (r.reinforcementTimer <= 0) {
+    releaseTroopFromEntry();
+    r.releasedCount += 1;
+    r.reinforcementTimer = r.reinforcementInterval;
+  }
+}
+
+function releaseNanaSnatcherFromEntry() {
+  const nodeMap = getCurrentNodeMap();
+  const spawnNodeId = getCurrentEnemyEntryNodeId();
+  if (!spawnNodeId || !nodeMap[spawnNodeId]) return;
+
+  const snatcher = createNanaSnatcher(spawnNodeId, nodeMap);
+  state.nanaSnatchers.push(snatcher);
+}
+
+function updateNanaSnatchers(dt) {
+  for (const snatcher of state.nanaSnatchers) {
+    if (snatcher.hidden) {
+      snatcher.respawnTimer -= dt;
+      if (snatcher.respawnTimer <= 0) {
+        const spawnNodeId = getCurrentEnemyEntryNodeId();
+        const nodeMap = getCurrentNodeMap();
+        const node = nodeMap[spawnNodeId];
+        if (spawnNodeId && node) {
+          snatcher.hidden = false;
+          snatcher.active = true;
+          snatcher.carryingBanana = false;
+          snatcher.targetBananaId = null;
+          snatcher.exitNodeId = null;
+          snatcher.targetNode = null;
+          snatcher.previousNode = null;
+          snatcher.waitTime = 0;
+          snatcher.frame = 0;
+          snatcher.animTime = 0;
+          snatcher.currentNode = spawnNodeId;
+          snatcher.x = node.x;
+          snatcher.y = node.y;
+        }
+      }
+      continue;
+    }
+
+    updateNanaSnatcher(
+      snatcher,
+      dt,
+      getCurrentNodeMap(),
+      state.bananas,
+      getCurrentEnemyEntryNodeId
+    );
+  }
+}
+
+function updateSnatcherRelease(dt) {
+  if (state.scene !== "main") return;
+  if (!state.snatcherRelease) return;
+
+  const r = state.snatcherRelease;
+
+  if (r.releasedCount >= r.targetCount) return;
+
+  r.releaseTimer -= dt;
+  if (r.releaseTimer > 0) return;
+
+  releaseNanaSnatcherFromEntry();
+  r.releasedCount += 1;
+  r.releaseTimer = r.releaseDelay;
+}
+
 function applyLevelConfig() {
-    const config = getLevelConfig();
+  const targetCount = Math.max(2, state.level);
 
-    const baseTroopStarts = ["N13", "N20", "N23", "N7"];
-    const troopColors = ["#7c5c46", "#6c4d39", "#8d6b52", "#6f5242"];
-
-    while (state.troops.length < config.troopCount) {
-        const idx = state.troops.length;
-        state.troops.push(new Troop(baseTroopStarts[idx], troopColors[idx], sharedDeps));
-    }
-
-    while (state.troops.length > config.troopCount) {
-        state.troops.pop();
-    }
-
-    for (const troop of state.troops) {
-        troop.speedMultiplier = 0.75;
-        troop.intelligence = 0.30;
-    }
+  state.enemyRelease = {
+    targetCount,
+    releasedCount: 0,
+    releaseInterval: 5,
+    releaseTimer: 3,
+    reinforcementInterval: 60,
+    reinforcementTimer: 60,
+    butterflyUnlocked: !!state.unlocks?.butterfly,
+    butterflyReleased: false,
+    pjUnlocked: !!state.unlocks?.pj,
+    pjReleased: false
+  };
+  state.snatcherRelease = {
+    targetCount: Math.floor(Math.max(2, state.level) / 2),
+    releasedCount: 0,
+    releaseDelay: 5,   // example initial offset
+    releaseTimer: 5
+  };
 }
 
 function ripenessLabel(age) {
@@ -2931,19 +3131,13 @@ const sharedDeps = {
 };
 
 function resetActors() {
-    clearQueuedDirectionCompat();
-    queuedDirection = null;
-    queuedDirectionName = null;
+  clearQueuedDirectionCompat();
+  queuedDirection = null;
+  queuedDirectionName = null;
 
-    const startNodeId = SCENE_CONFIGS.main.startNode;
-    state.player = new Player(startNodeId, sharedDeps);
-    state.troops = [
-        new Troop("N13", "#7c5c46", sharedDeps),
-        new Troop("N23", "#7c5c46", sharedDeps),
-        new Troop("N20", "#6c4d39", sharedDeps)
-        //new Troop("N7", "#6c4d39", sharedDeps)
-    ];
-
+  const startNodeId = getSceneConfig().startNode;
+  state.player = new Player(startNodeId, sharedDeps);
+  state.troops = [];
 }
 
 function startGame() {
@@ -2954,6 +3148,7 @@ function startGame() {
     state.cardBackground = backgroundImage;
     state.loadScreenImage = getLevelCardImage(1);
     state.score = 0;
+    state.acceptanceScore = 0;
     state.lives = 3;
     state.hearts = [];
     state.fieldHearts = [];
@@ -2965,8 +3160,8 @@ function startGame() {
     state.particles = [];
     state.catchAnim = null;
     state.acceptance = 0;
-    state.level = 1;
-    state.levelUp = null;
+    // state.level = 1;
+    state.level = DEBUG ? DEBUG_TEST_LEVEL : 1;    state.levelUp = null;
     state.levelIntro = null;
     state.bossIntro = null;
     state.hands = [];
@@ -3128,6 +3323,15 @@ function refillBananas() {
     while ((state.bananas?.length || 0) + (state.hands?.length || 0) < MAX_ACTIVE_BANANAS) {
         tossBanana();
     }
+}
+
+function ensureBananasAvailable() {
+  const activeBananas = (state.bananas || []).filter(b => b && !b.collected).length;
+  const activeHands = (state.hands || []).filter(h => h && h.active).length;
+
+  if (activeBananas + activeHands > 1) return;
+
+  tossBanana();
 }
 
 function triggerZookeeper2(type = "react") {
@@ -3314,7 +3518,7 @@ function updateBananas(dt) {
 
         state.score += value;
         state.bananasCollectedThisScene = (state.bananasCollectedThisScene || 0) + value;
-
+        addAcceptanceScore(value, "banana pickup");
         showBananaPickupPopup(
             banana.x,
             banana.y,
@@ -3699,12 +3903,26 @@ function updateMainEnding(dt) {
 }
 
 function updateTroops(dt) {
-  state.troops.forEach(t => t.update(dt));
+  for (const troop of state.troops) {
+    if (troop.hidden) {
+      troop.respawnTimer -= dt;
+      if (troop.respawnTimer <= 0) {
+        troop.hidden = false;
+        troop.respawnTimer = 0;
+        respawnTroopSafely(troop);
+      }
+      continue;
+    }
+
+    troop.update(dt);
+  }
 
   if (state.catchAnim) return;
   if (state.player?.invuln > 0) return;
 
   for (const troop of state.troops) {
+    if (troop.hidden) continue;
+
     if (
       state.scene === "main" &&
       state.pj?.active &&
@@ -3713,7 +3931,9 @@ function updateTroops(dt) {
       triggerPJSwat(state.pj);
       playSfx(sounds.grunt);
       showFloatingText(troop.x, troop.y - 36, "Shoo!", "#fff", 0.9);
-      respawnTroopSafely(troop);
+
+      troop.hidden = true;
+      troop.respawnTimer = 2.0;
       continue;
     }
 
@@ -3873,21 +4093,45 @@ function updateCatch(dt) {
         state.lives -= 1;
 
         if (state.lives <= 0) {
-            state.mode = "gameOver";
-            state.loadScreenImage = getGameOverCardImage();
+          const gotHighScore = maybeStartHighScoreEntry();
+          state.mode = "gameOver";
+          state.loadScreenImage = getGameOverCardImage();
 
-            if (sounds.music) {
-                sounds.music.pause();
-                sounds.music.currentTime = 0;
-            }
-            if (sounds.bossMusic) {
-                sounds.bossMusic.pause();
-                sounds.bossMusic.currentTime = 0;
-            }
+          if (gotHighScore) {
+            const initials = normalizeInitials(prompt("New high score! Enter 3 initials:") || "AAA");
+            const updated = insertHighScore(
+              state.leaderboard,
+              initials || "AAA",
+              state.acceptanceScore || 0
+            );
+            state.leaderboard = updated;
+            saveLeaderboard(updated);
+          }
+
+          if (sounds.music) {
+            sounds.music.pause();
+            sounds.music.currentTime = 0;
+          }
+          if (sounds.bossMusic) {
+            sounds.bossMusic.pause();
+            sounds.bossMusic.currentTime = 0;
+          }
         } else {
             respawnPlayerHome();
         }
     }
+}
+
+function maybeStartHighScoreEntry() {
+  const entries = state.leaderboard || [];
+  const score = state.acceptanceScore || 0;
+
+  if (!isHighScore(score, entries)) return false;
+
+  state.enteringHighScore = true;
+  state.highScoreInitials = "AAA";
+  state.pendingHighScore = score;
+  return true;
 }
 
 function updateParticles(dt) {
@@ -4029,6 +4273,13 @@ function update(dt) {
 
     if (!state.catchAnim) {
         updatePlayer(dt);
+    }
+
+    if (state.scene === "main") {
+      updateEnemyRelease(dt);
+      updateSnatcherRelease(dt);
+      updateNanaSnatchers(dt);
+      ensureBananasAvailable();
     }
 
     if (state.player) {
@@ -4288,6 +4539,9 @@ function draw() {
     drawSecretRewardSparkles();
     drawSecretRewardPopups();
     drawHeartProgressPopup();
+    for (const snatcher of state.nanaSnatchers) {
+      drawNanaSnatcher(ctx, snatcher, spriteStore);
+    }
     if (state.butterfly) {
       drawButterfly(ctx, state.butterfly, spriteStore);
     }
