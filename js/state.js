@@ -72,7 +72,9 @@ export function createInitialState() {
     butterfly: true,
     pj: true,
     lantern: false,
-    tireSwing: false
+    tireSwing: false,
+    gameOverTimer: 0,
+    gameOverDuration: 8,
   },
   };
 }

@@ -187,6 +187,12 @@ export function loadSounds(state) {
     preload: true
   });
 
+  sounds.gameOver = new Howl({
+    src: ["assets/game-over.m4a"],
+    volume: 0.75,
+    preload: true
+  });
+
   // Keep music as HTMLAudio for now
   sounds.music = new Audio("assets/jungle_jumpin.m4a");
   sounds.music.loop = true;

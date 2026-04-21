@@ -2411,30 +2411,34 @@ function drawOverlay() {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    ctx.fillStyle = "rgba(0,0,0,0.4)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = "#fff8dc";
-    ctx.textAlign = "center";
-    ctx.font = "bold 44px Arial";
-    ctx.fillText("Monkey Mountain Madness", canvas.width / 2, canvas.height / 2 - 40);
-
-    ctx.font = "30px Arial";
-    let line = "";
-
-    if (state.mode === "start") {
-        line = "Tap or use spacebar to begin!";
-    } else if (state.mode === "gameOver") {
-        line = "Lil' Jab was tossed too many times. Tap to try again.";
+    if (state.mode === "gameOver") {
+      drawLeaderboardPanel();
     }
 
-    if (line) {
-        ctx.fillText(line, canvas.width / 2, canvas.height / 2 + 8);
-    }
+    // ctx.fillStyle = "rgba(0,0,0,0.4)";
+    // ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.font = "30px Arial";
-    ctx.fillStyle = "#fde68a";
-    ctx.fillText("Human detected. Banana etiquette unacceptable.", canvas.width / 2, canvas.height / 2 + 42);
+    // ctx.fillStyle = "#fff8dc";
+    // ctx.textAlign = "center";
+    // ctx.font = "bold 44px Arial";
+    // ctx.fillText("Monkey Mountain Madness", canvas.width / 2, canvas.height / 2 - 40);
+
+    // ctx.font = "30px Arial";
+    // let line = "";
+
+    // if (state.mode === "start") {
+    //     line = "Tap or use spacebar to begin!";
+    // } else if (state.mode === "gameOver") {
+    //     line = "Lil' Jab was tossed too many times. Tap to try again.";
+    // }
+
+    // if (line) {
+    //     ctx.fillText(line, canvas.width / 2, canvas.height / 2 + 8);
+    // }
+
+    // ctx.font = "30px Arial";
+    // ctx.fillStyle = "#fde68a";
+    // ctx.fillText("Human detected. Banana etiquette unacceptable.", canvas.width / 2, canvas.height / 2 + 42);
 
     ctx.restore();
 }
@@ -3030,6 +3034,46 @@ function updateNanaSnatchers(dt) {
       state.bananas,
       getCurrentEnemyEntryNodeId
     );
+  }
+}
+
+function updateNanaSnatcherCollisions() {
+  if (state.catchAnim) return;
+  if (state.player?.invuln > 0) return;
+
+  for (const snatcher of state.nanaSnatchers) {
+    if (!snatcher.active || snatcher.hidden) continue;
+
+    // PJ swats snatcher
+    if (
+      state.scene === "main" &&
+      state.pj?.active &&
+      Math.hypot(state.pj.x - snatcher.x, state.pj.y - snatcher.y) < 42
+    ) {
+      triggerPJSwat(state.pj);
+      playSfx(sounds.grunt);
+      showFloatingText(snatcher.x, snatcher.y - 36, "Shoo!", "#fff", 0.9);
+
+      snatcher.hidden = true;
+      snatcher.active = false;
+      snatcher.respawnTimer = 2.0;
+
+      // reset mission state so it doesn't resume an old cave route
+      snatcher.carryingBanana = false;
+      snatcher.targetBananaId = null;
+      snatcher.exitNodeId = null;
+      snatcher.targetNode = null;
+      snatcher.previousNode = null;
+      snatcher.waitTime = 0;
+
+      continue;
+    }
+
+    // Punch collides with snatcher -> same catch logic as troops
+    if (distance(state.player, snatcher) < 34) {
+      startCatch(snatcher);
+      break;
+    }
   }
 }
 
@@ -4108,6 +4152,9 @@ function updateCatch(dt) {
             saveLeaderboard(updated);
           }
 
+          state.gameOverTimer = 0;
+          state.gameOverDuration = 8;
+
           if (sounds.music) {
             sounds.music.pause();
             sounds.music.currentTime = 0;
@@ -4116,6 +4163,8 @@ function updateCatch(dt) {
             sounds.bossMusic.pause();
             sounds.bossMusic.currentTime = 0;
           }
+
+          playSfx(sounds.gameOver, null, "gameOver");
         } else {
             respawnPlayerHome();
         }
@@ -4202,6 +4251,19 @@ function update(dt) {
         return;
     }
 
+    if (state.mode === "gameOver") {
+      state.gameOverTimer += dt;
+
+      if (state.gameOverTimer >= state.gameOverDuration) {
+        state.mode = "start";
+        state.cardBackground = spriteStore.gameStartCard;
+        state.loadScreenImage = getLevelCardImage(1);
+        state.gameOverTimer = 0;
+      }
+
+      return;
+    }
+
     if (state.mode !== "playing") return;
 
     state.heartCooldown = Math.max(0, (state.heartCooldown || 0) - dt);
@@ -4279,6 +4341,7 @@ function update(dt) {
       updateEnemyRelease(dt);
       updateSnatcherRelease(dt);
       updateNanaSnatchers(dt);
+      updateNanaSnatcherCollisions();
       ensureBananasAvailable();
     }
 
