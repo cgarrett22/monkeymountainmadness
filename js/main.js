@@ -4136,35 +4136,39 @@ function updateCatch(dt) {
     if (t >= 1) {
         state.lives -= 1;
 
-        if (state.lives <= 0) {
-          const gotHighScore = maybeStartHighScoreEntry();
-          state.mode = "gameOver";
-          state.loadScreenImage = getGameOverCardImage();
+      if (state.lives <= 0) {
+        const gotHighScore = maybeStartHighScoreEntry();
 
-          if (gotHighScore) {
-            const initials = normalizeInitials(prompt("New high score! Enter 3 initials:") || "AAA");
-            const updated = insertHighScore(
-              state.leaderboard,
-              initials || "AAA",
-              state.acceptanceScore || 0
-            );
-            state.leaderboard = updated;
-            saveLeaderboard(updated);
-          }
+        state.mode = "gameOver";
+        state.loadScreenImage = getGameOverCardImage();
+        state.gameOverTimer = 0;
+        state.gameOverDuration = 8;
 
-          state.gameOverTimer = 0;
-          state.gameOverDuration = 8;
+        if (sounds.music) {
+          sounds.music.pause();
+          sounds.music.currentTime = 0;
+        }
+        if (sounds.bossMusic) {
+          sounds.bossMusic.pause();
+          sounds.bossMusic.currentTime = 0;
+        }
 
-          if (sounds.music) {
-            sounds.music.pause();
-            sounds.music.currentTime = 0;
-          }
-          if (sounds.bossMusic) {
-            sounds.bossMusic.pause();
-            sounds.bossMusic.currentTime = 0;
-          }
+        playSfx(sounds.gameOver, null, "gameOver");
 
-          playSfx(sounds.gameOver, null, "gameOver");
+        if (gotHighScore) {
+          const initials = normalizeInitials(
+            prompt("New high score! Enter 3 initials:") || "AAA"
+          );
+
+          const updated = insertHighScore(
+            state.leaderboard,
+            initials || "AAA",
+            state.acceptanceScore || 0
+          );
+
+          state.leaderboard = updated;
+          saveLeaderboard(updated);
+        }
         } else {
             respawnPlayerHome();
         }
