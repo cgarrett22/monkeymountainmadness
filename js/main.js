@@ -184,11 +184,12 @@ function drawLeaderboardPanel() {
   ctx.fillText("MOST ACCEPTED", cw/2, 1365);
 
   ctx.font = "bold 28px Arial";
+  ctx.textAlign = "center";
   for (let i = 0; i < entries.length; i++) {
     const e = entries[i];
     ctx.fillText(
       `${e.initials}   ❤️ ${e.score}`,
-      cw/2,
+      cw/2 - 24,
       1415 + i * 38
     );
   }
