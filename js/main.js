@@ -95,6 +95,26 @@ import {
   normalizeInitials
 } from "./leaderboard.js";
 
+import {
+  createKongEventState,
+  resetKongEvent,
+  startKongBalloonIntro,
+  maybeTriggerKongEvent,
+  forceTriggerKongEvent,
+  updateKongEvent,
+  updateKongEventCollisions,
+  drawKongEvent
+} from "./kong-event.js";
+
+import {
+  spawnDeliveryEvent,
+  updateDeliveryEvent,
+  updateDeliveryCrate,
+  drawDeliveryEvent,
+  drawDeliveryCrate,
+  cancelDeliveryAhh
+} from "./delivery-event.js";
+
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
@@ -122,43 +142,25 @@ const MAX_ACTIVE_BANANAS = 3;
 
 const CLOUD_SCROLL_SPEED = 14;
 
-function spawnDeliveryEvent() {
-    if (state.scene !== "main") return;
-    if (state.deliveryEvent || state.deliveryCrate) return;
-    if (state.mode !== "playing") return;
-
-    const route = DELIVERY_ROUTES.main[0];
-    const first = getCurrentNodeMap()[route[0]];
-    if (!first) return;
-    state.deliveryEvent = {
-        route,
-        routeIndex: 0,
-        x: first.x,
-        y: first.y,
-        speed: 135,
-        facing: "right",
-        frame: 0,
-        animTime: 0,
-        state: "walking", // walking | fainting | fading
-        time: 0,
-        alpha: 1,
-        crateValue: randInt(10, 18),
-        faintGagPlayed: false
-    };
-}
-
 // keep compatibility with the rest of the existing file for now
 function drawStartCard(ctx) {
-    if (!state.cardBackground) return;
+  const img = state.cardBackground;
 
-    ctx.drawImage(
-        state.cardBackground,
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
+  if (!img || !img.complete || img.naturalWidth <= 0) {
+    ctx.fillStyle = "#111";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 42px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("Start card missing or still loading", canvas.width / 2, 220);
+
     drawLeaderboardPanel();
+    return;
+  }
+
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  drawLeaderboardPanel();
 }
 
 function drawLeaderboardPanel() {
@@ -184,12 +186,12 @@ function drawLeaderboardPanel() {
   ctx.fillText("MOST ACCEPTED", cw/2, 1365);
 
   ctx.font = "bold 28px Arial";
-  ctx.textAlign = "center";
+  ctx.textAlign = "left";
   for (let i = 0; i < entries.length; i++) {
     const e = entries[i];
     ctx.fillText(
-      `${e.initials}   ❤️ ${e.score}`,
-      cw/2 - 24,
+      `${e.initials}  ❤️  ${e.score}`,
+      cw/2 - w/2 + 80,
       1415 + i * 38
     );
   }
@@ -616,6 +618,32 @@ function getCurrentEnemyEntryNodeId() {
   return bestId;
 }
 
+function drawDizzyRings() {
+  if (!state.player) return;
+  if ((state.dizzyTimer || 0) <= 0) return;
+
+  const x = state.player.x;
+  const y = state.player.y - 110;
+  const t = performance.now() * 0.008;
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.strokeStyle = "rgba(255,245,140,0.95)";
+  ctx.lineWidth = 4;
+
+  for (let i = 0; i < 3; i++) {
+    const ang = t + i * (Math.PI * 2 / 3);
+    const rx = Math.cos(ang) * 26;
+    const ry = Math.sin(ang) * 9;
+
+    ctx.beginPath();
+    ctx.arc(rx, ry, 11, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
 function showBossIntro(level) {
     state.mode = "playing";
     state.sceneWinTimer = 0;
@@ -703,132 +731,6 @@ function updateLevelIntro(dt) {
     }
 }
 
-function updateDeliveryEvent(dt) {
-    const d = state.deliveryEvent;
-    if (!d) return;
-
-    d.time += dt;
-
-    if (d.state === "walking") {
-        const nextIndex = d.routeIndex + 1;
-        if (nextIndex >= d.route.length) {
-            state.deliveryEvent = null;
-            state.deliveryTimer = rand(18, 30);
-            return;
-        }
-
-        const target = getCurrentNodeMap()[d.route[nextIndex]];
-        if (!target) {
-            state.deliveryEvent = null;
-            return;
-        }
-
-        const dx = target.x - d.x;
-        const dy = target.y - d.y;
-        const dist = Math.hypot(dx, dy);
-        const step = d.speed * dt;
-
-        if (Math.abs(dx) > Math.abs(dy)) {
-            d.facing = dx >= 0 ? "right" : "left";
-        } else {
-            d.facing = dy >= 0 ? "down" : "up";
-        }
-
-        d.animTime += dt;
-        d.frame = Math.floor(d.animTime * 8) % 4;
-
-        if (dist <= step) {
-            d.x = target.x;
-            d.y = target.y;
-            d.routeIndex = nextIndex;
-        } else {
-            d.x += (dx / dist) * step;
-            d.y += (dy / dist) * step;
-        }
-
-        if (state.player && Math.hypot(state.player.x - d.x, state.player.y - d.y) < 52) {
-            d.state = "fainting";
-            d.time = 0;
-            d.frame = 0;
-
-            playSfx(sounds.eOh);
-            scheduleDeliveryAhh();
-        }
-
-        return;
-    }
-
-    if (d.state === "fainting") {
-        if (!d.faintGagPlayed) {
-            d.faintGagPlayed = true;
-
-            state.hearts.push({
-                x: d.x,
-                y: d.y - 70,
-                t: 0
-            });
-            state.hearts.push({
-                x: d.x - 18,
-                y: d.y - 48,
-                t: 0.1
-            });
-            state.hearts.push({
-                x: d.x + 18,
-                y: d.y - 52,
-                t: 0.2
-            });
-
-            showFloatingText(d.x, d.y - 455, "Oh the love!! ❤️", "#fff", 3.4);
-            showFloatingText(d.x, d.y - 380, "I.. can't take it!", "#ff7aa8", 3.4);
-        }
-
-        if (d.time >= 1.0) {
-            d.state = "fading";
-            d.time = 0;
-        }
-        return;
-    }
-
-    if (d.state === "fading") {
-        d.alpha = Math.max(0, 1 - d.time / 0.45);
-        if (d.alpha <= 0) {
-            state.deliveryEvent = null;
-            state.deliveryTimer = rand(22, 34);
-        }
-    }
-}
-
-function updateDeliveryCrate(dt) {
-    const c = state.deliveryCrate;
-    if (!c) return;
-
-    c.ttl -= dt;
-    if (c.ttl <= 0) {
-        state.deliveryCrate = null;
-        return;
-    }
-
-    if (state.player && Math.hypot(state.player.x - c.x, state.player.y - c.y) < 48) {
-        state.score += c.value;
-        state.bananasCollectedThisScene = (state.bananasCollectedThisScene || 0) + c.value;
-        addAcceptanceScore(c.value, "delivery crate");
-        state.delayedPopups.push({
-            delay: 1.15,
-            popup: {
-                nodeId: "delivery",
-                type: "bananaBunch",
-                value: c.value,
-                x: c.x,
-                y: c.y - 15,
-                time: 0,
-                duration: 3.2
-            }
-        });
-        playSfx(sounds.score);
-        state.deliveryCrate = null;
-    }
-}
-
 function getSceneIntroFocus(nextScene = "main") {
     if (nextScene === "main") {
         const node = getCurrentNodeMap()[HOME_NODE];
@@ -870,8 +772,11 @@ function getSceneIntroFocus(nextScene = "main") {
 }
 
 function toggleDebugConsole() {
-    state.showDebugConsole = !state.showDebugConsole;
-    debugLog(state.showDebugConsole ? "[DEBUG] console shown" : "[DEBUG] console hidden");
+  state.showDebugConsole = !state.showDebugConsole;
+  debugLog(
+    state,
+    state.showDebugConsole ? "[DEBUG] console shown" : "[DEBUG] console hidden"
+  );
 }
 
 function drawDebugConsole() {
@@ -957,73 +862,6 @@ function drawDebugConsole() {
     for (const line of lines) {
         ctx.fillText(line, x + 18, lineY);
         lineY += 22;
-    }
-
-    ctx.restore();
-}
-
-function drawDeliveryEvent() {
-    const d = state.deliveryEvent;
-    if (!d) return;
-
-    ctx.save();
-    ctx.globalAlpha = d.alpha ?? 1;
-    ctx.translate(d.x, d.y - 150);
-
-    const img =
-        d.state === "walking" ?
-        spriteStore.deliveryDude :
-        spriteStore.deliveryDudeFaints;
-
-    if (img?.complete && img.naturalWidth > 0) {
-        const cols = 4;
-        const rows = 3;
-        const frameWidth = img.naturalWidth / cols;
-        const frameHeight = img.naturalHeight / rows;
-
-        let row = 1;
-        if (d.facing === "down") row = 0;
-        else if (d.facing === "up") row = 2;
-
-        const frame = d.state === "walking" ? d.frame : Math.min(3, Math.floor(d.time * 8));
-
-        if (d.facing === "right") ctx.scale(-1, 1);
-
-        const drawW = 384;
-        const drawH = 384;
-
-        ctx.drawImage(
-            img,
-            frame * frameWidth,
-            row * frameHeight,
-            frameWidth,
-            frameHeight,
-            -drawW / 2,
-            -drawH / 2,
-            drawW,
-            drawH
-        );
-    }
-
-    ctx.restore();
-}
-
-function drawDeliveryCrate() {
-    const c = state.deliveryCrate;
-    if (!c) return;
-
-    ctx.save();
-    const pulse = 1 + Math.sin(performance.now() * 0.006) * 0.06;
-    ctx.translate(c.x, c.y);
-    ctx.scale(pulse, pulse);
-
-    if (spriteStore.deliveryCrate?.complete && spriteStore.deliveryCrate.naturalWidth > 0) {
-        const w = 96;
-        const h = w * (spriteStore.deliveryCrate.naturalHeight / spriteStore.deliveryCrate.naturalWidth);
-        ctx.drawImage(spriteStore.deliveryCrate, -w / 2, -h / 2, w, h);
-    } else {
-        ctx.fillStyle = "#b7791f";
-        ctx.fillRect(-34, -26, 68, 52);
     }
 
     ctx.restore();
@@ -1273,8 +1111,10 @@ function startMainScene() {
     state.secretRewardsFound = {};
     state.secretRewardPopups = [];
     state.bananaTimestamps = [];
-
     state.nanaSnatchers = [];
+    resetKongEvent(state);
+    state.pjRewardBunches = [];
+    state.dizzyTimer = 0;
 }
 
 function startBossMode() {
@@ -1414,7 +1254,6 @@ function startChillHill() {
     state.secretRewardsFound = {};
     state.secretRewardPopups = [];
     state.bananaTimestamps = [];
-
 }
 
 function runAudioTest() {
@@ -1457,24 +1296,6 @@ function cancelAudioTest() {
 
     state.audioTestTimers = [];
     state.audioTestActive = false;
-}
-
-function scheduleDeliveryAhh() {
-    if (state.deliveryAhhTimer) {
-        clearTimeout(state.deliveryAhhTimer);
-    }
-
-    state.deliveryAhhTimer = setTimeout(() => {
-        playSfx(sounds.ahh, null, "ahh");
-        state.deliveryAhhTimer = null;
-    }, 180);
-}
-
-function cancelDeliveryAhh() {
-    if (state.deliveryAhhTimer) {
-        clearTimeout(state.deliveryAhhTimer);
-        state.deliveryAhhTimer = null;
-    }
 }
 
 function unlockAudioOnce() {
@@ -2498,6 +2319,17 @@ function showSceneWin() {
         spriteStore.levelUpCard;
 }
 
+function getSecretRoomBackgroundImage() {
+    const secret = getSecretRoomConfig();
+    const key = secret?.cutsceneBackgroundKey;
+
+    if (key && spriteStore[key]) {
+        return spriteStore[key];
+    }
+
+    return spriteStore.secretRoom_bb || null;
+}
+  
 function drawSceneCompleteOverlay() {
     if (
         state.loadScreenImage &&
@@ -2816,6 +2648,16 @@ function handlePortalTravel(actor) {
 
         if (actor === state.player) {
             state.mode = "sceneEnding";
+            state.hands = [];
+            state.bananas = [];
+            state.fieldHearts = [];
+            state.flyingHearts = [];
+            state.deliveryEvent = null;
+            state.deliveryCrate = null;
+            state.delayedPopups = [];
+            state.nanaSnatchers = [];
+            state.kongEvent.active = false;
+            state.kongEvent.phase = "idle";
             if (state.deliveryAhhTimer) {
                 clearTimeout(state.deliveryAhhTimer);
                 state.deliveryAhhTimer = null;
@@ -2841,7 +2683,7 @@ function handlePortalTravel(actor) {
             state.catchAnim = null;
 
             stopAllMusic(sounds);
-            cancelDeliveryAhh();
+            cancelDeliveryAhh(state);
             debugLog(state, "[AUDIO] victory attempt");
             playSfx(sounds.victory, null, "victory");
         }
@@ -3054,6 +2896,7 @@ function updateNanaSnatcherCollisions() {
       triggerPJSwat(state.pj);
       playSfx(sounds.grunt);
       showFloatingText(snatcher.x, snatcher.y - 36, "Shoo!", "#fff", 0.9);
+      spawnPJRewardBunch(snatcher.x, snatcher.y, 8, 16, "snatcher");
 
       snatcher.hidden = true;
       snatcher.active = false;
@@ -3109,12 +2952,20 @@ function applyLevelConfig() {
     pjUnlocked: !!state.unlocks?.pj,
     pjReleased: false
   };
-  state.snatcherRelease = {
-    targetCount: Math.floor(Math.max(2, state.level) / 2),
-    releasedCount: 0,
-    releaseDelay: 5,   // example initial offset
-    releaseTimer: 5
-  };
+  const snatchersUnlocked =
+      state.scene === "main" &&
+      state.level >= 2;
+
+  state.unlocks.snatchers = snatchersUnlocked;
+
+  state.snatcherRelease = snatchersUnlocked
+      ? {
+          targetCount: Math.floor(Math.max(2, state.level) / 2),
+          releasedCount: 0,
+          releaseDelay: 5,
+          releaseTimer: 5
+        }
+      : null;
 }
 
 function ripenessLabel(age) {
@@ -3255,6 +3106,17 @@ function startGame() {
     state.secretRewardsFound = {};
     state.secretRewardPopups = [];
     state.bananaTimestamps = [];
+    resetKongEvent(state);
+    state.pjRewardBunches = [];
+    state.dizzyTimer = 0;
+    state.unlocks = {
+      butterfly: false,
+      pj: false,
+      snatchers: false,
+      kongEvent: false,
+      lantern: false,
+      tireSwing: false
+  };
 }
 
 function newRound() {
@@ -3286,6 +3148,7 @@ function resetScene() {
     }
     refillBananas();
     tossBanana();
+    state.pjRewardBunches = [];
 }
 
 function getZookeeperThrowOrigin() {
@@ -3584,6 +3447,131 @@ function updateBananas(dt) {
     }
 }
 
+function spawnPJRewardBunch(x, y, minValue, maxValue, source = "pj") {
+    if (state.scene !== "main") return;
+
+    if (!state.pjRewardBunches) {
+        state.pjRewardBunches = [];
+    }
+
+    const value = randInt(minValue, maxValue);
+
+    state.pjRewardBunches.push({
+        id: `pj_reward_${performance.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        source,
+        x,
+        y,
+        value,
+        age: 0,
+        life: source === "snatcher" ? 13.5 : 11.0,
+        collected: false
+    });
+}
+
+function updatePJRewardBunches(dt) {
+    if (!state.pjRewardBunches?.length) return;
+
+    for (let i = state.pjRewardBunches.length - 1; i >= 0; i--) {
+        const bunch = state.pjRewardBunches[i];
+
+        bunch.age = (bunch.age || 0) + dt;
+
+        if (bunch.age >= (bunch.life || 11)) {
+            state.pjRewardBunches.splice(i, 1);
+            continue;
+        }
+
+        if (
+            state.player &&
+            Math.hypot(state.player.x - bunch.x, state.player.y - bunch.y) < 54
+        ) {
+            collectPJRewardBunch(bunch);
+            state.pjRewardBunches.splice(i, 1);
+        }
+    }
+}
+
+function collectPJRewardBunch(bunch) {
+    if (!bunch) return;
+
+    state.score += bunch.value;
+    state.bananasCollectedThisScene =
+        (state.bananasCollectedThisScene || 0) + bunch.value;
+
+    addAcceptanceScore(bunch.value, `${bunch.source || "pj"} reward`);
+
+    state.secretRewardPopups.push({
+        nodeId: "pjReward",
+        type: "bananaBunch",
+        value: bunch.value,
+        x: bunch.x,
+        y: bunch.y - 12,
+        time: 0,
+        duration: 2.1
+    });
+
+    playSfx(sounds.score);
+}
+
+function drawPJRewardBunches() {
+    if (!state.pjRewardBunches?.length) return;
+
+    const img = spriteStore.bananaBunch;
+
+    for (const bunch of state.pjRewardBunches) {
+        const age = bunch.age || 0;
+        const life = bunch.life || 11;
+
+        const fadeStart = life * 0.72;
+        let alpha = 1;
+
+        if (age > fadeStart) {
+            alpha = Math.max(0, 1 - (age - fadeStart) / (life - fadeStart));
+        }
+
+        const warning = age > fadeStart;
+        const pulseSpeed = warning ? 0.018 : 0.006;
+        const pulseAmount = warning ? 0.15 : 0.06;
+        const pulse = 1 + Math.sin(performance.now() * pulseSpeed) * pulseAmount;
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.translate(bunch.x, bunch.y - 28);
+        ctx.scale(pulse, pulse);
+
+        if (warning) {
+            const glow = ctx.createRadialGradient(0, 0, 4, 0, 0, 42);
+            glow.addColorStop(0, "rgba(255,255,255,0.38)");
+            glow.addColorStop(0.45, "rgba(250,204,21,0.22)");
+            glow.addColorStop(1, "rgba(250,204,21,0)");
+            ctx.fillStyle = glow;
+            ctx.beginPath();
+            ctx.arc(0, 0, 42, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        if (img?.complete && img.naturalWidth > 0) {
+            const w = bunch.source === "snatcher" ? 82 : 70;
+            const h = w * (img.naturalHeight / img.naturalWidth);
+
+            ctx.drawImage(
+                img,
+                -w / 2,
+                -h / 2,
+                w,
+                h
+            );
+        } else {
+            ctx.font = "46px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("🍌", 0, 0);
+        }
+
+        ctx.restore();
+    }
+}
+
 function onHighFive() {
     state.score += HIGH_FIVE_BONUS;
     showFloatingText(
@@ -3636,6 +3624,10 @@ function goToNextScene() {
     }
 
     if (state.scene === "boss") {
+        state.unlocks.butterfly = true;
+        state.unlocks.pj = true;
+        state.unlocks.kongEvent = true;
+
         showLevelIntro(state.level, "chill");
         return;
     }
@@ -3875,6 +3867,9 @@ function updateBossHeartCollection() {
 function updatePlayer(dt) {
     if (!state.player) return;
 
+    const dizzyMult = state.dizzyTimer > 0 ? state.dizzySlowMultiplier : 1;
+    state.player.speedMultiplierOverride = dizzyMult;
+
     state.player.update(dt);
 
     checkSecretReward();
@@ -3976,6 +3971,8 @@ function updateTroops(dt) {
       triggerPJSwat(state.pj);
       playSfx(sounds.grunt);
       showFloatingText(troop.x, troop.y - 36, "Shoo!", "#fff", 0.9);
+
+      spawnPJRewardBunch(troop.x, troop.y, 4, 9, "troop");
 
       troop.hidden = true;
       troop.respawnTimer = 2.0;
@@ -4290,6 +4287,7 @@ function update(dt) {
             updateTroops(dt);
         }
 
+
         updateZookeeper(dt);
         updateZookeeper2(dt);
         updateHeartThrowing(dt);
@@ -4305,17 +4303,44 @@ function update(dt) {
         checkChillHillDebugWin();
         return;
     }
+
     updateClouds(dt);
     updateHands(dt);
     updateBananas(dt);
 
-    state.deliveryTimer -= dt;
-    if (state.deliveryTimer <= 0 && !state.deliveryEvent && !state.deliveryCrate) {
-        spawnDeliveryEvent();
+    if (state.dizzyTimer > 0) {
+      state.dizzyTimer = Math.max(0, state.dizzyTimer - dt);
     }
 
-    if (state.scene === "main" && state.butterfly) {
-      updateButterfly(state.butterfly, dt, getCurrentNodeMap(), choose);
+  state.deliveryTimer -= dt;
+
+  if (!state.deliveryEvent && !state.deliveryCrate) {
+      state.deliveryTimer -= dt;
+
+      if (state.deliveryTimer <= 0) {
+            spawnDeliveryEvent(state, getCurrentNodeMap);
+      }
+  }
+
+    updateDeliveryEvent(
+        state,
+        dt,
+        getCurrentNodeMap,
+        sounds,
+        playSfx,
+        showFloatingText
+    );
+
+    updateDeliveryCrate(
+        state,
+        dt,
+        sounds,
+        playSfx,
+        addAcceptanceScore
+    );
+
+  if (state.scene === "main" && state.butterfly) {
+        updateButterfly(state.butterfly, dt, getCurrentNodeMap(), choose);
     }
 
     if (state.scene === "main" && state.pj) {
@@ -4335,14 +4360,18 @@ function update(dt) {
         }
     }
 
-    updateDeliveryEvent(dt);
-    updateDeliveryCrate(dt);
-
     if (!state.catchAnim) {
         updatePlayer(dt);
     }
 
     if (state.scene === "main") {
+      if (state.scene === "main" && state.kongEvent && !state.kongEvent.introDone) {
+        startKongBalloonIntro(state);
+      }
+
+      updateKongEvent(state, dt, getCurrentNodeMap);
+      updateKongEventCollisions(state, playSfx, sounds);
+      maybeTriggerKongEvent(state, getCurrentNodeMap);
       updateEnemyRelease(dt);
       updateSnatcherRelease(dt);
       updateNanaSnatchers(dt);
@@ -4353,6 +4382,8 @@ function update(dt) {
     if (state.player) {
         updateTroops(dt);
     }
+
+    updatePJRewardBunches(dt);
 
     if (state.player?.invuln > 0) {
         state.player.invuln = Math.max(0, state.player.invuln - dt);
@@ -4380,80 +4411,91 @@ function update(dt) {
 // ======================================================
 
 function drawMainEndingOverlay() {
-    if (!state.mainEnding) return;
+    const ending = state.mainEnding;
+    if (!ending) return;
 
     ctx.save();
 
-    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    const bg = getSecretRoomBackgroundImage();
+
+    if (bg?.complete && bg.naturalWidth > 0) {
+        ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+    } else {
+        ctx.fillStyle = "#05030a";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Optional cinematic darkening/glow over the static room.
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+
+    const roomGlow = ctx.createRadialGradient(
+        cx, cy, 80,
+        cx, cy, 780
+    );
+
+    roomGlow.addColorStop(0, "rgba(255,230,245,0.10)");
+    roomGlow.addColorStop(0.42, "rgba(40,20,65,0.18)");
+    roomGlow.addColorStop(1, "rgba(0,0,0,0.58)");
+
+    ctx.fillStyle = roomGlow;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const cx = canvas.width / 2;
-    const cy = canvas.height / 2 + 40;
-
-    const glow = ctx.createRadialGradient(cx, cy, 20, cx, cy, 260);
-    glow.addColorStop(0, "rgba(255,255,220,0.85)");
-    glow.addColorStop(0.4, "rgba(255,230,170,0.35)");
-    glow.addColorStop(1, "rgba(255,255,220,0)");
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 260, 0, Math.PI * 2);
-    ctx.fill();
-
-    let img = null;
-
-    if (state.mainEnding.phase === "intro") {
-        img = spriteStore.motherSit || null;
+    // Draw mother / hug animation centered over the room.
+    if (ending.phase === "intro") {
+        drawSecretRoomMotherSit(cx, cy + 120);
     } else {
-        img = spriteStore.motherHug || null;
+        drawSecretRoomMotherHug(cx, cy + 120, ending.frame || 0);
     }
-
-    if (img && img.complete && img.naturalWidth > 0) {
-        if (state.mainEnding.phase === "hug") {
-            const cols = 8;
-            const rows = 4;
-            const frameCount = 32;
-
-            const frame = Math.min(frameCount - 1, state.mainEnding.frame || 0);
-            const col = frame % cols;
-            const row = Math.floor(frame / cols);
-
-            const frameWidth = img.naturalWidth / cols;
-            const frameHeight = img.naturalHeight / rows;
-
-            const drawW = 420;
-            const drawH = drawW * (frameHeight / frameWidth);
-
-            ctx.drawImage(
-                img,
-                col * frameWidth,
-                row * frameHeight,
-                frameWidth,
-                frameHeight,
-                cx - drawW / 2,
-                cy - drawH / 2,
-                drawW,
-                drawH
-            );
-        } else {
-            const drawW = 280;
-            const drawH = drawW * (img.naturalHeight / img.naturalWidth);
-
-            ctx.drawImage(
-                img,
-                cx - drawW / 2,
-                cy - drawH / 2,
-                drawW,
-                drawH
-            );
-        }
-    }
-
-    ctx.fillStyle = "#fff";
-    ctx.textAlign = "center";
-    ctx.font = "bold 38px Arial";
-    ctx.fillText("Mother Found!", cx, 170);
 
     ctx.restore();
+}
+
+function drawSecretRoomMotherSit(cx, cy) {
+    const img = spriteStore.motherSit;
+    if (!img || !img.complete || img.naturalWidth <= 0) return;
+
+    const drawW = 360;
+    const drawH = drawW * (img.naturalHeight / img.naturalWidth);
+
+    ctx.drawImage(
+        img,
+        cx - drawW / 2,
+        cy - drawH / 2,
+        drawW,
+        drawH
+    );
+}
+
+function drawSecretRoomMotherHug(cx, cy, frame = 0) {
+    const img = spriteStore.motherHug;
+    if (!img || !img.complete || img.naturalWidth <= 0) return;
+
+    const cols = 8;
+    const rows = 4;
+    const frameCount = 32;
+    const safeFrame = Math.max(0, Math.min(frameCount - 1, frame));
+
+    const frameWidth = img.naturalWidth / cols;
+    const frameHeight = img.naturalHeight / rows;
+
+    const col = safeFrame % cols;
+    const row = Math.floor(safeFrame / cols);
+
+    const drawW = 420;
+    const drawH = drawW * (frameHeight / frameWidth);
+
+    ctx.drawImage(
+        img,
+        col * frameWidth,
+        row * frameHeight,
+        frameWidth,
+        frameHeight,
+        cx - drawW / 2,
+        cy - drawH / 2,
+        drawW,
+        drawH
+    );
 }
 
 function drawSecretHolePulse() {
@@ -4550,6 +4592,12 @@ function draw() {
         return;
     }
 
+    if (state.mode === "sceneEnding") {
+        drawMainEndingOverlay();
+        drawDebugConsole();
+        return;
+    }
+
     const showingTransitionCard = !!state.levelUp ||
         !!state.bossIntro ||
         !!state.levelIntro ||
@@ -4581,10 +4629,14 @@ function draw() {
     drawCloudLayer();
     drawZookeeper();
     drawZookeeper2();
+    drawDeliveryCrate(ctx, state, spriteStore);
+    drawDeliveryEvent(ctx, state, spriteStore);
     drawBananaState();
     drawFlyingHearts();
     drawFieldHearts();
+    drawPJRewardBunches();
     drawActors();
+    drawDizzyRings();
     drawMainSecretMother();
     drawSecretHolePulse();
 
@@ -4607,6 +4659,7 @@ function draw() {
     drawSecretRewardSparkles();
     drawSecretRewardPopups();
     drawHeartProgressPopup();
+    drawKongEvent(ctx, state, spriteStore, getCurrentNodeMap);
     for (const snatcher of state.nanaSnatchers) {
       drawNanaSnatcher(ctx, snatcher, spriteStore);
     }
@@ -4616,8 +4669,6 @@ function draw() {
     if (state.pj) {
       drawPJ(ctx, state.pj, spriteStore);
     }
-    drawDeliveryEvent();
-    drawDeliveryCrate();
     drawHudOverlay();
     drawCavePreview();
     drawDebugConsole();
@@ -4752,12 +4803,24 @@ canvas.addEventListener("pointercancel", () => {
 });
 
 document.addEventListener("keydown", (e) => {
-    // }
-    if (e.key === "`" || e.key === "~") {
-        state.showDebugConsole = !state.showDebugConsole;
-        e.preventDefault();
-    }
-    if (state.mode === "caveReveal") {
+  if (e.key === "k" || e.key === "K") {
+      const cycle = ["banana", "girl", "godzilla"];
+      state.debugKongBalloonIndex = ((state.debugKongBalloonIndex || -1) + 1) % cycle.length;
+      forceTriggerKongEvent(state, getCurrentNodeMap, cycle[state.debugKongBalloonIndex]);
+      e.preventDefault();
+  }
+
+  if (e.key === "j" || e.key === "J") {
+      state.dizzyTimer = 2.0;
+      e.preventDefault();
+  }
+
+  if (e.key === "`" || e.key === "~") {
+      state.showDebugConsole = !state.showDebugConsole;
+      e.preventDefault();
+  }
+
+   if (state.mode === "caveReveal") {
         showSceneWin();
         return;
     }
@@ -4882,14 +4945,23 @@ function loop(ts) {
         state.lastTime = ts;
         update(dt || 0);
         draw();
+    // } catch (err) {
+    //     console.error("LOOP CRASH", err);
+    //     console.log("scene:", state.scene);
+    //     console.log("boss:", state.boss);
+    //     console.log("player:", state.player);
+    //     debugger;
+    //     return; // stop the loop so the error stays visible
+
+        
+    // }
     } catch (err) {
-        console.error("LOOP CRASH", err);
-        console.log("scene:", state.scene);
-        console.log("boss:", state.boss);
-        console.log("player:", state.player);
-        debugger;
-        return; // stop the loop so the error stays visible
-    }
+    console.error("LOOP CRASH", err);
+    console.log("scene:", state.scene);
+    console.log("boss:", state.boss);
+    console.log("player:", state.player);
+    return;
+}
     requestAnimationFrame(loop);
 }
 // ======================================================

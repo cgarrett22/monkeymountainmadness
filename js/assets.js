@@ -123,6 +123,38 @@ export function loadSprites() {
   spriteStore.pjSwat = new Image();
   spriteStore.pjSwat.src = "sprites/pj-swat-sprite.webp";  
 
+
+
+  spriteStore.kong = new Image();
+  spriteStore.kong.src = "sprites/kong.webp";  
+
+  spriteStore.kongSquat = new Image();
+  spriteStore.kongSquat.src = "sprites/kong-squat.webp";  
+
+  spriteStore.kongRunning = new Image();
+  spriteStore.kongRunning.src = "sprites/kong-run-sprite.webp";  
+
+  spriteStore.bananaBalloon = new Image();
+  spriteStore.bananaBalloon.src = "sprites/banana-balloon.webp";  
+
+  spriteStore.girlKongBalloon = new Image();
+  spriteStore.girlKongBalloon.src = "sprites/girl-kong-balloon.webp";  
+
+  spriteStore.godzillaBalloon = new Image();
+  spriteStore.godzillaBalloon.src = "sprites/godzilla-balloon.webp";  
+
+  spriteStore.bananaBalloonSprite = new Image();
+  spriteStore.bananaBalloonSprite.src = "sprites/banana-balloon-sprite.webp";  
+
+  spriteStore.girlKongBalloonSprite = new Image();
+  spriteStore.girlKongBalloonSprite.src = "sprites/girl-kong-balloon-sprite.webp";  
+
+  spriteStore.godzillaBalloonSprite = new Image();
+  spriteStore.godzillaBalloonSprite.src = "sprites/godzilla-balloon-sprite.webp";  
+
+  spriteStore.secretRoom_bb = new Image();
+  spriteStore.secretRoom_bb.src = "sprites/secret-room-bb.webp";  
+
   return spriteStore;
 }
 

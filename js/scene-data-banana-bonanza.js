@@ -23,5 +23,5 @@ export const bananaBonanzaSecretRoom = {
   unlockCondition: "heartsComplete",
   pulseAfterUnlock: true,
   completionType: "sceneEnd",
-  cutsceneBackgroundKey: "mainSecretRoom"
+  cutsceneBackgroundKey: "secretRoom_bb"
 };

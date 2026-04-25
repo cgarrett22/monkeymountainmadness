@@ -23,6 +23,7 @@ export class Player {
     // Movement Stats
     this.baseSpeed = 280;
     this.speed = this.baseSpeed;
+    this.speedMultiplierOverride = 1;
     this.facing = "left";
 
     // Animation & State
@@ -55,6 +56,7 @@ export class Player {
     this.panicking = false;
     this.movedThisRound = false;
     this.speed = this.baseSpeed;
+    this.speedMultiplierOverride = 1;
     this.setCarryingMother(false);
     this.invuln = 2.0;
   }
@@ -77,6 +79,10 @@ export class Player {
     if (this.invuln > 0) {
       this.invuln -= dt;
       if (this.invuln < 0) this.invuln = 0;
+    }
+
+    if (typeof this.speedMultiplierOverride !== "number") {
+      this.speedMultiplierOverride = 1;
     }
 
     this.syncMotherSprite();
@@ -144,7 +150,13 @@ export class Player {
       this.facing = dy >= 0 ? "down" : "up";
     }
 
-    const step = this.speed * dt;
+    const speedMult =
+    typeof this.speedMultiplierOverride === "number"
+      ? this.speedMultiplierOverride
+      : 1;
+
+  const effectiveSpeed = this.speed * speedMult;
+  const step = effectiveSpeed * dt;
 
     // Node Arrival Check
     if (dist <= step) {
@@ -156,6 +168,15 @@ export class Player {
       this.movedThisRound = true;
 
       handlePortalTravel(this);
+
+      // Portal travel may switch into a modal state, such as the secret-room ending.
+      // If that happened, do not continue movement or consume queued input.
+      if (state.mode !== "playing") {
+        this.targetNode = null;
+        this.dir = { x: 0, y: 0 };
+        updateAnim(this, dt, 12);
+        return;
+      }
 
       if (!tryConsumeQueuedTurn(this)) {
         tryContinueForward(this);

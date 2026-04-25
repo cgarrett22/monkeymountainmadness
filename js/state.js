@@ -55,6 +55,9 @@ export function createInitialState() {
     deliveryCrate: null,
     deliveryTimer: 18,
     delayedPopups: [],
+    pjRewardBunches: [],
+    gameOverTimer: 0,
+    gameOverDuration: 8,
     debugLogs: [],
     showDebugConsole: false,
     debugCopyButton: null,
@@ -68,14 +71,35 @@ export function createInitialState() {
     enemyRelease: null,
     nanaSnatchers: [],
     snatcherRelease: null,
+    kongEvent: {
+      introDone: false,
+      introBalloons: [],
+      active: false,
+      type: null, // "kongChasesBalloon" | "balloonChasesKong"
+      balloonType: null, // "banana" | "girl" | "godzilla"
+      phase: "idle", // idle | intro | squat | run
+      route: [],
+      routeIndex: 0,
+      x: 0,
+      y: 0,
+      speed: 0,
+      timer: 0,
+      duration: 0,
+      triggeredThisScene: 0,
+      maxPerScene: 1,
+      nextHeartTrigger: 2
+    },
+    dizzyTimer: 0,
+    dizzyDuration: 1.0,
+    dizzySlowMultiplier: 0.15,
     unlocks: {
-    butterfly: true,
-    pj: true,
-    lantern: false,
-    tireSwing: false,
-    gameOverTimer: 0,
-    gameOverDuration: 8,
-  },
+      butterfly: false,
+      pj: false,
+      snatchers: false,
+      kongEvent: false,
+      lantern: false,
+      tireSwing: false
+    },
   };
 }
 
