@@ -226,7 +226,7 @@ export function loadSounds(state) {
   });
 
   // Keep music as HTMLAudio for now
-  sounds.music = new Audio("assets/jungle_jumpin.m4a");
+  sounds.music = new Audio("assets/retro-arcade.mp3");
   sounds.music.loop = true;
   sounds.music.volume = 0.75;
 
