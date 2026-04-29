@@ -2,7 +2,7 @@
 
 export const bossConfig = {
   startNode: "CK1",
-  goalNode: "CK37",
+  goalNode: "CK50",
   motherStartNode: "CK12",
   roamingTroopStartNodes: ["CK25"],
   coconutThrowerNode: "CK47",
