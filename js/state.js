@@ -35,6 +35,14 @@ export function createInitialState() {
     cavePreview: null,
     level: 1,
     levelUp: null,
+    playerJump: null,
+    playerHop: {
+      active: false,
+      timer: 0,
+      duration: 0.42,
+      height: 95
+    },
+    playerVisualOffsetY: 0,
     coconuts: [],
     fieldHearts: [],
     flyingHearts: [],

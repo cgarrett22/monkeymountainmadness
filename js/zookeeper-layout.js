@@ -15,14 +15,14 @@ export const ZOOKEEPER_LAYOUT = {
     },
     ck: {
         z1: {
-            x: 53,
-            y: 100,
+            x: 10,
+            y: 335,
             w: 214,
             h: 204
         },
         z2: {
-            x: 790,
-            y: 240,
+            x: 870,
+            y: 360,
             w: 224,
             h: 200
         }

@@ -11,6 +11,7 @@ import {
     DEBUG,
     DEBUG_TEST_LEVEL,
     DEBUG_LOOP_MAIN_SCENE,
+    DEBUG_LOOP_KONG_SCENE,
     NODE_DEBUG,
     HAT_TRICK_WINDOW,
     HAT_TRICK_COUNT,
@@ -51,7 +52,7 @@ import { ZOOKEEPER_LAYOUT } from "./zookeeper-layout.js";
 import { DELIVERY_ROUTES } from "./delivery-routes.js";
 
 import { bossNodes } from "./scene-data-boss-nodes.js";
-import { bossConfig, bossCoconutLanes } from "./scene-data-boss.js";
+import { bossConfig, bossCoconutLanes, babyKongPath, coconutKongSecretRewards } from "./scene-data-boss.js";
 import { chillNodes } from "./scene-data-chill-nodes.js";
 import { chillConfig, CHILL_BANANA_NODE_IDS } from "./scene-data-chill.js";
 
@@ -241,7 +242,8 @@ Object.defineProperties(window, {
 });
 
 const SECRET_REWARDS = {
-  main: bananaBonanzaSecretRewards
+  main: bananaBonanzaSecretRewards,
+  boss: coconutKongSecretRewards
 };
 
 function getSceneConfig() {
@@ -265,6 +267,13 @@ function isSecretRoomUnlocked() {
 
     if (secret.unlockCondition === "heartsComplete") {
         return (state.acceptance || 0) >= 3;
+    }
+
+    if (secret.unlockCondition === "bossHeartsComplete") {
+        return (
+            state.scene === "boss" &&
+            (state.boss?.heartsCollected || 0) >= (state.boss?.requiredHearts || 3)
+        );
     }
 
     return false;
@@ -588,7 +597,7 @@ function checkChillHillDebugWin() {
 }
 
 function getCurrentBackgroundImage() {
-    if (state.scene === "boss") return spriteStore.bossBackground;
+    if (state.scene === "boss") return spriteStore.ckBackground;
     if (state.scene === "chill") return spriteStore.chillHillBackground || backgroundImage;
     return backgroundImage;
 }
@@ -678,7 +687,7 @@ function showLevelIntro(level, nextScene = "main") {
 }
 
 function updateClouds(dt) {
-    if (state.scene !== "main") return;
+    // if (state.scene !== "main") return;
 
     const img = spriteStore.clouds;
     if (!img || !img.complete || img.naturalWidth <= 0) return;
@@ -769,6 +778,121 @@ function getSceneIntroFocus(nextScene = "main") {
         x: canvas.width / 2,
         y: 180
     };
+}
+
+function drawBabyKongPathDebug() {
+    if (!DEBUG) return;
+    if (state.scene !== "boss") return;
+    if (!Array.isArray(babyKongPath) || babyKongPath.length < 1) return;
+
+    ctx.save();
+
+    // Path line
+    ctx.strokeStyle = "rgba(0, 255, 255, 0.85)";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+
+    for (let i = 0; i < babyKongPath.length; i++) {
+        const p = babyKongPath[i];
+
+        if (i === 0) {
+            ctx.moveTo(p.x, p.y);
+        } else {
+            ctx.lineTo(p.x, p.y);
+        }
+    }
+
+    ctx.stroke();
+
+    // Points and labels
+    ctx.font = "bold 24px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    for (const p of babyKongPath) {
+        ctx.fillStyle = "rgba(0, 255, 255, 0.95)";
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 11, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = "rgba(0,0,0,0.85)";
+        ctx.strokeText(p.id, p.x, p.y - 28);
+
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(p.id, p.x, p.y - 28);
+    }
+
+    // Current Baby Kong target marker
+    const baby = state.boss?.babyKong;
+    if (baby) {
+        ctx.strokeStyle = "rgba(255, 255, 0, 0.95)";
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.arc(baby.x, baby.y, 24, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = "#ffff00";
+        ctx.font = "bold 22px Arial";
+        ctx.fillText(
+            `${baby.state || "?"} f:${baby.frame ?? 0}`,
+            baby.x,
+            baby.y + 34
+        );
+    }
+
+    ctx.restore();
+}
+
+function drawJumpDebugPanel() {
+    if (!DEBUG) return;
+    if (state.scene !== "boss") return;
+
+    const player = state.player;
+    const nodeMap = getCurrentNodeMap();
+
+    const currentNodeId = player?.currentNode || null;
+    const targetNodeId = player?.targetNode || null;
+
+    const currentData = currentNodeId ? nodeMap[currentNodeId] : null;
+    const targetData = targetNodeId ? nodeMap[targetNodeId] : null;
+
+    const lines = [
+        `JUMP DEBUG`,
+        `currentNode: ${currentNodeId}`,
+        `targetNode: ${targetNodeId}`,
+        `current.jumpTo: ${currentData?.jumpTo || "none"}`,
+        `target.jumpTo: ${targetData?.jumpTo || "none"}`,
+        `jump called: ${!!state.lastJumpDebug?.called}`,
+        `jump phase: ${state.lastJumpDebug?.phase || "none"}`,
+        `originNodeId: ${state.lastJumpDebug?.originNodeId || "none"}`,
+        `jumpToId: ${state.lastJumpDebug?.jumpToId || "none"}`,
+        `hasDest: ${state.lastJumpDebug?.hasDest ?? "n/a"}`,
+        `playerJump active: ${!!state.playerJump?.active}`,
+        `hop active: ${!!state.playerHop?.active}`,
+        `x/y: ${Math.round(player?.x || 0)}, ${Math.round(player?.y || 0)}`
+    ];
+
+    ctx.save();
+
+    const x = 30;
+    const y = 92;
+    const w = 430;
+    const h = 390;
+
+    ctx.fillStyle = "rgba(0,0,0,0.72)";
+    ctx.fillRect(x, y, w, h);
+
+    ctx.font = "22px monospace";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+
+    for (let i = 0; i < lines.length; i++) {
+        ctx.fillStyle = i === 0 ? "#ffe066" : "#ffffff";
+        ctx.fillText(lines[i], x + 16, y + 14 + i * 28);
+    }
+
+    ctx.restore();
 }
 
 function toggleDebugConsole() {
@@ -1117,10 +1241,26 @@ function startMainScene() {
     state.dizzyTimer = 0;
 }
 
+function createSceneHeartTargets(count = 3) {
+    const nodeIds = [...getBananaNodeIds()];
+    const hearts = [];
+
+    while (hearts.length < count && nodeIds.length) {
+        const index = Math.floor(Math.random() * nodeIds.length);
+        const nodeId = nodeIds.splice(index, 1)[0];
+
+        hearts.push({
+            nodeId,
+            collected: false
+        });
+    }
+
+    return hearts;
+}
 function startBossMode() {
   state.scene = "boss";
   state.mode = "playing";
-  state.cardBackground = spriteStore.bossBackground;
+  state.cardBackground = spriteStore.ckBackground;
   state.catchAnim = null;
   state.hearts = [];
   state.fieldHearts = [];
@@ -1148,6 +1288,7 @@ function startBossMode() {
   state.player.targetNode = null;
   state.player.x = start.x;
   state.player.y = start.y;
+  state.player.dir = { x: 0, y: 0 };
 
   state.troops = [];
   state.coconuts = [];
@@ -1172,11 +1313,32 @@ function startBossMode() {
     coconutTimer: 0,
     heartsCollected: 0,
     requiredHearts: 3,
-    hearts: [
-      { nodeId: "M1", collected: false },
-      { nodeId: "L3D", collected: false },
-      { nodeId: "R2T", collected: false }
-    ],
+    hearts: [],
+
+    secretReveal: {
+      unlocked: false,
+      exploding: false,
+      exposed: false,
+      timer: 0,
+      duration: 1.0,
+      frame: 0
+    },
+
+    babyKong: {
+      path: babyKongPath,
+      pathIndex: 0,
+      x: babyKongPath[0].x,
+      y: babyKongPath[0].y,
+      targetIndex: 1,
+      speed: 85,
+      facing: "left",
+      state: "walking", // walking | dropping
+      frame: 0,
+      animTime: 0,
+      dropTimer: 0,
+      dropCooldown: 2.4
+    },
+
     mother: {
       carried: false,
       nodeId: bossConfig.motherStartNode
@@ -1193,6 +1355,7 @@ function startBossMode() {
   state.mainMotherTimer = 0;
   state.secretRewardsFound = {};
   state.secretRewardPopups = [];
+  refillBananas();
 }
 
 function startChillHill() {
@@ -1492,29 +1655,32 @@ function drawLevelIntroOverlay() {
             ctx.restore();
         }
 
-        // ctx.save();
-        // ctx.textAlign = "center";
-        // ctx.textBaseline = "middle";
-        // ctx.font = "bold 48px Arial";
-        // ctx.lineWidth = 6;
-        // ctx.strokeStyle = "rgba(0,0,0,0.45)";
-        // ctx.fillStyle = "#fff";
-        // ctx.strokeText(`Level ${li.level || state.level || 1}`, canvas.width / 2, 110);
-        // ctx.fillText(`Level ${li.level || state.level || 1}`, canvas.width / 2, 110);
-        // ctx.restore();
-
         return;
     }
 
     // Phase 2: real scene underneath
+    if (state.scene === "boss") {
+        drawCloudLayer();
+        drawCoconutKongBosses();
+    }
     drawBackground();
-    drawCloudLayer();
+    if (state.scene === "boss") {
+        drawBabyKongPathDebug();
+    }
+
+    if (state.scene === "main") {
+      drawCloudLayer();
+    }
     drawZookeeper();
     drawZookeeper2();
     drawBananaState();
     drawFlyingHearts();
     drawFieldHearts();
     drawActors();
+        if (state.scene === "boss") {
+        drawCoconutKongOverlay();
+    }
+
     drawMainSecretMother();
 
     if (state.scene === "boss") {
@@ -1644,8 +1810,13 @@ function updatePendingHeartThrow(dt) {
 function canThrowHeart() {
     if (state.mode !== "playing") return false;
     if (!state.zookeeper2) return false;
-    // if (state.acceptance >= state.maxHeartsToThrow) return false;
-    if ((state.acceptance || 0) >= 3) return false;
+    if (state.scene === "boss") {
+    const boss = state.boss;
+    if (!boss) return false;
+    if ((boss.heartsCollected || 0) >= (boss.requiredHearts || 3)) return false;
+    } else {
+        if ((state.acceptance || 0) >= 3) return false;
+    }
     if ((state.heartCooldown || 0) > 0) return false;
     if (state.pendingHeartThrow) return false;
 
@@ -1832,11 +2003,35 @@ function updateHeartCollection() {
 
         showHeartProgressPopup(state.acceptance);
 
+        if (
+            boss.heartsCollected >= boss.requiredHearts &&
+            !state.boss.secretReveal?.unlocked
+        ) {
+            startBossSecretReveal();
+        }
+
         if (collected >= 3) {
             state.mainSecretUnlocked = true;
         }
         break;
     }
+}
+
+function startBossSecretReveal() {
+    if (!state.boss) return;
+
+    if (!state.boss.secretReveal) {
+        state.boss.secretReveal = {};
+    }
+
+    state.boss.secretReveal.unlocked = true;
+    state.boss.secretReveal.exploding = true;
+    state.boss.secretReveal.exposed = false;
+    state.boss.secretReveal.timer = 0;
+    state.boss.secretReveal.duration = 1.0;
+    state.boss.secretReveal.frame = 0;
+
+    playSfx(sounds.explosion);
 }
 
 function hasActiveGroundHeart() {
@@ -1846,6 +2041,366 @@ function hasActiveGroundHeart() {
 function getUncollectedHeartAtNode(nodeId) {
     return (state.fieldHearts || []).find(h => !h.collected && h.nodeId === nodeId) || null;
 }
+
+
+
+function updateBabyKong(dt) {
+    const baby = state.boss?.babyKong;
+    if (!baby || !baby.path?.length) return;
+
+    baby.animTime += dt;
+
+    if (baby.state === "dropping") {
+        baby.dropTimer += dt;
+
+        // 12-frame drop sprite, 4x3, about 0.8 sec total
+        baby.frame = Math.min(11, Math.floor(baby.dropTimer * 15));
+
+        if (baby.dropTimer >= 0.8) {
+            spawnBossCoconutFromBabyKong(baby);
+
+            baby.state = "walking";
+            baby.dropTimer = 0;
+            baby.dropCooldown = rand(1.8, 3.2);
+            baby.frame = 0;
+        }
+
+        return;
+    }
+
+    baby.dropCooldown -= dt;
+
+    if (baby.dropCooldown <= 0) {
+        baby.state = "dropping";
+        baby.dropTimer = 0;
+        baby.frame = 0;
+        return;
+    }
+
+    const target = baby.path[baby.targetIndex];
+    if (!target) return;
+
+    const dx = target.x - baby.x;
+    const dy = target.y - baby.y;
+    const dist = Math.hypot(dx, dy);
+    const step = baby.speed * dt;
+
+    baby.facing = dx >= 0 ? "right" : "left";
+    baby.frame = Math.floor(baby.animTime * 10) % 25;
+
+    if (dist <= step || dist < 1) {
+        baby.x = target.x;
+        baby.y = target.y;
+        baby.pathIndex = baby.targetIndex;
+
+        // ping-pong path
+        if (baby.targetIndex >= baby.path.length - 1) {
+            baby.direction = -1;
+        } else if (baby.targetIndex <= 0) {
+            baby.direction = 1;
+        }
+
+        baby.direction = baby.direction || 1;
+        baby.targetIndex += baby.direction;
+        return;
+    }
+
+    baby.x += (dx / dist) * step;
+    baby.y += (dy / dist) * step;
+}
+// ==================
+// jump
+// ==================
+
+function getCurrentJumpDestination(node) {
+    if (!node) return null;
+
+    if (node.jumpTo) return node.jumpTo;
+
+    if (Array.isArray(node.jumpNeighbors) && node.jumpNeighbors.length) {
+        return node.jumpNeighbors[0];
+    }
+
+    return null;
+}
+
+function tryPlayerJump() {
+    if (!state.player) return false;
+
+    if (state.mode !== "playing") return false;
+    if (state.playerJump?.active) return false;
+
+    // Boss-only for now.
+    if (state.scene !== "boss") return false;
+
+    if (
+    state.scene === "boss" &&
+    state.player?.currentNode === "CK13" &&
+    !state.player.targetNode
+) {
+    const nodeMap = getCurrentNodeMap();
+    const from = nodeMap.CK13;
+    const to = nodeMap.CK14;
+
+    state.playerJump = {
+        active: true,
+        fromNodeId: "CK13",
+        toNodeId: "CK14",
+        time: 0,
+        duration: 0.48,
+        height: 145,
+        startX: from.x,
+        startY: from.y,
+        endX: to.x,
+        endY: to.y
+    };
+
+    state.player.previousNode = null;
+    state.player.targetNode = null;
+    state.player.x = from.x;
+    state.player.y = from.y;
+    state.player.dir = { x: 0, y: 0 };
+
+    return true;
+}
+
+    const player = state.player;
+    const nodeMap = getCurrentNodeMap();
+
+    const currentNodeId = player.currentNode;
+    const targetNodeId = player.targetNode;
+
+    const originNodeId = getPlayerJumpOriginNodeId();
+    const originNode = originNodeId ? nodeMap[originNodeId] : null;
+
+    const jumpToId = getCurrentJumpDestination(originNode);
+    const dest = jumpToId ? nodeMap[jumpToId] : null;
+
+    state.lastJumpDebug = {
+        called: true,
+        phase: "resolved",
+        currentNode: currentNodeId,
+        targetNode: targetNodeId,
+        originNodeId,
+        jumpToId,
+        hasDest: !!dest,
+        playerX: Math.round(player.x),
+        playerY: Math.round(player.y),
+        time: performance.now()
+    };
+
+    // NAVIGATION JUMP
+    if (originNode && dest) {
+        state.playerJump = {
+            active: true,
+            fromNodeId: originNodeId,
+            toNodeId: jumpToId,
+            time: 0,
+            duration: 0.48,
+            height: 145,
+            startX: originNode.x,
+            startY: originNode.y,
+            endX: dest.x,
+            endY: dest.y
+        };
+
+        // Snap to the launch node so the jump always starts cleanly.
+        player.currentNode = originNodeId;
+        player.previousNode = null;
+        player.targetNode = null;
+        player.x = originNode.x;
+        player.y = originNode.y;
+        player.dir = { x: 0, y: 0 };
+
+        clearQueuedDirectionCompat();
+
+        state.lastJumpDebug.phase = "navigation jump created";
+        state.lastJumpDebug.playerJumpActive = true;
+
+        return true;
+    }
+
+    // DEFENSIVE HOP
+    startPlayerHop();
+
+    state.lastJumpDebug.phase = "defensive hop";
+    state.lastJumpDebug.hopActive = true;
+
+    return true;
+}
+
+function startPlayerHop() {
+    if (!state.playerHop) {
+        state.playerHop = {
+            active: false,
+            timer: 0,
+            duration: 0.42,
+            height: 95
+        };
+    }
+
+    if (state.playerHop.active) return;
+
+    state.playerHop.active = true;
+    state.playerHop.timer = 0;
+    state.playerVisualOffsetY = 0;
+}
+
+function updatePlayerHop(dt) {
+    const hop = state.playerHop;
+    if (!hop?.active) {
+        state.playerVisualOffsetY = 0;
+        return;
+    }
+
+    hop.timer += dt;
+
+    const p = Math.min(hop.timer / hop.duration, 1);
+    state.playerVisualOffsetY = -Math.sin(p * Math.PI) * hop.height;
+
+    if (p >= 1) {
+        hop.active = false;
+        hop.timer = 0;
+        state.playerVisualOffsetY = 0;
+    }
+}
+
+function updatePlayerJump(dt) {
+    const jump = state.playerJump;
+    if (!jump?.active || !state.player) return false;
+
+    jump.time += dt;
+
+    const p = Math.min(jump.time / jump.duration, 1);
+    const arc = Math.sin(p * Math.PI) * jump.height;
+
+    const x = jump.startX + (jump.endX - jump.startX) * p;
+    const y = jump.startY + (jump.endY - jump.startY) * p - arc;
+
+    state.player.x = x;
+    state.player.y = y;
+    state.player.dir = { x: 0, y: 0 };
+    state.player.targetNode = null;
+
+    if (p >= 1) {
+        state.player.x = jump.endX;
+        state.player.y = jump.endY;
+        state.player.previousNode = jump.fromNodeId;
+        state.player.currentNode = jump.toNodeId;
+        state.player.targetNode = null;
+        state.player.dir = { x: 0, y: 0 };
+        state.playerJump = null;
+
+        return false;
+    }
+    return true;
+}
+
+function isPlayerJumpDodgingCoconut() {
+    const hop = state.playerHop;
+
+    if (state.playerJump?.active) {
+        return true;
+    }
+
+    if (!hop?.active) return false;
+
+    const p = hop.timer / hop.duration;
+
+    // Middle part of the hop avoids low rolling coconuts.
+    return p >= 0.22 && p <= 0.82;
+}
+
+function checkRopeReturn() {
+    if (state.scene !== "boss") return;
+    if (!state.player) return;
+    if (state.player.targetNode) return;
+    if (state.playerJump?.active) return;
+
+    const player = state.player;
+    const nodeMap = getCurrentNodeMap();
+    const current = nodeMap[player.currentNode];
+
+    if (!current?.returnTo) return;
+
+    if (player.previousNode === current.returnTo) {
+        return;
+    }
+
+    const requiredInput = current.requireInputForReturn || null;
+
+    if (requiredInput && inputState.queuedDirectionName !== requiredInput) {
+        return;
+    }
+
+    const dest = nodeMap[current.returnTo];
+    if (!dest) return;
+
+    clearQueuedDirectionCompat();
+
+    player.previousNode = null;
+    player.targetNode = null;
+    player.currentNode = current.returnTo;
+    player.x = dest.x;
+    player.y = dest.y;
+    player.dir = { x: 0, y: 0 };
+}
+
+function getPlayerJumpOriginNodeId() {
+    const player = state.player;
+    if (!player) return null;
+
+    const nodeMap = getCurrentNodeMap();
+
+    // 1. Exact current node.
+    const current = nodeMap[player.currentNode];
+    if (getCurrentJumpDestination(current)) {
+        return player.currentNode;
+    }
+
+    // 2. Node we are already moving into.
+    if (player.targetNode) {
+        const target = nodeMap[player.targetNode];
+
+        if (getCurrentJumpDestination(target)) {
+            const distToTarget = Math.hypot(
+                target.x - player.x,
+                target.y - player.y
+            );
+
+            // Forgiving but not huge.
+            if (distToTarget <= 115) {
+                return player.targetNode;
+            }
+        }
+    }
+
+    // 3. Physical vicinity fallback.
+    // This is the phone-friendly part.
+    let bestId = null;
+    let bestDist = Infinity;
+
+    for (const id in nodeMap) {
+        const node = nodeMap[id];
+        if (!getCurrentJumpDestination(node)) continue;
+
+        const d = Math.hypot(node.x - player.x, node.y - player.y);
+
+        if (d < bestDist) {
+            bestDist = d;
+            bestId = id;
+        }
+    }
+
+    // Tune this. I would start around player diameter + forgiveness.
+    // Player radius is 22, so 70-95 is reasonable.
+    if (bestId && bestDist <= 90) {
+        return bestId;
+    }
+
+    return null;
+}
+
 // ======================================================
 // DRAWING HELPERS
 // ======================================================
@@ -2094,8 +2649,17 @@ function drawBackground() {
     }
 }
 
+function drawCoconutKongUnderlay() {
+    if (state.scene !== "boss") return;
+
+    const img = spriteStore.ckBackgroundUnderlay;
+    if (!img || !img.complete || img.naturalWidth <= 0) return;
+
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+}
+
 function drawCloudLayer() {
-    if (state.scene !== "main") return;
+    // if (state.scene !== "main") return;
 
     const img = spriteStore.clouds;
     if (!img || !img.complete || img.naturalWidth <= 0) return;
@@ -2329,7 +2893,7 @@ function getSecretRoomBackgroundImage() {
 
     return spriteStore.secretRoom_bb || null;
 }
-  
+
 function drawSceneCompleteOverlay() {
     if (
         state.loadScreenImage &&
@@ -2622,6 +3186,21 @@ function handlePortalTravel(actor) {
         return;
     }
 
+    if (
+        portal.type === "secret" &&
+        state.scene === "boss" &&
+        !state.boss?.mother?.carried
+    ) {
+        showFloatingText(
+            state.player.x,
+            state.player.y - 80,
+            "Bring Mother!",
+            "#fff7cc",
+            1.5
+        );
+        return;
+    }
+
     const nodeMap = getCurrentNodeMap();
     const dest = nodeMap[portal.to];
     if (!dest) return;
@@ -2656,29 +3235,33 @@ function handlePortalTravel(actor) {
             state.deliveryCrate = null;
             state.delayedPopups = [];
             state.nanaSnatchers = [];
-            state.kongEvent.active = false;
-            state.kongEvent.phase = "idle";
+
+            if (state.kongEvent) {
+                state.kongEvent.active = false;
+                state.kongEvent.phase = "idle";
+            }
+
             if (state.deliveryAhhTimer) {
                 clearTimeout(state.deliveryAhhTimer);
                 state.deliveryAhhTimer = null;
             }
+
             state.mainSecretEntered = true;
             state.mainEnding = {
                 time: 0,
                 phase: "intro",
                 frame: 0
             };
+
             state.mainMotherPose = "sit";
             state.mainMotherTimer = 0;
 
-            if (state.player) {
-                state.player.invuln = 999;
-                state.player.targetNode = null;
-                state.player.dir = {
-                    x: 0,
-                    y: 0
-                };
-            }
+            state.player.invuln = 999;
+            state.player.targetNode = null;
+            state.player.dir = {
+                x: 0,
+                y: 0
+            };
 
             state.catchAnim = null;
 
@@ -2687,20 +3270,19 @@ function handlePortalTravel(actor) {
             debugLog(state, "[AUDIO] victory attempt");
             playSfx(sounds.victory, null, "victory");
         }
+
         return;
     }
 
     if (portal.type === "wrap") {
         actor.previousNode = fromId;
 
-        // first honor queued turn on the far side
         if (tryConsumeQueuedTurn(actor)) return;
 
-        // otherwise preserve current travel direction through the tunnel
         const dirVec =
-            actor.dir && (Math.abs(actor.dir.x) > 0.001 || Math.abs(actor.dir.y) > 0.001) ?
-            actor.dir :
-            null;
+            actor.dir && (Math.abs(actor.dir.x) > 0.001 || Math.abs(actor.dir.y) > 0.001)
+                ? actor.dir
+                : null;
 
         const nextId = dirVec ? getBestNeighbor(actor.currentNode, dirVec, null) : null;
 
@@ -2713,7 +3295,6 @@ function handlePortalTravel(actor) {
         return;
     }
 
-    // non-wrap instant teleports
     actor.previousNode = null;
     actor.dir = {
         x: 0,
@@ -2739,7 +3320,7 @@ function finishCavePreview() {
     state.player.targetNode = null;
     state.player.x = dest.x;
     state.player.y = dest.y;
-    state.player.invuln = 0.5;
+    state.player.invuln = 2.5;
     state.player.portalCooldown = 0.35;
     state.cavePreview = null;
 
@@ -2814,12 +3395,12 @@ function updateEnemyRelease(dt) {
       r.releaseTimer = r.releaseInterval;
 
       if (r.butterflyUnlocked && !r.butterflyReleased && r.releasedCount >= 1) {
-        state.butterfly = createButterfly("N5", getCurrentNodeMap());
+        state.butterfly = createButterfly("BB5", getCurrentNodeMap());
         r.butterflyReleased = true;
       }
 
       if (r.pjUnlocked && !r.pjReleased && r.releasedCount >= 2) {
-        state.pj = createPJ("N24", getCurrentNodeMap());
+        state.pj = createPJ("BB24", getCurrentNodeMap());
         r.pjReleased = true;
       }
     }
@@ -2952,20 +3533,19 @@ function applyLevelConfig() {
     pjUnlocked: !!state.unlocks?.pj,
     pjReleased: false
   };
-  const snatchersUnlocked =
-      state.scene === "main" &&
-      state.level >= 2;
 
-  state.unlocks.snatchers = snatchersUnlocked;
+  const snatchersActive =
+    state.scene === "main" &&
+    state.level >= 2;
 
-  state.snatcherRelease = snatchersUnlocked
-      ? {
-          targetCount: Math.floor(Math.max(2, state.level) / 2),
-          releasedCount: 0,
-          releaseDelay: 5,
-          releaseTimer: 5
-        }
-      : null;
+  state.snatcherRelease = snatchersActive
+    ? {
+        targetCount: Math.floor(Math.max(2, state.level) / 2),
+        releasedCount: 0,
+        releaseDelay: 5,
+        releaseTimer: 5
+      }
+    : null;
 }
 
 function ripenessLabel(age) {
@@ -2991,7 +3571,16 @@ function beginGame() {
         mode: state.mode,
         scene: state.scene
     });
+
     if (state.mode === "start") {
+        if (DEBUG_LOOP_KONG_SCENE) {
+            state.mode = "playing";
+            state.levelIntro = null;
+            state.bossIntro = null;
+            showBossIntro(state.level || 1);
+            return;
+        }
+
         state.mode = "levelIntro";
         showLevelIntro(state.level);
         return;
@@ -3613,8 +4202,17 @@ function goToNextScene() {
     state.mode = "playing";
     state.sceneWinTimer = 0;
 
-    if (DEBUG_LOOP_MAIN_SCENE && state.scene === "main") {
+    // DEV: keep testing Banana Bonanza only.
+    if (DEBUG_LOOP_MAIN_SCENE) {
         startMainScene();
+        return;
+    }
+
+    // DEV: keep testing Coconut Kong only.
+    // If a boss scene completes, restart boss.
+    // If another scene somehow completes, send tester into boss.
+    if (DEBUG_LOOP_KONG_SCENE) {
+        showBossIntro(state.level);
         return;
     }
 
@@ -3689,7 +4287,7 @@ function updateBossMother(dt) {
 
     const danger = getBossDangerAtPlayer();
 
-    updateBossHeartCollection();
+    // updateBossHeartCollection();
     pickupMotherIfSafe();
 
     // speed penalty while carrying
@@ -3697,13 +4295,13 @@ function updateBossMother(dt) {
         const targetSpeed = mother.carried ? 210 : 300;
         state.player.speed += (targetSpeed - state.player.speed) * 0.2;
     }
-    if (
-        mother.carried &&
-        state.player.currentNode === bossConfig.goalNode &&
-        state.boss.heartsCollected >= state.boss.requiredHearts
-    ) {
-        endBossModeSuccess();
-    }
+    // if (
+    //     mother.carried &&
+    //     state.player.currentNode === bossConfig.goalNode &&
+    //     state.boss.heartsCollected >= state.boss.requiredHearts
+    // ) {
+    //     endBossModeSuccess();
+    // }
     return false;
 }
 
@@ -3715,7 +4313,7 @@ function pickupMotherIfSafe() {
 
     if (mother.nodeId == null) return;
 
-    const node = bossNodes[mother.nodeId];
+    const node = getCurrentNodeMap()[mother.nodeId];
     if (!node) return;
 
     const dist = Math.hypot(state.player.x - node.x, state.player.y - node.y);
@@ -3737,7 +4335,7 @@ function drawBossMother() {
     if (mother.carried) return;
     if (!mother.nodeId) return;
 
-    const node = bossNodes[mother.nodeId];
+    const node = getCurrentNodeMap()[mother.nodeId];
     if (!node) return;
 
     ctx.save();
@@ -3852,28 +4450,66 @@ function resetMotherToStart() {
 function updateBossHeartCollection() {
     const boss = state.boss;
     const player = state.player;
-    if (!boss || !player || !boss.hearts) return;
+    if (!boss || !player || !state.fieldHearts) return;
 
-    for (const heart of boss.hearts) {
-        if (!heart.collected && heart.nodeId === player.currentNode) {
-            heart.collected = true;
-            boss.heartsCollected += 1;
-            // sounds.pickup?.play().catch(() => {});
-            playSfx(sounds.pi);
-        }
+    for (const heart of state.fieldHearts) {
+        if (heart.collected) continue;
+        if (heart.nodeId !== player.currentNode) continue;
+
+        heart.collected = true;
+        boss.heartsCollected = Math.min(
+            boss.requiredHearts || 3,
+            (boss.heartsCollected || 0) + 1
+        );
+
+        addAcceptanceScore(50, "boss heart pickup");
+        state.heartCooldown = 1.0;
+        state.lastHeartNodeId = heart.nodeId;
+        state.lastHeartPickupTime = performance.now() / 1000;
+
+        playSfx(sounds.ahh);
+
+        state.hearts.push({
+            x: player.x,
+            y: player.y - 10,
+            t: 0
+        });
+
+        showHeartProgressPopup(boss.heartsCollected);
+        break;
     }
 }
 
 function updatePlayer(dt) {
     if (!state.player) return;
 
+    updatePlayerHop(dt);
+
+    if (updatePlayerJump(dt)) {
+        checkSecretReward();
+
+        if (state.scene === "boss") {
+            updateBossHeartCollection();
+        } else {
+            updateHeartCollection();
+        }
+
+        return;
+    }
     const dizzyMult = state.dizzyTimer > 0 ? state.dizzySlowMultiplier : 1;
     state.player.speedMultiplierOverride = dizzyMult;
 
     state.player.update(dt);
 
     checkSecretReward();
-    updateHeartCollection();
+
+    if (state.scene === "boss") {
+        updateBossHeartCollection();
+    } else {
+        updateHeartCollection();
+    }
+
+    checkRopeReturn();
 
     if (state.player.portalCooldown > 0) {
         state.player.portalCooldown = Math.max(0, state.player.portalCooldown - dt);
@@ -3916,6 +4552,16 @@ function updateMainEnding(dt) {
     if (!state.mainEnding) return;
 
     state.mainEnding.time += dt;
+
+    const secret = getSecretRoomConfig();
+
+    if (secret?.endingType === "butterfly") {
+        if (state.mainEnding.time >= 3.0) {
+            state.mainEnding.phase = "done";
+            showSceneWin();
+        }
+        return;
+    }
 
     if (state.mainEnding.phase === "intro") {
         if (state.mainEnding.time >= 0.45) {
@@ -4029,16 +4675,30 @@ function updateBossCollisions() {
         }
     }
 
-    for (const coconut of state.coconuts) {
-        if (Math.hypot(player.x - coconut.x, player.y - coconut.y) < 34) {
-            if (mother.carried) {
-                dropMother();
-            } else {
-                restartBossLevel();
-            }
-            return;
-        }
-    }
+  for (const coconut of state.coconuts) {
+      if (coconut.hitPlayer) continue;
+
+      if (Math.hypot(player.x - coconut.x, player.y - coconut.y) < 44) {
+          if (isPlayerJumpDodgingCoconut()) {
+              continue;
+          }
+
+          coconut.hitPlayer = true;
+          coconut.done = true;
+
+          state.dizzyTimer = state.dizzyDuration || 1.0;
+
+          if (state.player) {
+              state.player.speedMultiplierOverride =
+                  state.dizzySlowMultiplier || 0.15;
+          }
+
+          playSfx(sounds.eOh);
+          navigator.vibrate?.([40, 30, 40]);
+
+          return;
+      }
+  }
 }
 
 function endBossModeSuccess() {
@@ -4061,23 +4721,149 @@ function spawnBossCoconut() {
     });
 }
 
+function chooseBossCoconutEntryForBaby(baby) {
+    const nodeMap = getCurrentNodeMap();
+
+    let best = null;
+    let bestScore = Infinity;
+
+    const dropX = baby.x + getBabyKongCoconutOffsetX(baby);
+    const dropY = baby.y + BABY_KONG_DRAW_OFFSET_Y + 150;
+
+    for (const lane of bossCoconutLanes) {
+        for (let i = 0; i < lane.length - 1; i++) {
+            const nodeId = lane[i];
+
+            if (BABY_KONG_COCONUT_ENTRY_BLOCKLIST.has(nodeId)) {
+                continue;
+            }
+
+            const node = nodeMap[nodeId];
+            if (!node) continue;
+
+            // Only consider nodes meaningfully below the coconut's start point.
+            if (node.y <= dropY + 40) continue;
+
+            const dx = Math.abs(node.x - dropX);
+            const dy = node.y - dropY;
+
+            // Favor mostly vertical drops over far horizontal jumps.
+            const score = dx * 2.25 + dy * 0.35;
+
+            if (score < bestScore) {
+                bestScore = score;
+                best = {
+                    lane,
+                    entryIndex: i,
+                    node
+                };
+            }
+        }
+    }
+
+    return best;
+}
+
+function getBabyKongCoconutOffsetX(baby) {
+//    return baby.facing === "left" ? 30 : 90;
+        return 0;
+}
+
+const BABY_KONG_COCONUT_ENTRY_BLOCKLIST = new Set([
+  "CK10", // edge portal
+  "CK25", // known magnet
+  "CK29", // known magnet
+  "CK32", // secret reward / magnet risk
+  "CK43", // cave
+  "CK44", // cave
+  "CK45", // cave
+  "CK46", // edge portal
+  "CK47", // edge portal / right boundary
+  "CK48", // edge portal
+  "CK50"  // secret/pulsing hole
+]);
+
+function chooseBossCoconutLaneForBaby(baby) {
+    const nodeMap = getCurrentNodeMap();
+
+    let bestLane = bossCoconutLanes[0];
+    let bestDist = Infinity;
+
+    for (const lane of bossCoconutLanes) {
+        const first = nodeMap[lane[0]];
+        if (!first) continue;
+
+        const d = Math.abs(first.x - baby.x);
+        if (d < bestDist) {
+            bestDist = d;
+            bestLane = lane;
+        }
+    }
+
+    return bestLane;
+}
+
 function updateBossCoconuts(dt) {
-    const nodeMap = bossNodes;
+    const nodeMap = getCurrentNodeMap();
 
     for (const coconut of state.coconuts) {
+        // First stage: coconut falls/travels from Baby Kong to the lane start.
+        if (coconut.fallingFromBaby) {
+            coconut.y += coconut.fallSpeed * dt;
+
+            // Keep x fixed during the visual fall.
+            if (coconut.y >= coconut.laneStartY) {
+                coconut.x = coconut.laneStartX;
+                coconut.y = coconut.laneStartY;
+                coconut.fallingFromBaby = false;
+                coconut.laneIndex = coconut.entryIndex ?? coconut.laneIndex ?? 0;
+            }
+
+            continue;
+        }
+        // if (coconut.droppingToLane) {
+        //     const dx = coconut.targetX - coconut.x;
+        //     const dy = coconut.targetY - coconut.y;
+        //     const dist = Math.hypot(dx, dy);
+        //     const step = coconut.speed * dt;
+
+        //     if (dist <= step || dist < 1) {
+        //         coconut.x = coconut.targetX;
+        //         coconut.y = coconut.targetY;
+        //         coconut.droppingToLane = false;
+        //     } else {
+        //         coconut.x += (dx / dist) * step;
+        //         coconut.y += (dy / dist) * step;
+        //     }
+
+        //     continue;
+        // }
+
+        // Second stage: coconut rolls along its assigned CK lane.
         const nextIndex = coconut.laneIndex + 1;
+
         if (nextIndex >= coconut.lane.length) {
             coconut.done = true;
             continue;
         }
 
         const target = nodeMap[coconut.lane[nextIndex]];
+
+        if (!target) {
+            debugLog(state, "[BOSS] missing coconut target", {
+                nodeId: coconut.lane[nextIndex],
+                lane: coconut.lane
+            });
+            coconut.done = true;
+            continue;
+        }
+
         const dx = target.x - coconut.x;
         const dy = target.y - coconut.y;
         const dist = Math.hypot(dx, dy);
         const step = coconut.speed * dt;
 
-        if (dist <= step) {
+        if (dist <= step || dist < 1) {
             coconut.x = target.x;
             coconut.y = target.y;
             coconut.laneIndex = nextIndex;
@@ -4087,35 +4873,108 @@ function updateBossCoconuts(dt) {
         }
     }
 
-    state.coconuts = state.coconuts.filter(c => !c.done);
+    state.coconuts = state.coconuts.filter(coconut => !coconut.done);
+}
+
+function spawnBossCoconutFromBabyKong(baby) {
+    const entry = chooseBossCoconutEntryForBaby(baby);
+
+    if (!entry) {
+        debugLog(state, "[BOSS] no Baby Kong coconut entry found", {
+            babyX: baby.x,
+            babyY: baby.y,
+            facing: baby.facing
+        });
+        return;
+    }
+
+    const { lane, entryIndex, node } = entry;
+
+    const startX = baby.x + getBabyKongCoconutOffsetX(baby);
+    const startY = baby.y + BABY_KONG_DRAW_OFFSET_Y + 150;
+
+    state.coconuts.push({
+        source: "babyKong",
+
+        lane,
+        laneIndex: entryIndex,
+
+        // Start under Baby Kong's hands/chest.
+        x: startX,
+        y: startY,
+
+        fallingFromBaby: true,
+        fallSpeed: 560,
+
+        // This is now a nearby CK path entry, not lane[0] / CK47.
+        laneStartX: node.x,
+        laneStartY: node.y,
+        entryIndex,
+
+        speed: 300,
+        hitPlayer: false
+    });
+}
+
+function updateBossSecretReveal(dt) {
+    const reveal = state.boss?.secretReveal;
+    if (!reveal?.exploding) return;
+
+    reveal.timer += dt;
+
+    const totalFrames = 32;
+    const fps = 24;
+    reveal.frame = Math.min(totalFrames - 1, Math.floor(reveal.timer * fps));
+
+    if (reveal.timer >= reveal.duration) {
+        reveal.exploding = false;
+        reveal.exposed = true;
+    }
 }
 
 function updateBossMode(dt) {
     if (!state.boss) return;
     updateHands(dt);
     updateBananas(dt);
+    ensureBananasAvailable();
     updateZookeeper(dt);
     updateZookeeper2(dt);
+    updateHeartThrowing(dt);
+    updateKeeperAction(state.zookeeper, dt);
+    updateKeeperAction(state.zookeeper2, dt);
+    updatePendingHeartThrow(dt);
+    updateFlyingHearts(dt);
+    updateFieldHeartLifetime(dt);
     updatePlayer(dt);
     if (!state.boss) return;
-
+    updateBossSecretReveal(dt);
     updateTroops(dt);
     if (!state.boss) return;
 
     updateBossMother(dt);
     if (!state.boss || state.scene !== "boss") return;
 
-    state.boss.coconutTimer += dt;
+    updateBabyKong(dt);
 
-    if (state.boss.coconutTimer >= 2.4) {
-        state.boss.coconutTimer = 0;
-        spawnBossCoconut();
-    }
+    // state.boss.coconutTimer += dt;
+
+    // if (state.boss.coconutTimer >= 2.4) {
+    //     state.boss.coconutTimer = 0;
+    //     spawnBossCoconut();
+    // }
 
     updateBossCoconuts(dt);
     if (!state.boss || state.scene !== "boss") return;
 
     updateBossCollisions();
+    updateParticles(dt);
+
+    if (state.heartProgressPopup) {
+        state.heartProgressPopup.time += dt;
+        if (state.heartProgressPopup.time >= state.heartProgressPopup.duration) {
+            state.heartProgressPopup = null;
+        }
+    }
 }
 
 function updateCatch(dt) {
@@ -4270,8 +5129,13 @@ function update(dt) {
 
     state.heartCooldown = Math.max(0, (state.heartCooldown || 0) - dt);
 
+    if (state.dizzyTimer > 0) {
+      state.dizzyTimer = Math.max(0, state.dizzyTimer - dt);
+    }
+
     if (state.scene === "boss") {
         updateBossMode(dt);
+        updateClouds(dt);
         return;
     }
 
@@ -4307,10 +5171,6 @@ function update(dt) {
     updateClouds(dt);
     updateHands(dt);
     updateBananas(dt);
-
-    if (state.dizzyTimer > 0) {
-      state.dizzyTimer = Math.max(0, state.dizzyTimer - dt);
-    }
 
   state.deliveryTimer -= dt;
 
@@ -4410,6 +5270,85 @@ function update(dt) {
 // RENDER
 // ======================================================
 
+function drawCoconutKongBosses() {
+    if (state.scene !== "boss") return;
+
+    const bossImg = spriteStore.bossKong;
+
+    if (bossImg?.complete && bossImg.naturalWidth > 0) {
+        // You said bossKong can be placed at 0,0.
+        ctx.drawImage(bossImg, 0, 0);
+    }
+
+    const baby = state.boss?.babyKong;
+
+    if (baby) {
+        drawBabyKong(baby);
+    } else {
+        const babyImg = spriteStore.babyKong;
+
+        if (babyImg?.complete && babyImg.naturalWidth > 0) {
+            // You said static babyKong can be placed at 804,0.
+            ctx.drawImage(babyImg, 804, 0);
+        }
+    }
+}
+
+const BABY_KONG_DRAW_OFFSET_X = 0;
+const BABY_KONG_DRAW_OFFSET_Y = -180;
+
+function drawBabyKong(baby) {
+    if (!baby) return;
+
+    const isDropping = baby.state === "dropping";
+
+    const img = isDropping
+        ? spriteStore.babyKongDrop
+        : spriteStore.babyKongWalk;
+
+    if (!img || !img.complete || img.naturalWidth <= 0) return;
+
+    const cols = isDropping ? 4 : 5;
+    const rows = isDropping ? 3 : 5;
+    const totalFrames = isDropping ? 12 : 25;
+
+    const frame = Math.max(0, Math.min(totalFrames - 1, baby.frame || 0));
+
+    const frameWidth = img.naturalWidth / cols;
+    const frameHeight = img.naturalHeight / rows;
+
+    const col = frame % cols;
+    const row = Math.floor(frame / cols);
+
+    const drawW = 220;
+    const drawH = drawW * (frameHeight / frameWidth);
+
+    ctx.save();
+
+    ctx.translate(
+        baby.x + BABY_KONG_DRAW_OFFSET_X,
+        baby.y + BABY_KONG_DRAW_OFFSET_Y
+    );
+
+    if (baby.facing === "left") {
+        ctx.scale(-1, 1);
+    }
+
+    ctx.drawImage(
+        img,
+        col * frameWidth,
+        row * frameHeight,
+        frameWidth,
+        frameHeight,
+        -drawW / 2,
+        0,
+        drawW,
+        drawH
+    );
+
+    ctx.restore();
+}
+
 function drawMainEndingOverlay() {
     const ending = state.mainEnding;
     if (!ending) return;
@@ -4441,13 +5380,17 @@ function drawMainEndingOverlay() {
     ctx.fillStyle = roomGlow;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw mother / hug animation centered over the room.
-    if (ending.phase === "intro") {
-        drawSecretRoomMotherSit(cx, cy + 120);
-    } else {
-        drawSecretRoomMotherHug(cx, cy + 120, ending.frame || 0);
-    }
+const secret = getSecretRoomConfig();
 
+    if (secret?.endingType === "butterfly") {
+        drawSecretRoomButterfly(cx - 220, cy + 60);
+    } else {
+        if (ending.phase === "intro") {
+            drawSecretRoomMotherSit(cx, cy + 120);
+        } else {
+            drawSecretRoomMotherHug(cx, cy + 120, ending.frame || 0);
+        }
+    }
     ctx.restore();
 }
 
@@ -4462,6 +5405,33 @@ function drawSecretRoomMotherSit(cx, cy) {
         img,
         cx - drawW / 2,
         cy - drawH / 2,
+        drawW,
+        drawH
+    );
+}
+
+function drawSecretRoomButterfly(x, y) {
+    const img = spriteStore.butterfly;
+    if (!img || !img.complete || img.naturalWidth <= 0) return;
+
+    const cols = 4;
+    const frameWidth = img.naturalWidth / cols;
+    const frameHeight = img.naturalHeight;
+    const frame = Math.floor(performance.now() * 0.012) % cols;
+
+    const bob = Math.sin(performance.now() * 0.006) * 12;
+
+    const drawW = 180;
+    const drawH = drawW * (frameHeight / frameWidth);
+
+    ctx.drawImage(
+        img,
+        frame * frameWidth,
+        0,
+        frameWidth,
+        frameHeight,
+        x - drawW / 2,
+        y - drawH / 2 + bob,
         drawW,
         drawH
     );
@@ -4558,7 +5528,7 @@ function drawMainSecretMother() {
     if (!state.mainSecretEntered) return;
     if (state.mainEnding) return;
 
-    const node = getCurrentNodeMap()["N26"];
+    const node = getCurrentNodeMap()["BB26"];
     if (!node) return;
 
     const img =
@@ -4582,6 +5552,51 @@ function drawActors() {
     state.troops.forEach(t => t.draw());
     drawHearts();
     drawParticles();
+}
+
+function drawBossSecretRevealLayer() {
+    const reveal = state.boss?.secretReveal;
+    if (!reveal?.unlocked) return;
+
+    // Once unlocked, show the overlay on the gameplay map.
+    const overlay = spriteStore.secretRoom_ck_overlay;
+    if (overlay?.complete && overlay.naturalWidth > 0) {
+        ctx.drawImage(overlay, 0, 0, canvas.width, canvas.height);
+    }
+
+    // While exploding, draw the explosion sprite animation.
+    if (reveal.exploding) {
+        drawExplosionSprite(786, 1569, reveal.frame);
+    }
+}
+
+function drawExplosionSprite(x, y, frameIndex) {
+    const img = spriteStore.explosion;
+    if (!img || !img.complete || img.naturalWidth <= 0) return;
+
+    const cols = 8;
+    const rows = 4;
+    const totalFrames = 32;
+
+    const frame = Math.max(0, Math.min(totalFrames - 1, frameIndex));
+    const fw = img.naturalWidth / cols;
+    const fh = img.naturalHeight / rows;
+
+    const sx = (frame % cols) * fw;
+    const sy = Math.floor(frame / cols) * fh;
+
+    const scale = 1.5;
+    const drawW = fw * scale;
+    const drawH = fh * scale;
+
+    ctx.drawImage(
+        img,
+        sx, sy, fw, fh,
+        Math.round(x - drawW / 2),
+        Math.round(y - drawH / 2),
+        drawW,
+        drawH
+    );
 }
 
 function draw() {
@@ -4625,8 +5640,23 @@ function draw() {
         drawLevelUpOverlay();
         return;
     }
+    if (state.scene === "boss") {
+        drawCoconutKongUnderlay();
+        drawCloudLayer();
+        drawCoconutKongBosses();
+        if (state.scene === "boss") {
+            drawBossSecretRevealLayer();
+        }
+    }
     drawBackground();
-    drawCloudLayer();
+
+    if (state.scene === "boss") {
+        drawBabyKongPathDebug();
+    }
+
+    if (state.scene === "main") {
+      drawCloudLayer();
+    }
     drawZookeeper();
     drawZookeeper2();
     drawDeliveryCrate(ctx, state, spriteStore);
@@ -4652,6 +5682,8 @@ function draw() {
         drawNodeDebugOverlay(getCurrentNodeMap());
         drawNodeLabels();
         drawNodeHighlights();
+
+     //   drawJumpDebugPanel();
     }
     // ===
 
@@ -4774,11 +5806,17 @@ canvas.addEventListener("pointerdown", (e) => {
         copyDebugLogsToClipboard(state);
         return;
     }
-
     if (state.showDebugConsole && state.debugClearButton && pointInRect(x, y, state.debugClearButton)) {
         clearDebugLogs(state);
         return;
     }
+
+    if (state.scene === "boss" && state.mode === "playing") {
+        if (tryPlayerJump()) {
+            return;
+        }
+    }
+
     touchStart = {
         x,
         y
@@ -4810,9 +5848,17 @@ document.addEventListener("keydown", (e) => {
       e.preventDefault();
   }
 
-  if (e.key === "j" || e.key === "J") {
-      state.dizzyTimer = 2.0;
-      e.preventDefault();
+if (e.key.toLowerCase() === "j") {
+    tryPlayerJump();
+    e.preventDefault();
+    return;
+}
+
+  if (e.code === "Space" || e.key === " ") {
+    if (tryPlayerJump()) {
+        e.preventDefault();
+        return;
+    }
   }
 
   if (e.key === "`" || e.key === "~") {
@@ -4953,7 +5999,7 @@ function loop(ts) {
     //     debugger;
     //     return; // stop the loop so the error stays visible
 
-        
+
     // }
     } catch (err) {
     console.error("LOOP CRASH", err);

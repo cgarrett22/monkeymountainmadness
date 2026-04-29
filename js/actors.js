@@ -182,7 +182,7 @@ function startMainScene() {
 function startBossMode() {
   state.scene = "boss";
   state.mode = "playing";
-  state.cardBackground = spriteStore.bossBackground;
+  state.cardBackground = spriteStore.ckBackground;
   // Initialization for boss entities and player position
   if (!state.player) state.player = new Player(bossConfig.startNode, sharedDeps);
   const start = bossNodes[bossConfig.startNode];

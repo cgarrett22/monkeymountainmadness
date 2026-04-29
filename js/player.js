@@ -241,8 +241,8 @@ export class Player {
       ctx.globalAlpha = 0.45 + 0.35 * Math.sin(performance.now() * 0.03);
     }
 
-    ctx.translate(this.x, this.y);
-
+    const visualOffsetY = state.playerVisualOffsetY || 0;
+    ctx.translate(this.x, this.y + visualOffsetY);
     const s = getBossScale(this.x, this.y);
     ctx.scale(s, s);
 

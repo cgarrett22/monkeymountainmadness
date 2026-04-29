@@ -108,7 +108,7 @@ export function forceTriggerKongEvent(state, getCurrentNodeMap, balloonType = "b
       ? "balloonChasesKong"
       : "kongChasesBalloon";
 
-  const route = ["N20", "N32", "N18", "N23", "N24"];
+  const route = ["BB20", "BB32", "BB18", "BB23", "BB24"];
   const nodeMap = getCurrentNodeMap();
   const first = nodeMap[route[0]];
   if (!first) return;

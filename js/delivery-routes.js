@@ -1,5 +1,9 @@
 export const DELIVERY_ROUTES = {
   main: [
-    ["N20", "N32", "N18", "N23", "N24"]
+    ["BB20", "BB32", "BB18", "BB23", "BB24"]
+  ],
+
+  boss: [
+    ["CK48", "CK34", "CK35", "CK36", "CK37", "CK17", "CK47"]
   ]
 };

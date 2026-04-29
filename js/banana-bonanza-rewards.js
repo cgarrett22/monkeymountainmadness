@@ -1,14 +1,14 @@
 // banana-bonanza-rewards.js
 
 export const bananaBonanzaSecretRewards = {
-  N38: {
+  BB38: {
     type: "bananaBunch",
     x: 933,
     y: 1052,
     min: 4,
     max: 9
   },
-  N40: {
+  BB40: {
     type: "bananaBunch",
     x: 293,
     y: 1251,
@@ -18,5 +18,5 @@ export const bananaBonanzaSecretRewards = {
 };
 
 export const bananaBonanzaDeliveryRoutes = [
-  ["N20", "N32", "N18", "N23", "N24"]
+  ["BB20", "BB32", "BB18", "BB23", "BB24"]
 ];

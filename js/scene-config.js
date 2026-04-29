@@ -9,7 +9,12 @@ import {
 import { bananaBonanzaNodes } from "./scene-data-banana-bonanza-nodes.js";
 import { bossNodes } from "./scene-data-boss-nodes.js";
 import { chillNodes } from "./scene-data-chill-nodes.js";
-import { bossConfig } from "./scene-data-boss.js";
+import {
+  bossConfig,
+  coconutKongPortals,
+  coconutKongSecretRoom,
+  coconutKongEnemyEntryNodeIds
+} from "./scene-data-boss.js";
 import { chillConfig } from "./scene-data-chill.js";
 
 export const SCENE_CONFIGS = {
@@ -20,17 +25,13 @@ export const SCENE_CONFIGS = {
     portals: bananaBonanzaPortals,
     enemyEntryNodeIds: bananaBonanzaEnemyEntryNodeIds
   },
+
   boss: {
     nodes: bossNodes,
     startNode: bossConfig.startNode,
-    secretRoom: null,
-    portals: {
-      cave: {
-        M0C: "M1C",
-        M1C: "M0C"
-      },
-      wrap: {}
-    }
+    secretRoom: coconutKongSecretRoom,
+    portals: coconutKongPortals,
+    enemyEntryNodeIds: coconutKongEnemyEntryNodeIds
   },
 
   chill: {

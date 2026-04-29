@@ -57,8 +57,24 @@ export function loadSprites() {
   spriteStore.mother = new Image();
   spriteStore.mother.src = "assets/mother-plush.webp";
 
-  spriteStore.bossBackground = new Image();
-  spriteStore.bossBackground.src = "assets/boss-mountain.webp";
+  spriteStore.ckBackground = new Image();
+  spriteStore.ckBackground.src = "assets/boss-mountain.webp";  
+
+  spriteStore.ckBackgroundUnderlay = new Image();
+  spriteStore.ckBackgroundUnderlay.src = "assets/ck-coconuts-underlay.webp";
+
+  spriteStore.bossKong = new Image();
+  spriteStore.bossKong.src = "sprites/boss-kong.webp";
+
+  spriteStore.babyKongWalk = new Image();
+  spriteStore.babyKongWalk.src = "sprites/baby-kong-walk.webp";
+
+  spriteStore.babyKongDrop = new Image();
+  spriteStore.babyKongDrop.src = "sprites/baby-kong-drop.webp";
+  
+
+  spriteStore.secretRewardPJ = new Image();
+  spriteStore.secretRewardPJ.src = "sprites/secret-reward-pj.webp";
 
   spriteStore.bananaBonanzaCard = new Image();
   spriteStore.bananaBonanzaCard.src = "assets/banana-bonanza-card.webp";
@@ -155,6 +171,15 @@ export function loadSprites() {
   spriteStore.secretRoom_bb = new Image();
   spriteStore.secretRoom_bb.src = "sprites/secret-room-bb.webp";  
 
+  spriteStore.secretRoom_ck_overlay = new Image();
+  spriteStore.secretRoom_ck_overlay.src = "sprites/secret-room-overlay-ck.webp"; 
+
+  spriteStore.secretRoom_ck = new Image();
+  spriteStore.secretRoom_ck.src = "sprites/secret-room-ck.webp";  
+
+  spriteStore.explosion = new Image();
+  spriteStore.explosion.src = "sprites/explosion.webp";  
+
   return spriteStore;
 }
 
@@ -221,6 +246,12 @@ export function loadSounds(state) {
 
   sounds.gameOver = new Howl({
     src: ["assets/game-over.m4a"],
+    volume: 0.75,
+    preload: true
+  });
+
+  sounds.explosion = new Howl({
+    src: ["assets/explosion.m4a"],
     volume: 0.75,
     preload: true
   });

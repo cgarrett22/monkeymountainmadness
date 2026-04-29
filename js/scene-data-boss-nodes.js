@@ -1,297 +1,44 @@
 export const bossNodes = {
-    // ======================================================
-    // BOTTOM PLATFORM
-    // ======================================================
-    START: {
-        id: "START",
-        x: 170,
-        y: 1310,
-        neighbors: ["L1D"]
-    },
-
-    // left ladder to lower slope
-    L1D: {
-        id: "L1D",
-        x: 340,
-        y: 1290,
-        neighbors: ["START", "S1D", "L1U"],
-        ladderExit: true
-    },
-    L1U: {
-        id: "L1U",
-        x: 345,
-        y: 965,
-        neighbors: ["L1D", "L6D", "L3D"],
-        ladderExit: true
-    },
-
-    // small short ladder left
-    L6D: {
-        id: "L6D",
-        x: 200,
-        y: 945,
-        neighbors: ["L6U", "L1U"],
-        ladderExit: true
-    },
-    L6U: {
-        id: "L6U",
-        x: 200,
-        y: 820,
-        neighbors: ["L6D", "R1B", "M1"],
-        ladderExit: true
-    },
-
-    // right ladder to lower slope
-    L2D: {
-        id: "L2D",
-        x: 825,
-        y: 1215,
-        neighbors: ["S1D", "L2U"],
-        ladderExit: true
-    },
-    L2U: {
-        id: "L2U",
-        x: 825,
-        y: 1055,
-        neighbors: ["L2D", "R2B", "M0"],
-        ladderExit: true
-    },
-
-    S1D: {
-        id: "S1D",
-        x: 600,
-        y: 1260,
-        neighbors: ["L1D", "L2D", "SC1"],
-        ladderExit: true
-    },
-    SC1: {
-        id: "SC1",
-        x: 680,
-        y: 1170,
-        neighbors: ["SC2", "S1D"],
-        stopHere: false
-    },
-    SC2: {
-        id: "SC2",
-        x: 650,
-        y: 1080,
-        neighbors: ["SC1", "L3D"],
-        stopHere: false
-    },
-
-    // ======================================================
-    // LOWER SLOPE (left higher -> right lower)
-    // ======================================================
-    M0: {
-        id: "M0",
-        x: 695,
-        y: 1020,
-        neighbors: ["L2U", "L3D", "M0C"],
-        inputMap: {
-            up: "M0C",
-            left: "L3D",
-            right: "L2U"
-        },
-        cavePassThrough: true
-    },
-    M1: {
-        id: "M1",
-        x: 280,
-        y: 800,
-        neighbors: ["L6U", "M1C", "L5B"],
-        inputMap: {
-            up: "M1C",
-            left: "L6U",
-            right: "L5B"
-        },
-        cavePassThrough: true
-    },
-    M0C: {
-        id: "M0C",
-        x: 695,
-        y: 950,
-        neighbors: ["M0"],
-        cavePassThrough: true,
-        stopHere: true
-    },
-    M1C: {
-        id: "M1C",
-        x: 280,
-        y: 740,
-        neighbors: ["M1"],
-        cavePassThrough: true,
-        stopHere: true
-    },
-
-    // center main ladder up to upper shelf
-    L3D: {
-        id: "L3D",
-        x: 500,
-        y: 985,
-        neighbors: ["L1U", "L3U", "M0", "SC2"],
-        inputMap: {
-            up: "L3U",
-            left: "L1U",
-            right: "M0",
-            DOWN: "SC2"
-        },
-        ladderExit: true
-    },
-    L3U: {
-        id: "L3U",
-        x: 500,
-        y: 730,
-        neighbors: ["L3D", "L4D", "L5B"],
-        ladderExit: true
-    },
-
-    // left rope from upper shelf down
-    R1B: {
-        id: "R1B",
-        x: 85,
-        y: 790,
-        neighbors: ["L6U", "R1M"],
-        inputMap: {
-            up: "R1M",
-            right: "L6U"
-        },
-        stopHere: true
-    },
-    R1T: {
-        id: "R1T",
-        x: 85,
-        y: 435,
-        neighbors: ["R1N", "L5D"],
-        inputMap: {
-            down: "R1N",
-            right: "L5D"
-        },
-        stopHere: true
-    },
-    R1M: {
-        id: "R1M",
-        x: 115,
-        y: 670,
-        neighbors: ["R1N", "R1B"],
-        stopHere: false
-    },
-    R1N: {
-        id: "R1N",
-        x: 110,
-        y: 580,
-        neighbors: ["R1M", "R1T"],
-        stopHere: false
-    },
-
-    // right rope from middle-right down
-    R2B: {
-        id: "R2B",
-        x: 925,
-        y: 1030,
-        neighbors: ["L2U", "R2M"],
-        inputMap: {
-            up: "R2M",
-            left: "L2U"
-        },
-        stopHere: true
-    },
-    R2T: {
-        id: "R2T",
-        x: 905,
-        y: 650,
-        neighbors: ["R2N", "L4D", "S2M"],
-        inputMap: {
-            down: "R2N",
-            left: "L4D"
-        },
-        stopHere: true
-    },
-    R2M: {
-        id: "R2M",
-        x: 895,
-        y: 950,
-        neighbors: ["R2B", "R2N"],
-        stopHere: false
-    },
-    R2N: {
-        id: "R2N",
-        x: 885,
-        y: 850,
-        neighbors: ["R2T", "R2M"],
-        stopHere: false
-    },
-
-    // ======================================================
-    // SUMMIT LADDER + GOAL
-    // ======================================================
-    L4D: {
-        id: "L4D",
-        x: 690,
-        y: 690,
-        neighbors: ["L3U", "L4U", "R2T"],
-        ladderExit: true
-    },
-    L4U: {
-        id: "L4U",
-        x: 690,
-        y: 490,
-        neighbors: ["L4D", "L5D", "S2U"],
-        ladderExit: true
-    },
-    S2U: {
-        id: "S2U",
-        x: 810,
-        y: 525,
-        neighbors: ["L4U", "S2M"],
-        stopHere: true
-    },
-    S2M: {
-        id: "S2M",
-        x: 860,
-        y: 580,
-        neighbors: ["R2T", "S2U"],
-        stopHere: false
-    },
-
-    L5D: {
-        id: "L5D",
-        x: 340,
-        y: 450,
-        neighbors: ["R1T", "L4U", "L5N", "GOAL"],
-        stopHere: true
-    },
-    L5B: {
-        id: "L5B",
-        x: 380,
-        y: 755,
-        neighbors: ["L3U", "M1", "L5C"],
-        stopHere: true
-    },
-    L5C: {
-        id: "L5C",
-        x: 400,
-        y: 620,
-        neighbors: ["L5B", "L5N"],
-        stopHere: false
-    },
-    L5N: {
-        id: "L5N",
-        x: 390,
-        y: 520,
-        neighbors: ["L5D", "L5C"],
-        stopHere: false
-    },
-
-    TOP: {
-        id: "TOP",
-        x: 340,
-        y: 0,
-        neighbors: []
-    },
-    GOAL: {
-        id: "GOAL",
-        x: 340,
-        y: 300,
-        neighbors: ["L5D"]
-    }
+  CK1: { id: "CK1", x: 312, y: 1508, neighbors: ["CK2", "CK4"], tags: [] },
+  CK2: { id: "CK2", x: 136, y: 1495, neighbors: ["CK1", "CK3"], tags: [] },
+  CK3: { id: "CK3", x: 131, y: 1260, neighbors: ["CK2"], tags: [] },
+  CK4: { id: "CK4", x: 456, y: 1500, neighbors: ["CK1", "CK39", "CK49"], tags: ["banana"] },
+  CK10: { id: "CK10", x: 1081, y: 1428, neighbors: ["CK12"], tags: ["portal"] },
+  CK12: { id: "CK12", x: 863, y: 1448, neighbors: ["CK10", "CK13", "CK49"], tags: ["banana"] },
+  CK13: { id: "CK13", x: 879, y: 1283, neighbors: ["CK12", "CK38"], jumpTo: "CK14", stopHere: true, tags: ["banana", "jumpFrom"] },
+  CK14: { id: "CK14", x: 921, y: 1158, neighbors: ["CK15"], returnTo: "CK13", tags: ["ropeReturn"] },
+  CK15: { id: "CK15", x: 958, y: 1054, neighbors: ["CK14", "CK16"], tags: [] },
+  CK16: { id: "CK16", x: 930, y: 935, neighbors: ["CK15", "CK17"], tags: [] },
+  CK17: { id: "CK17", x: 935, y: 833, neighbors: ["CK37", "CK16", "CK47", "CK18"], tags: ["banana"] },
+  CK18: { id: "CK18", x: 930, y: 682, neighbors: ["CK17", "CK47", "CK21"], tags: [] },
+  CK20: { id: "CK20", x: 768, y: 638, neighbors: ["CK21", "CK42", "CK23"], tags: [] },
+  CK21: { id: "CK21", x: 844, y: 663, neighbors: ["CK18", "CK20"], tags: ["banana"] },
+  CK22: { id: "CK22", x: 596, y: 598, neighbors: ["CK23", "CK25", "CK37"], tags: [] },
+  CK23: { id: "CK23", x: 686, y: 610, neighbors: ["CK20", "CK22"], tags: [] },
+  CK24: { id: "CK24", x: 412, y: 547, neighbors: ["CK25", "CK28", "CK45"], tags: [] },
+  CK25: { id: "CK25", x: 512, y: 575, neighbors: ["CK22", "CK24"], tags: ["banana"] },
+  CK28: { id: "CK28", x: 319, y: 535, neighbors: ["CK24", "CK29"], tags: [] },
+  CK29: { id: "CK29", x: 225, y: 519, neighbors: ["CK28", "CK30"], tags: [] },
+  CK30: { id: "CK30", x: 109, y: 484, neighbors: ["CK29", "CK46", "CK31"], tags: [] },
+  CK31: { id: "CK31", x: 92, y: 610, neighbors: ["CK30", "CK32"], tags: [] },
+  CK32: { id: "CK32", x: 120, y: 717, neighbors: ["CK31", "CK33"], tags: [] },
+  CK33: { id: "CK33", x: 71, y: 835, neighbors: ["CK32", "CK34"], tags: [] },
+//   CK34: { id: "CK34", x: 108, y: 977, neighbors: ["CK48", "CK35", "CK33"], returnTo: "CK41" },
+  CK34: {  id: "CK34",  x: 108,  y: 977,  neighbors: ["CK48", "CK35", "CK33"],  returnTo: "CK41",   requireInputForReturn: "down"},
+  CK35: { id: "CK35", x: 224, y: 954, neighbors: ["CK34", "CK36", "CK44"], tags: ["banana"] },
+  CK36: { id: "CK36", x: 370, y: 919, neighbors: ["CK40", "CK35", "CK37"], tags: [] },
+  CK37: { id: "CK37", x: 600, y: 889, neighbors: ["CK36", "CK17", "CK22"], tags: ["banana"] },
+  CK38: { id: "CK38", x: 649, y: 1225, neighbors: ["CK13", "CK43", "CK39"], tags: [] },
+  CK39: { id: "CK39", x: 459, y: 1167, neighbors: ["CK38", "CK4", "CK40"], tags: [] },
+  CK40: { id: "CK40", x: 368, y: 1146, neighbors: ["CK39", "CK41", "CK36"], tags: ["banana"] },
+  CK41: { id: "CK41", x: 126, y: 1093, neighbors: ["CK40"], jumpTo: "CK34", tags: ["banana", "jumpFrom"] },
+  CK42: { id: "CK42", x: 782, y: 538, neighbors: ["CK20"], tags: [] },
+  CK43: { id: "CK43", x: 649, y: 1109, neighbors: ["CK38"], tags: ["portal"] },
+  CK44: { id: "CK44", x: 222, y: 826, neighbors: ["CK35"], tags: ["portal"] },
+  CK45: { id: "CK45", x: 410, y: 403, neighbors: ["CK24"], tags: ["portal"] },
+  CK46: { id: "CK46", x: 8, y: 459, neighbors: ["CK30"], tags: ["portal"] },
+  CK47: { id: "CK47", x: 1088, y: 770, neighbors: ["CK17", "CK18"], tags: ["portal"] },
+  CK48: { id: "CK48", x: 1, y: 1005, neighbors: ["CK34"], tags: ["portal", "ropeReturn" ] },
+  CK49: { id: "CK49", x: 554, y: 1505, neighbors: ["CK4", "CK12", "CK50"], tags: [] },
+  CK50: { id: "CK50", x: 551, y: 1719, neighbors: ["CK49"], tags: ["portal"] }
 };

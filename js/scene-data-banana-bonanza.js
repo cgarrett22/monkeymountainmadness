@@ -1,25 +1,25 @@
 // scene-data-banana-bonanza.js
 export const bananaBonanzaPortals = {
   cave: {
-    N31: "N30",
-    N30: "N28",
-    N28: "N31"
+    BB31: "BB30",
+    BB30: "BB28",
+    BB28: "BB31"
   },
   wrap: {
-    N14: "N19",
-    N19: "N14",
-    N22: "N25",
-    N25: "N22"
+    BB14: "BB19",
+    BB19: "BB14",
+    BB22: "BB25",
+    BB25: "BB22"
   }
 };
 
-export const bananaBonanzaEnemyEntryNodeIds = ["N31", "N30", "N28"];
+export const bananaBonanzaEnemyEntryNodeIds = ["BB31", "BB30", "BB28"];
 
 export const bananaBonanzaSecretRoom = {
   visibleBeforeUnlock: true,
-  lockedNodeId: "N36",
-  entryNodeId: "N35",
-  destinationNodeId: "N26",
+  lockedNodeId: "BB36",
+  entryNodeId: "BB35",
+  destinationNodeId: "BB26",
   unlockCondition: "heartsComplete",
   pulseAfterUnlock: true,
   completionType: "sceneEnd",
