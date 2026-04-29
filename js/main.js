@@ -5806,33 +5806,62 @@ canvas.addEventListener("pointerdown", (e) => {
         copyDebugLogsToClipboard(state);
         return;
     }
+
     if (state.showDebugConsole && state.debugClearButton && pointInRect(x, y, state.debugClearButton)) {
         clearDebugLogs(state);
         return;
     }
 
-    if (state.scene === "boss" && state.mode === "playing") {
-        if (tryPlayerJump()) {
-            return;
-        }
-    }
-
+    // Do NOT jump on pointerdown.
+    // Wait until pointerup so we can tell tap from swipe.
     touchStart = {
         x,
-        y
+        y,
+        startX: x,
+        startY: y,
+        time: performance.now(),
+        moved: false
     };
+
     swipeHandled = false;
 }, {
     passive: false
 });
 
-canvas.addEventListener("pointerup", () => {
+canvas.addEventListener("pointerup", (e) => {
+    if (!touchStart) {
+        swipeHandled = false;
+        return;
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+
+    const dx = x - touchStart.startX;
+    const dy = y - touchStart.startY;
+    const dist = Math.hypot(dx, dy);
+
+    const wasTap =
+        !swipeHandled &&
+        !touchStart.moved &&
+        dist < SWIPE_THRESHOLD;
+
+    if (
+        wasTap &&
+        state.scene === "boss" &&
+        state.mode === "playing"
+    ) {
+        tryPlayerJump();
+    }
+
     touchStart = null;
     swipeHandled = false;
 }, {
     passive: true
 });
-
 canvas.addEventListener("pointercancel", () => {
     touchStart = null;
     swipeHandled = false;
