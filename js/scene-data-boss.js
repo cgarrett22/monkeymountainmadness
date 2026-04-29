@@ -77,9 +77,9 @@ export const coconutKongSecretRewards = {
 
 export const coconutKongSecretRoom = {
   visibleBeforeUnlock: true,
-  lockedNodeId: "CK37",
-  entryNodeId: "CK37",
-  destinationNodeId: "CK37",
+  lockedNodeId: "CK50",
+  entryNodeId: "CK50",
+  destinationNodeId: "CK50",
   unlockCondition: "bossHeartsComplete",
   pulseAfterUnlock: true,
   completionType: "sceneEnd",
