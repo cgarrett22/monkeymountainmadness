@@ -710,6 +710,83 @@ function updateBossIntro(dt) {
     }
 }
 
+function updateBossKongIntro(dt) {
+    const intro = state.boss?.kongIntro;
+    if (!intro) return;
+
+    intro.timer += dt;
+
+    if (intro.phase === "release") {
+        // Give balloons time to float off
+        if (intro.timer >= 1.0) {
+            intro.phase = "jump";
+            intro.timer = 0;
+        }
+        return;
+    }
+
+    if (intro.phase === "jump") {
+        // Kong jumps upward off-screen
+        intro.kongJumpY -= 900 * dt;
+
+        if (intro.kongJumpY <= -500) {
+            intro.kongVisible = false;
+            intro.phase = "fall";
+            intro.timer = 0;
+            startScreenShake(0.45, 18);
+            pulseVibrate([40, 30, 40]);
+        }
+        return;
+    }
+
+    if (intro.phase === "fall") {
+        intro.kongFallY += 1300 * dt;
+
+        const landY = 610; // set this to your top horizontal lane y
+        if (intro.kongFallY >= landY) {
+            intro.kongFallY = landY;
+            intro.phase = "chase";
+            intro.timer = 0;
+
+            startScreenShake(0.45, 22);
+            pulseVibrate([50, 35, 50]);
+
+            // start Kong event without a balloon visual
+            if (state.kongEvent) {
+                forceTriggerKongEvent(state, getCurrentNodeMap, "none");
+            }
+        }
+        return;
+    }
+
+    if (intro.phase === "chase") {
+        if (state.kongEvent?.active) {
+            intro.phase = "done";
+        }
+    }
+}
+
+function drawBossKongIntro() {
+    const intro = state.boss?.kongIntro;
+    if (!intro) return;
+
+    if (intro.phase === "jump") {
+        const img = spriteStore.kongJumping;
+        if (img?.complete && img.naturalWidth > 0 && intro.kongVisible) {
+            drawAnimatedKongSprite(img, 0, intro.kongJumpY);
+        }
+        return;
+    }
+
+    if (intro.phase === "fall") {
+        const img = spriteStore.kongSquat;
+        if (img?.complete && img.naturalWidth > 0) {
+            drawStaticBossKong(img, 0, intro.kongFallY);
+        }
+        return;
+    }
+}
+
 function updateLevelIntro(dt) {
     if (!state.levelIntro) return;
 
@@ -1339,12 +1416,28 @@ function startBossMode() {
       dropCooldown: 2.4
     },
 
+    
     mother: {
       carried: false,
       nodeId: bossConfig.motherStartNode
     }
   };
 
+  state.boss.kongIntro = {
+        phase: "tethered", // tethered | release | jump | fall | chase | done
+        timer: 0,
+        balloonsReleased: false,
+        kongVisible: true,
+        kongJumpY: 0,
+        kongFallY: -400,
+        squatLanded: false
+    };
+
+    state.screenShake = {
+        timer: 0,
+        duration: 0,
+        magnitude: 0
+    };
   state.player.setCarryingMother(false);
 
   spawnBossRoamers();
@@ -1358,6 +1451,37 @@ function startBossMode() {
   refillBananas();
 }
 
+function startScreenShake(duration = 0.35, magnitude = 14) {
+    state.screenShake.timer = duration;
+    state.screenShake.duration = duration;
+    state.screenShake.magnitude = magnitude;
+}
+
+function pulseVibrate(pattern) {
+    if (navigator.vibrate) {
+        navigator.vibrate(pattern);
+    }
+}
+
+function updateScreenShake(dt) {
+    if (!state.screenShake || state.screenShake.timer <= 0) return;
+    state.screenShake.timer = Math.max(0, state.screenShake.timer - dt);
+}
+
+function triggerBossBalloonRelease() {
+    const intro = state.boss?.kongIntro;
+    if (!intro || intro.phase !== "tethered") return;
+
+    intro.phase = "release";
+    intro.timer = 0;
+    intro.balloonsReleased = true;
+
+    // however you're tracking the balloon group
+    state.boss.balloons = state.boss.balloons || [];
+    for (const b of state.boss.balloons) {
+        b.released = true;
+    }
+}
 function startChillHill() {
     state.scene = "chill";
     state.mode = "playing";
@@ -2883,15 +3007,22 @@ function showSceneWin() {
         spriteStore.levelUpCard;
 }
 
+// function getSecretRoomBackgroundImage() {
+//     const secret = getSecretRoomConfig();
+//     const key = secret?.cutsceneBackgroundKey;
+
+//     if (key && spriteStore[key]) {
+//         return spriteStore[key];
+//     }
+
+//     return spriteStore.secretRoom_bb || null;
+// }
+
 function getSecretRoomBackgroundImage() {
-    const secret = getSecretRoomConfig();
-    const key = secret?.cutsceneBackgroundKey;
-
-    if (key && spriteStore[key]) {
-        return spriteStore[key];
+    if (state.scene === "boss") {
+        return spriteStore.secretRoom_ck;
     }
-
-    return spriteStore.secretRoom_bb || null;
+    return spriteStore.secretRoom_bb;
 }
 
 function drawSceneCompleteOverlay() {
@@ -4916,22 +5047,6 @@ function spawnBossCoconutFromBabyKong(baby) {
     });
 }
 
-function updateBossSecretReveal(dt) {
-    const reveal = state.boss?.secretReveal;
-    if (!reveal?.exploding) return;
-
-    reveal.timer += dt;
-
-    const totalFrames = 32;
-    const fps = 24;
-    reveal.frame = Math.min(totalFrames - 1, Math.floor(reveal.timer * fps));
-
-    if (reveal.timer >= reveal.duration) {
-        reveal.exploding = false;
-        reveal.exposed = true;
-    }
-}
-
 function updateBossMode(dt) {
     if (!state.boss) return;
     updateHands(dt);
@@ -5174,31 +5289,15 @@ function update(dt) {
 
   state.deliveryTimer -= dt;
 
-  if (!state.deliveryEvent && !state.deliveryCrate) {
-      state.deliveryTimer -= dt;
+if ((state.scene === "main" || state.scene === "boss")) {
+    state.deliveryTimer -= dt;
+    if (state.deliveryTimer <= 0 && !state.deliveryEvent && !state.deliveryCrate) {
+        spawnDeliveryEvent(state, getCurrentNodeMap);
+    }
 
-      if (state.deliveryTimer <= 0) {
-            spawnDeliveryEvent(state, getCurrentNodeMap);
-      }
-  }
-
-    updateDeliveryEvent(
-        state,
-        dt,
-        getCurrentNodeMap,
-        sounds,
-        playSfx,
-        showFloatingText
-    );
-
-    updateDeliveryCrate(
-        state,
-        dt,
-        sounds,
-        playSfx,
-        addAcceptanceScore
-    );
-
+    updateDeliveryEvent(state, dt, getCurrentNodeMap, sounds);
+    updateDeliveryCrate(state, dt, sounds);
+}
   if (state.scene === "main" && state.butterfly) {
         updateButterfly(state.butterfly, dt, getCurrentNodeMap(), choose);
     }
@@ -5353,9 +5452,8 @@ function drawMainEndingOverlay() {
     const ending = state.mainEnding;
     if (!ending) return;
 
-    ctx.save();
-
     const bg = getSecretRoomBackgroundImage();
+    const t = ending.time || 0;
 
     if (bg?.complete && bg.naturalWidth > 0) {
         ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
@@ -5364,7 +5462,8 @@ function drawMainEndingOverlay() {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // Optional cinematic darkening/glow over the static room.
+    ctx.save();
+
     const cx = canvas.width / 2;
     const cy = canvas.height / 2;
 
@@ -5380,10 +5479,11 @@ function drawMainEndingOverlay() {
     ctx.fillStyle = roomGlow;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-const secret = getSecretRoomConfig();
+    const secret = getSecretRoomConfig();
 
     if (secret?.endingType === "butterfly") {
-        drawSecretRoomButterfly(cx - 220, cy + 60);
+        drawSecretRoomButterflyFlutter(cx - 230, cy + 20, t);
+        drawSecretRoomPJDance(cx + 220, cy + 300, t);
     } else {
         if (ending.phase === "intro") {
             drawSecretRoomMotherSit(cx, cy + 120);
@@ -5391,6 +5491,7 @@ const secret = getSecretRoomConfig();
             drawSecretRoomMotherHug(cx, cy + 120, ending.frame || 0);
         }
     }
+
     ctx.restore();
 }
 
@@ -5410,31 +5511,66 @@ function drawSecretRoomMotherSit(cx, cy) {
     );
 }
 
-function drawSecretRoomButterfly(x, y) {
+function drawSecretRoomButterflyFlutter(cx, cy, t) {
     const img = spriteStore.butterfly;
     if (!img || !img.complete || img.naturalWidth <= 0) return;
 
     const cols = 4;
-    const frameWidth = img.naturalWidth / cols;
-    const frameHeight = img.naturalHeight;
-    const frame = Math.floor(performance.now() * 0.012) % cols;
+    const frameW = img.naturalWidth / cols;
+    const frameH = img.naturalHeight;
+    const frame = Math.floor(t * 10) % cols;
 
-    const bob = Math.sin(performance.now() * 0.006) * 12;
+    const orbitX = Math.cos(t * 1.7) * 70;
+    const orbitY = Math.sin(t * 2.4) * 26 + Math.sin(t * 5.5) * 8;
 
-    const drawW = 180;
-    const drawH = drawW * (frameHeight / frameWidth);
+    const drawW = 170;
+    const drawH = drawW * (frameH / frameW);
 
     ctx.drawImage(
         img,
-        frame * frameWidth,
-        0,
-        frameWidth,
-        frameHeight,
+        frame * frameW, 0, frameW, frameH,
+        cx + orbitX - drawW / 2,
+        cy + orbitY - drawH / 2,
+        drawW, drawH
+    );
+}
+
+function drawSecretRoomPJDance(x, y, t) {
+    const img = spriteStore.pjDance;
+    if (!img || !img.complete || img.naturalWidth <= 0) return;
+
+    const cols = 4;
+    const rows = 5;
+    const totalFrames = cols * rows;
+
+    const frame = Math.floor(t * 10) % totalFrames;
+
+    const frameW = img.naturalWidth / cols;
+    const frameH = img.naturalHeight / rows;
+
+    const sx = (frame % cols) * frameW;
+    const sy = Math.floor(frame / cols) * frameH;
+
+    const bounce = Math.sin(t * 7) * 8;
+
+    const drawW = 520;
+    const drawH = drawW * (frameH / frameW);
+
+    ctx.save();
+
+    ctx.drawImage(
+        img,
+        sx,
+        sy,
+        frameW,
+        frameH,
         x - drawW / 2,
-        y - drawH / 2 + bob,
+        y - drawH / 2 + bounce -300,
         drawW,
         drawH
     );
+
+    ctx.restore();
 }
 
 function drawSecretRoomMotherHug(cx, cy, frame = 0) {
@@ -5554,6 +5690,25 @@ function drawActors() {
     drawParticles();
 }
 
+function updateBossSecretReveal(dt) {
+    const reveal = state.boss?.secretReveal;
+    if (!reveal) return;
+
+    if (!reveal.exploding) return;
+
+    reveal.timer += dt;
+
+    const fps = 20;
+    const totalFrames = 32;
+    reveal.frame = Math.min(totalFrames - 1, Math.floor(reveal.timer * fps));
+
+    if (reveal.timer >= reveal.duration) {
+        reveal.exploding = false;
+        reveal.exposed = true;
+        reveal.frame = totalFrames - 1;
+    }
+}
+
 function drawBossSecretRevealLayer() {
     const reveal = state.boss?.secretReveal;
     if (!reveal?.unlocked) return;
@@ -5567,6 +5722,53 @@ function drawBossSecretRevealLayer() {
     // While exploding, draw the explosion sprite animation.
     if (reveal.exploding) {
         drawExplosionSprite(786, 1569, reveal.frame);
+    }
+}
+
+function drawBossSecretRevealOverlay() {
+    if (state.scene !== "boss") return;
+
+    const reveal = state.boss?.secretReveal;
+    if (!reveal) return;
+
+    // Once unlocked, draw the static overlay over the map to expose the hole area.
+    if (reveal.unlocked) {
+        const overlay = spriteStore.secretRoom_ck_overlay;
+        if (overlay?.complete && overlay.naturalWidth > 0) {
+            ctx.drawImage(overlay, 0, 0, canvas.width, canvas.height);
+        }
+    }
+
+    // While exploding, draw explosion sprite on top.
+    if (reveal.exploding) {
+        const img = spriteStore.explosion;
+        if (!img || !img.complete || img.naturalWidth <= 0) return;
+
+        const cols = 8;
+        const rows = 4;
+        const totalFrames = 32;
+        const frame = Math.min(totalFrames - 1, reveal.frame || 0);
+
+        const frameW = img.naturalWidth / cols;
+        const frameH = img.naturalHeight / rows;
+
+        const sx = (frame % cols) * frameW;
+        const sy = Math.floor(frame / cols) * frameH;
+
+        const drawW = 320;
+        const drawH = 320;
+
+        const cx = 786;
+        const cy = 1569;
+
+        ctx.drawImage(
+            img,
+            sx, sy, frameW, frameH,
+            cx - drawW / 2,
+            cy - drawH / 2,
+            drawW,
+            drawH
+        );
     }
 }
 
@@ -5601,6 +5803,15 @@ function drawExplosionSprite(x, y, frameIndex) {
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.save();
+
+    if (state.screenShake?.timer > 0) {
+        const mag = state.screenShake.magnitude * (state.screenShake.timer / state.screenShake.duration);
+        const dx = (Math.random() * 2 - 1) * mag;
+        const dy = (Math.random() * 2 - 1) * mag;
+        ctx.translate(dx, dy);
+    }
 
     if (state.mode === "start") {
         drawStartCard(ctx);
@@ -5644,9 +5855,9 @@ function draw() {
         drawCoconutKongUnderlay();
         drawCloudLayer();
         drawCoconutKongBosses();
-        if (state.scene === "boss") {
-            drawBossSecretRevealLayer();
-        }
+        drawBossSecretRevealLayer();
+        drawDeliveryEvent(ctx, state, spriteStore);
+        drawDeliveryCrate(ctx, state, spriteStore);
     }
     drawBackground();
 
@@ -5665,6 +5876,9 @@ function draw() {
     drawFlyingHearts();
     drawFieldHearts();
     drawPJRewardBunches();
+    if (state.scene === "boss") {
+        drawBossSecretRevealOverlay();
+    }
     drawActors();
     drawDizzyRings();
     drawMainSecretMother();
@@ -5705,6 +5919,8 @@ function draw() {
     drawCavePreview();
     drawDebugConsole();
     drawOverlay();
+
+    ctx.restore();
 }
 
 function drawBossCoconut(coconut) {

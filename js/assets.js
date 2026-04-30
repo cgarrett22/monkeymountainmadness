@@ -10,46 +10,46 @@ export function loadSprites() {
   const spriteStore = {};
 
   spriteStore.lilJabRun = new Image();
-  spriteStore.lilJabRun.src = "sprites/jab-sprite.png";
+  spriteStore.lilJabRun.src = "sprites/jab-sprite.webp";
 
   spriteStore.troopRun = new Image();
-  spriteStore.troopRun.src = "sprites/troop-sprite.png";
+  spriteStore.troopRun.src = "sprites/troop-sprite.webp";
 
   spriteStore.zookeeper1_bb = new Image();
-  spriteStore.zookeeper1_bb.src = "sprites/zookeeper1-bb.png";
+  spriteStore.zookeeper1_bb.src = "sprites/zookeeper1-bb.webp";
 
   spriteStore.zookeeper1_ck = new Image();
-  spriteStore.zookeeper1_ck.src = "sprites/zookeeper1-ck.png";
+  spriteStore.zookeeper1_ck.src = "sprites/zookeeper1-ck.webp";
 
   spriteStore.zookeeper1_ch = new Image();
-  spriteStore.zookeeper1_ch.src = "sprites/zookeeper1-ch.png";
+  spriteStore.zookeeper1_ch.src = "sprites/zookeeper1-ch.webp";
 
   spriteStore.zookeeper2_bb_gifts = new Image();
-  spriteStore.zookeeper2_bb_gifts.src = "sprites/zookeeper2-bb-gifts.png";
+  spriteStore.zookeeper2_bb_gifts.src = "sprites/zookeeper2-bb-gifts.webp";
 
   spriteStore.zookeeper2_bb_hearts = new Image();
-  spriteStore.zookeeper2_bb_hearts.src = "sprites/zookeeper2-bb-hearts.png";
+  spriteStore.zookeeper2_bb_hearts.src = "sprites/zookeeper2-bb-hearts.webp";
 
   spriteStore.zookeeper2_ck_gifts = new Image();
-  spriteStore.zookeeper2_ck_gifts.src = "sprites/zookeeper2-ck-gifts.png";
+  spriteStore.zookeeper2_ck_gifts.src = "sprites/zookeeper2-ck-gifts.webp";
 
   spriteStore.zookeeper2_ck_hearts = new Image();
-  spriteStore.zookeeper2_ck_hearts.src = "sprites/zookeeper2-ck-hearts.png";
+  spriteStore.zookeeper2_ck_hearts.src = "sprites/zookeeper2-ck-hearts.webp";
 
   spriteStore.zookeeper2_ch_gifts = new Image();
-  spriteStore.zookeeper2_ch_gifts.src = "sprites/zookeeper2-ch-gifts.png";
+  spriteStore.zookeeper2_ch_gifts.src = "sprites/zookeeper2-ch-gifts.webp";
 
   spriteStore.zookeeper2_ch_hearts = new Image();
-  spriteStore.zookeeper2_ch_hearts.src = "sprites/zookeeper2-ch-hearts.png";
+  spriteStore.zookeeper2_ch_hearts.src = "sprites/zookeeper2-ch-hearts.webp";
 
   spriteStore.zookeeper2_bb_idle = new Image();
-  spriteStore.zookeeper2_bb_idle.src = "sprites/zookeeper2-bb-idle.png";
+  spriteStore.zookeeper2_bb_idle.src = "sprites/zookeeper2-bb-idle.webp";
 
   spriteStore.zookeeper2_ck_idle = new Image();
-  spriteStore.zookeeper2_ck_idle.src = "sprites/zookeeper2-ck-idle.png";
+  spriteStore.zookeeper2_ck_idle.src = "sprites/zookeeper2-ck-idle.webp";
 
   spriteStore.zookeeper2_ch_idle = new Image();
-  spriteStore.zookeeper2_ch_idle.src = "sprites/zookeeper2-ch-idle.png";
+  spriteStore.zookeeper2_ch_idle.src = "sprites/zookeeper2-ch-idle.webp";
 
   spriteStore.levelUpArt = new Image();
   spriteStore.levelUpArt.src = "assets/levelup-monkeys.webp";
@@ -72,7 +72,6 @@ export function loadSprites() {
   spriteStore.babyKongDrop = new Image();
   spriteStore.babyKongDrop.src = "sprites/baby-kong-drop.webp";
   
-
   spriteStore.secretRewardPJ = new Image();
   spriteStore.secretRewardPJ.src = "sprites/secret-reward-pj.webp";
 
@@ -101,7 +100,7 @@ export function loadSprites() {
   spriteStore.gameStartCard.src = "assets/game-start-card.webp";
 
   spriteStore.lilJabMotherRun = new Image();
-  spriteStore.lilJabMotherRun.src = "sprites/mother-carried-sprite.png";  
+  spriteStore.lilJabMotherRun.src = "sprites/mother-carried-sprite.webp";  
 
   spriteStore.motherSit = new Image();
   spriteStore.motherSit.src = "sprites/mother-sit.webp";
@@ -139,7 +138,8 @@ export function loadSprites() {
   spriteStore.pjSwat = new Image();
   spriteStore.pjSwat.src = "sprites/pj-swat-sprite.webp";  
 
-
+  spriteStore.pjDance = new Image();
+  spriteStore.pjDance.src = "sprites/pj-dance-sprite.webp";  
 
   spriteStore.kong = new Image();
   spriteStore.kong.src = "sprites/kong.webp";  
@@ -149,6 +149,9 @@ export function loadSprites() {
 
   spriteStore.kongRunning = new Image();
   spriteStore.kongRunning.src = "sprites/kong-run-sprite.webp";  
+
+  spriteStore.kongJumping = new Image();
+  spriteStore.kongJumping.src = "sprites/kong-jump-sprite.webp";  
 
   spriteStore.bananaBalloon = new Image();
   spriteStore.bananaBalloon.src = "sprites/banana-balloon.webp";  
@@ -179,6 +182,12 @@ export function loadSprites() {
 
   spriteStore.explosion = new Image();
   spriteStore.explosion.src = "sprites/explosion.webp";  
+
+  spriteStore.secretRoom_ch = new Image();
+  spriteStore.secretRoom_ch.src = "sprites/secret-room-ch.webp";  
+
+  spriteStore.secretRoom_ch_jab = new Image();
+  spriteStore.secretRoom_ch_jab.src = "sprites/jab-secret-room-ch.webp";  
 
   return spriteStore;
 }
