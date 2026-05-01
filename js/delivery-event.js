@@ -4,11 +4,21 @@ import { DELIVERY_ROUTES } from "./delivery-routes.js";
 import { rand, randInt } from "./utils.js";
 
 export function spawnDeliveryEvent(state, getCurrentNodeMap) {
-  if (state.scene !== "main") return;
   if (state.deliveryEvent || state.deliveryCrate) return;
   if (state.mode !== "playing") return;
 
-  const route = DELIVERY_ROUTES.main?.[0];
+  const sceneKey =
+    state.scene === "main" ? "main" :
+    state.scene === "boss" ? "boss" :
+    state.scene === "chill" ? "chill" :
+    null;
+
+  if (!sceneKey) return;
+
+  const routes = DELIVERY_ROUTES[sceneKey];
+  if (!routes?.length) return;
+
+  const route = routes[Math.floor(Math.random() * routes.length)];
   if (!route?.length) return;
 
   const nodeMap = getCurrentNodeMap();

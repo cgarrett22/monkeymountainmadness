@@ -23,55 +23,93 @@ export function resetKongEvent(state) {
   state.kongEvent = createKongEventState();
 }
 
-export function startKongBalloonIntro(state) {
+export function startKongBalloonIntro(state, getCurrentNodeMap, tetherNodeId = "N45") {
   if (!state.kongEvent) {
     state.kongEvent = createKongEventState();
   }
 
-  state.kongEvent.introDone = true;
-  state.kongEvent.phase = "intro";
+  const nodeMap = getCurrentNodeMap?.() || {};
+  const tether = nodeMap[tetherNodeId] || nodeMap.N45 || { x: 500, y: 900 };
+
+  state.kongEvent.introDone = false;
+  state.kongEvent.phase = "tethered";
   state.kongEvent.timer = 0;
+  state.kongEvent.tetherNodeId = tetherNodeId;
 
   state.kongEvent.introBalloons = [
     {
       type: "banana",
-      x: 120,
-      y: 1480,
-      vx: 58,
-      vy: -26,
+      x: tether.x - 120,
+      y: tether.y - 315,
+      tetherX: tether.x,
+      tetherY: tether.y,
+      vx: -42,
+      vy: -120,
       bob: 0
     },
     {
       type: "girl",
-      x: 210,
-      y: 1540,
-      vx: 54,
-      vy: -22,
+      x: tether.x,
+      y: tether.y - 360,
+      tetherX: tether.x,
+      tetherY: tether.y,
+      vx: 10,
+      vy: -130,
       bob: 1.7
     },
     {
       type: "godzilla",
-      x: 300,
-      y: 1600,
-      vx: 50,
-      vy: -18,
+      x: tether.x + 125,
+      y: tether.y - 320,
+      tetherX: tether.x,
+      tetherY: tether.y,
+      vx: 48,
+      vy: -122,
       bob: 3.1
     }
   ];
 }
 
+export function releaseKongIntroBalloons(state) {
+  const e = state.kongEvent;
+  if (!e) return false;
+  if (e.phase !== "tethered") return false;
+
+  e.phase = "intro";
+  e.timer = 0;
+  e.introDone = true;
+
+  return true;
+}
+
 export function updateKongBalloonIntro(state, dt) {
   const e = state.kongEvent;
-  if (!e || e.phase !== "intro") return;
+  if (!e) return;
+
+  // Tethered balloons stay visible but do not drift yet.
+  if (e.phase === "tethered") {
+    e.timer += dt;
+    return;
+  }
+
+  // Released balloons drift off screen.
+  if (e.phase !== "intro") return;
 
   e.timer += dt;
 
   for (const b of e.introBalloons) {
     b.x += b.vx * dt;
     b.y += b.vy * dt;
+
+    // slight float wobble while drifting
+    b.x += Math.sin(e.timer * 2.4 + (b.bob || 0)) * 0.12;
   }
 
-  if (e.timer >= 3.2) {
+  const allGone = e.introBalloons.every(
+    b => b.y < -260 || b.x < -260 || b.x > 1340
+  );
+
+  if (allGone || e.timer >= 5.0) {
     e.phase = "idle";
     e.introBalloons = [];
   }
@@ -129,7 +167,7 @@ export function updateKongEvent(state, dt, getCurrentNodeMap) {
   const e = state.kongEvent;
   if (!e) return;
 
-  if (e.phase === "intro") {
+  if (e.phase === "tethered" || e.phase === "intro") {
     updateKongBalloonIntro(state, dt);
     return;
   }
@@ -261,17 +299,46 @@ function drawAnimatedBalloon(ctx, img, x, y, drawW) {
 export function drawKongEvent(ctx, state, spriteStore, getCurrentNodeMap) {
   const e = state.kongEvent;
   if (!e) return;
-if (!canKongEventRunInScene(state)) return;
+  const isIntroPhase = e.phase === "tethered" || e.phase === "intro";
 
-  // intro balloons
-  if (e.phase === "intro" && Array.isArray(e.introBalloons)) {
+  if (!isIntroPhase && !canKongEventRunInScene(state)) return;
+
+  // tethered/released intro balloons
+  if (
+    (e.phase === "tethered" || e.phase === "intro") &&
+    Array.isArray(e.introBalloons)
+  ) {
+    const nodeMap = getCurrentNodeMap?.() || {};
+    const tetherNode = nodeMap[e.tetherNodeId] || nodeMap.N45;
+
     for (const b of e.introBalloons) {
-      const img = getBalloonImage(spriteStore, b.type, true) || getBalloonImage(spriteStore, b.type, false);
+      const img =
+        getBalloonImage(spriteStore, b.type, true) ||
+        getBalloonImage(spriteStore, b.type, false);
+
       if (!img || !img.complete || img.naturalWidth <= 0) continue;
 
       const bob = Math.sin(performance.now() * 0.003 + (b.bob || 0)) * 10;
-      drawAnimatedBalloon(ctx, img, b.x, b.y + bob, 240);
+
+      const drawW =
+        b.type === "godzilla" ? 300 :
+        b.type === "girl" ? 280 :
+        270;
+
+      drawAnimatedBalloon(ctx, img, b.x, b.y + bob, drawW);
+
+      if (e.phase === "tethered" && tetherNode) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(70,45,25,0.65)";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y + 115);
+        ctx.lineTo(tetherNode.x, tetherNode.y - 16);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
+
     return;
   }
 

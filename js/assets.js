@@ -270,7 +270,8 @@ export function loadSounds(state) {
   sounds.music.loop = true;
   sounds.music.volume = 0.75;
 
-  sounds.bossMusic = new Audio("assets/boss-loop.mp3");
+  // sounds.bossMusic = new Audio("assets/boss-loop.mp3");
+  sounds.bossMusic = new Audio("assets/retro-arcade.mp3");
   sounds.bossMusic.loop = true;
 
   applyMuteState(sounds, state);

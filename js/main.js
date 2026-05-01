@@ -100,6 +100,7 @@ import {
   createKongEventState,
   resetKongEvent,
   startKongBalloonIntro,
+  releaseKongIntroBalloons,
   maybeTriggerKongEvent,
   forceTriggerKongEvent,
   updateKongEvent,
@@ -142,6 +143,53 @@ const muteButton = {
 const MAX_ACTIVE_BANANAS = 3;
 
 const CLOUD_SCROLL_SPEED = 14;
+
+const BOSS_BALLOON_RELEASE_NODE_ID = "CK38";
+const BOSS_BALLOON_RELEASE_DELAY = 9.0; // seconds; tune to 8.0 or 10.0 if preferred
+const BOSS_BALLOON_RELEASE_RADIUS = 90;
+
+function updateBossBalloonReleaseTrigger(dt) {
+    if (state.scene !== "boss") return;
+    if (!state.player) return;
+    if (state.kongEvent?.phase !== "tethered") return;
+
+    const intro = state.boss?.kongIntro;
+    if (!intro || intro.phase !== "waiting") return;
+
+    intro.releaseTimer = (intro.releaseTimer || 0) + dt;
+
+    const delay = intro.releaseDelay ?? BOSS_BALLOON_RELEASE_DELAY;
+
+    if (intro.releaseTimer < delay) return;
+
+    if (releaseKongIntroBalloons(state)) {
+        intro.phase = "jump";
+        intro.timer = 0;
+        intro.jumpY = 0;
+
+        startScreenShake(0.25, 10);
+        pulseVibrate([35, 20, 35]);
+    }
+}
+
+const BOSS_INTRO_LAND_NODE_ID = "CK36";
+
+const BOSS_INTRO_RUN_ROUTE = [
+    "CK36",
+    "N45",
+    "CK37",
+    "N46",
+    "N49",
+    "CK17",
+    "CK47"
+];
+
+const BOSS_START_SPOTLIGHT = {
+  duration: 1.8,
+  alpha: 0.72,
+  radiusStart: 360,
+  radiusEnd: 115
+};
 
 // keep compatibility with the rest of the existing file for now
 function drawStartCard(ctx) {
@@ -699,6 +747,33 @@ function updateClouds(dt) {
     }
 }
 
+function updateSceneDelivery(dt) {
+    if (state.scene === "main" || state.scene === "boss" || state.scene === "chill") {
+        state.deliveryTimer -= dt;
+
+        if (state.deliveryTimer <= 0 && !state.deliveryEvent && !state.deliveryCrate) {
+            spawnDeliveryEvent(state, getCurrentNodeMap);
+        }
+
+        updateDeliveryEvent(
+            state,
+            dt,
+            getCurrentNodeMap,
+            sounds,
+            playSfx,
+            showFloatingText
+        );
+
+        updateDeliveryCrate(
+            state,
+            dt,
+            sounds,
+            playSfx,
+            addAcceptanceScore
+        );
+    }
+}
+
 function updateBossIntro(dt) {
     if (!state.bossIntro) return;
 
@@ -710,61 +785,7 @@ function updateBossIntro(dt) {
     }
 }
 
-function updateBossKongIntro(dt) {
-    const intro = state.boss?.kongIntro;
-    if (!intro) return;
-
-    intro.timer += dt;
-
-    if (intro.phase === "release") {
-        // Give balloons time to float off
-        if (intro.timer >= 1.0) {
-            intro.phase = "jump";
-            intro.timer = 0;
-        }
-        return;
-    }
-
-    if (intro.phase === "jump") {
-        // Kong jumps upward off-screen
-        intro.kongJumpY -= 900 * dt;
-
-        if (intro.kongJumpY <= -500) {
-            intro.kongVisible = false;
-            intro.phase = "fall";
-            intro.timer = 0;
-            startScreenShake(0.45, 18);
-            pulseVibrate([40, 30, 40]);
-        }
-        return;
-    }
-
-    if (intro.phase === "fall") {
-        intro.kongFallY += 1300 * dt;
-
-        const landY = 610; // set this to your top horizontal lane y
-        if (intro.kongFallY >= landY) {
-            intro.kongFallY = landY;
-            intro.phase = "chase";
-            intro.timer = 0;
-
-            startScreenShake(0.45, 22);
-            pulseVibrate([50, 35, 50]);
-
-            // start Kong event without a balloon visual
-            if (state.kongEvent) {
-                forceTriggerKongEvent(state, getCurrentNodeMap, "none");
-            }
-        }
-        return;
-    }
-
-    if (intro.phase === "chase") {
-        if (state.kongEvent?.active) {
-            intro.phase = "done";
-        }
-    }
-}
+// state.boss.kongIntro
 
 function drawBossKongIntro() {
     const intro = state.boss?.kongIntro;
@@ -1316,6 +1337,7 @@ function startMainScene() {
     resetKongEvent(state);
     state.pjRewardBunches = [];
     state.dizzyTimer = 0;
+    resetPlayerTemporaryState(2.0);
 }
 
 function createSceneHeartTargets(count = 3) {
@@ -1334,6 +1356,50 @@ function createSceneHeartTargets(count = 3) {
 
     return hearts;
 }
+
+function startBossSpotlight() {
+  const node = getCurrentNodeMap()[bossConfig.startNode];
+
+  state.bossStartSpotlight = {
+    time: 0,
+    duration: BOSS_START_SPOTLIGHT.duration,
+    x: node ? node.x : canvas.width / 2,
+    y: node ? node.y - 20 : canvas.height * 0.78
+  };
+}
+
+function updateBossSpotlight(dt) {
+  const s = state.bossStartSpotlight;
+  if (!s) return;
+
+  s.time += dt;
+
+  if (s.time >= s.duration) {
+    state.bossStartSpotlight = null;
+  }
+}
+
+function drawBossSpotlight() {
+  const s = state.bossStartSpotlight;
+  if (!s) return;
+
+  const progress = Math.min(s.time / s.duration, 1);
+  const alpha = BOSS_START_SPOTLIGHT.alpha * (1 - progress);
+  const radius =
+    BOSS_START_SPOTLIGHT.radiusStart +
+    (BOSS_START_SPOTLIGHT.radiusEnd - BOSS_START_SPOTLIGHT.radiusStart) * progress;
+
+  ctx.save();
+
+  ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+  ctx.beginPath();
+  ctx.rect(0, 0, canvas.width, canvas.height);
+  ctx.arc(s.x, s.y, radius, 0, Math.PI * 2, true);
+  ctx.fill("evenodd");
+
+  ctx.restore();
+}
+
 function startBossMode() {
   state.scene = "boss";
   state.mode = "playing";
@@ -1360,12 +1426,14 @@ function startBossMode() {
     state.player = new Player(startNodeId, sharedDeps);
   }
 
-  state.player.currentNode = startNodeId;
-  state.player.previousNode = null;
-  state.player.targetNode = null;
-  state.player.x = start.x;
-  state.player.y = start.y;
-  state.player.dir = { x: 0, y: 0 };
+    state.player.currentNode = startNodeId;
+    state.player.previousNode = null;
+    state.player.targetNode = null;
+    state.player.x = start.x;
+    state.player.y = start.y;
+    state.player.dir = { x: 0, y: 0 };
+    state.player.facing = "down";
+    resetPlayerTemporaryState(2.0);
 
   state.troops = [];
   state.coconuts = [];
@@ -1416,31 +1484,40 @@ function startBossMode() {
       dropCooldown: 2.4
     },
 
-    
     mother: {
       carried: false,
       nodeId: bossConfig.motherStartNode
     }
   };
 
-  state.boss.kongIntro = {
-        phase: "tethered", // tethered | release | jump | fall | chase | done
-        timer: 0,
-        balloonsReleased: false,
-        kongVisible: true,
-        kongJumpY: 0,
-        kongFallY: -400,
-        squatLanded: false
-    };
+    if (!state.kongIntroSeenThisGame) {
+        startKongBalloonIntro(state, getCurrentNodeMap, BOSS_BALLOON_RELEASE_NODE_ID);
+    }
+state.boss.kongIntro = {
+    phase: state.kongIntroSeenThisGame ? "done" : "waiting",
+    timer: 0,
 
-    state.screenShake = {
-        timer: 0,
-        duration: 0,
-        magnitude: 0
-    };
+    releaseDelay: BOSS_BALLOON_RELEASE_DELAY,
+    releaseTimer: 0,
+
+    jumpY: 0,
+
+    fallX: 0,
+    fallY: -320,
+
+    runRoute: [],
+    runIndex: 0,
+    runX: 0,
+    runY: 0,
+    runSpeed: 420,
+
+    stunnedPlayer: false
+};
+
   state.player.setCarryingMother(false);
 
   spawnBossRoamers();
+  applyLevelConfig();
   state.bananaTimestamps = [];
   state.mainEnding = null;
   state.mainSecretEntered = false;
@@ -1449,9 +1526,174 @@ function startBossMode() {
   state.secretRewardsFound = {};
   state.secretRewardPopups = [];
   refillBananas();
+
+  debugLog(state, "[AUDIO] playSceneMusic boss");
+  playSceneMusic({
+    sounds,
+    isBossScene: true
+  });
+  startBossSpotlight();
+}
+
+function createBossKongIntroState() {
+    const nodeMap = getCurrentNodeMap();
+    const tetherNode =
+        nodeMap[BOSS_BALLOON_RELEASE_NODE_ID] ||
+        nodeMap.CK32 ||
+        { x: canvas.width / 2, y: canvas.height * 0.5 };
+
+    const alreadySeen = !!state.kongIntroSeenThisGame;
+
+    return {
+        phase: alreadySeen ? "done" : "tethered",
+        timer: 0,
+
+        balloons: alreadySeen ? [] : [
+            { type: "banana", x: tetherNode.x - 58, y: tetherNode.y - 110, vx: -20, vy: -95, bob: 0 },
+            { type: "girl", x: tetherNode.x, y: tetherNode.y - 135, vx: 8, vy: -105, bob: 1.7 },
+            { type: "godzilla", x: tetherNode.x + 58, y: tetherNode.y - 112, vx: 34, vy: -98, bob: 3.1 }
+        ],
+
+        jumpY: 0,
+
+        fallX: 0,
+        fallY: -420,
+
+        runRoute: [],
+        runIndex: 0,
+        runX: 0,
+        runY: 0,
+        runSpeed: 385,
+
+        stunnedPlayer: false
+    };
+}
+
+function updateBossKongIntro(dt) {
+    const intro = state.boss?.kongIntro;
+    if (!intro || intro.phase === "done") return;
+
+    const nodeMap = getCurrentNodeMap();
+    const land = nodeMap.CK36;
+
+    intro.timer += dt;
+
+    if (intro.phase === "waiting") {
+        return;
+    }
+
+    if (intro.phase === "jump") {
+        intro.jumpY -= 900 * dt;
+
+        if (intro.jumpY <= -620) {
+            intro.phase = "fall";
+            intro.timer = 0;
+
+            intro.fallX = land?.x ?? 370;
+            intro.fallY = -320;
+
+            startScreenShake(0.25, 10);
+            pulseVibrate([30, 20, 30]);
+        }
+
+        return;
+    }
+
+    if (intro.phase === "fall") {
+        const targetY = land?.y ?? 919;
+
+        intro.fallY += 1450 * dt;
+
+        if (intro.fallY >= targetY) {
+            intro.fallY = targetY;
+            intro.phase = "run";
+            intro.timer = 0;
+
+            intro.runRoute = [
+                "CK36",
+                "CK37",
+                "N46",
+                "N49",
+                "CK17",
+                "CK47"
+            ].filter(id => nodeMap[id]);
+
+            intro.runIndex = 0;
+            intro.runX = intro.fallX;
+            intro.runY = intro.fallY;
+            intro.runSpeed = 420;
+            intro.stunnedPlayer = false;
+
+            startScreenShake(0.45, 20);
+            pulseVibrate([60, 35, 60]);
+        }
+
+        return;
+    }
+
+    if (intro.phase === "run") {
+        const route = intro.runRoute || [];
+        const nextId = route[intro.runIndex + 1];
+
+        if (!nextId) {
+            intro.runX += intro.runSpeed * dt;
+
+            if (intro.runX > canvas.width + 260) {
+                intro.phase = "done";
+                state.kongIntroSeenThisGame = true;
+            }
+
+            return;
+        }
+
+        const target = nodeMap[nextId];
+        if (!target) {
+            intro.runIndex += 1;
+            return;
+        }
+
+        const dx = target.x - intro.runX;
+        const dy = target.y - intro.runY;
+        const dist = Math.hypot(dx, dy);
+        const step = intro.runSpeed * dt;
+
+        if (dist <= step || dist < 1) {
+            intro.runX = target.x;
+            intro.runY = target.y;
+            intro.runIndex += 1;
+
+            startScreenShake(0.12, 7);
+
+            if (intro.runIndex % 2 === 0) {
+                pulseVibrate([18]);
+            }
+        } else {
+            intro.runX += (dx / dist) * step;
+            intro.runY += (dy / dist) * step;
+        }
+
+        if (
+            !intro.stunnedPlayer &&
+            state.player &&
+            Math.hypot(state.player.x - intro.runX, state.player.y - intro.runY) < 105
+        ) {
+            intro.stunnedPlayer = true;
+            state.dizzyTimer = state.dizzyDuration || 1.0;
+            playSfx(sounds.eOh, null, "kongIntroStun");
+            pulseVibrate([45, 35, 45]);
+        }
+    }
 }
 
 function startScreenShake(duration = 0.35, magnitude = 14) {
+    if (!state.screenShake) {
+        state.screenShake = {
+            timer: 0,
+            duration: 0,
+            magnitude: 0
+        };
+    }
+
     state.screenShake.timer = duration;
     state.screenShake.duration = duration;
     state.screenShake.magnitude = magnitude;
@@ -1482,6 +1724,159 @@ function triggerBossBalloonRelease() {
         b.released = true;
     }
 }
+
+function getBossBalloonImage(type) {
+    if (type === "banana") return spriteStore.bananaBalloonSprite || spriteStore.bananaBalloon;
+    if (type === "girl") return spriteStore.girlKongBalloonSprite || spriteStore.girlKongBalloon;
+    if (type === "godzilla") return spriteStore.godzillaBalloonSprite || spriteStore.godzillaBalloon;
+    return null;
+}
+
+function drawBossIntroBalloons() {
+    const intro = state.boss?.kongIntro;
+    if (!intro) return;
+    if (!(intro.phase === "tethered" || intro.phase === "release")) return;
+
+    for (const b of intro.balloons || []) {
+        const img = getBossBalloonImage(b.type);
+        if (!img || !img.complete || img.naturalWidth <= 0) continue;
+
+        const bob = Math.sin(performance.now() * 0.004 + b.bob) * 8;
+        const drawW = 145;
+        const drawH = drawW * (img.naturalHeight / img.naturalWidth);
+
+        ctx.drawImage(
+            img,
+            b.x - drawW / 2,
+            b.y + bob - drawH / 2,
+            drawW,
+            drawH
+        );
+
+        if (intro.phase === "tethered") {
+            const node = getCurrentNodeMap()[BOSS_BALLOON_RELEASE_NODE_ID];
+            if (node) {
+                ctx.save();
+                ctx.strokeStyle = "rgba(80,45,20,0.55)";
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(b.x, b.y + drawH * 0.35);
+                ctx.lineTo(node.x, node.y - 18);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+    }
+}
+
+function drawBossIntroKongActor() {
+    const intro = state.boss?.kongIntro;
+    if (!intro) return;
+
+    if (intro.phase === "jump") {
+        drawBossKongJumping(intro.jumpY);
+        return;
+    }
+
+    if (intro.phase === "fall") {
+        drawBossSquatAt(intro.fallX, intro.fallY);
+        return;
+    }
+
+    if (intro.phase === "run") {
+        drawBossRunningAt(intro.runX, intro.runY);
+    }
+}
+
+function drawBossKongJumping(offsetY = 0) {
+    const img = spriteStore.kongJumping || spriteStore.kongSquat || spriteStore.kong;
+    if (!img || !img.complete || img.naturalWidth <= 0) return;
+
+    const cols = 4;
+    const rows = 2;
+    const totalFrames = cols * rows;
+
+    const frame = Math.floor(performance.now() * 0.012) % totalFrames;
+
+    const frameW = img.naturalWidth / cols;
+    const frameH = img.naturalHeight / rows;
+
+    const sx = (frame % cols) * frameW;
+    const sy = Math.floor(frame / cols) * frameH;
+
+    const drawW = 360;
+    const drawH = drawW * (frameH / frameW);
+
+    // Tune these to match the static bossKong mountain position.
+    const x = 300;
+    const y = 230 + offsetY;
+
+    ctx.save();
+
+    ctx.drawImage(
+        img,
+        sx,
+        sy,
+        frameW,
+        frameH,
+        x - drawW / 2,
+        y - drawH / 2,
+        drawW,
+        drawH
+    );
+
+    ctx.restore();
+}
+
+function drawBossRunningAt(x, y) {
+    const img = spriteStore.kongRunning || spriteStore.kongSquat || spriteStore.kong;
+    if (!img || !img.complete || img.naturalWidth <= 0) return;
+
+    const cols = 5;
+    const frameW = img.naturalWidth / cols;
+    const frameH = img.naturalHeight;
+    const frame = Math.floor(performance.now() * 0.014) % cols;
+
+    const drawW = 280;
+    const drawH = drawW * (frameH / frameW);
+
+    ctx.save();
+    ctx.translate(x, y - 120);
+
+    // Adjust/remove if the running sprite faces the wrong direction.
+    ctx.scale(-1, 1);
+
+    ctx.drawImage(
+        img,
+        frame * frameW,
+        0,
+        frameW,
+        frameH,
+        -drawW / 2,
+        -drawH / 2,
+        drawW,
+        drawH
+    );
+
+    ctx.restore();
+}
+
+function drawBossSquatAt(x, y) {
+    const img = spriteStore.kongSquat || spriteStore.kong || spriteStore.bossKong;
+    if (!img || !img.complete || img.naturalWidth <= 0) return;
+
+    const drawW = 270;
+    const drawH = drawW * (img.naturalHeight / img.naturalWidth);
+
+    ctx.drawImage(
+        img,
+        x - drawW / 2,
+        y - drawH * 0.82,
+        drawW,
+        drawH
+    );
+}
+
 function startChillHill() {
     state.scene = "chill";
     state.mode = "playing";
@@ -1507,6 +1902,8 @@ function startChillHill() {
         state.player.reset(chillConfig.startNode);
     }
 
+    resetPlayerTemporaryState(2.0);
+    
     state.zookeeper = {
         anim: "idle",
         frame: 0,
@@ -1524,6 +1921,7 @@ function startChillHill() {
     };
 
     state.troops = [];
+    applyLevelConfig();
     state.player.hasBanana = false;
 
     // debugLog(state, "[AUDIO] playSceneMusic chill");
@@ -2127,13 +2525,6 @@ function updateHeartCollection() {
 
         showHeartProgressPopup(state.acceptance);
 
-        if (
-            boss.heartsCollected >= boss.requiredHearts &&
-            !state.boss.secretReveal?.unlocked
-        ) {
-            startBossSecretReveal();
-        }
-
         if (collected >= 3) {
             state.mainSecretUnlocked = true;
         }
@@ -2152,10 +2543,12 @@ function startBossSecretReveal() {
     state.boss.secretReveal.exploding = true;
     state.boss.secretReveal.exposed = false;
     state.boss.secretReveal.timer = 0;
-    state.boss.secretReveal.duration = 1.0;
+    state.boss.secretReveal.duration = 1.15;
     state.boss.secretReveal.frame = 0;
 
-    playSfx(sounds.explosion);
+    debugLog(state, "[BOSS SECRET] reveal started");
+
+    playSfx(sounds.explosion, null, "explosion");
 }
 
 function hasActiveGroundHeart() {
@@ -2271,8 +2664,8 @@ function tryPlayerJump() {
         fromNodeId: "CK13",
         toNodeId: "CK14",
         time: 0,
-        duration: 0.48,
-        height: 145,
+        duration: 0.55,
+        height: 160,
         startX: from.x,
         startY: from.y,
         endX: to.x,
@@ -2351,6 +2744,59 @@ function tryPlayerJump() {
     state.lastJumpDebug.hopActive = true;
 
     return true;
+}
+
+function getPlayerTravelVector() {
+    const player = state.player;
+    if (!player) return null;
+
+    // Prefer actual movement direction.
+    if (
+        player.dir &&
+        (Math.abs(player.dir.x) > 0.001 || Math.abs(player.dir.y) > 0.001)
+    ) {
+        return player.dir;
+    }
+
+    // Fallback to facing.
+    if (player.facing === "right") return { x: 1, y: 0 };
+    if (player.facing === "left") return { x: -1, y: 0 };
+    if (player.facing === "up") return { x: 0, y: -1 };
+    if (player.facing === "down") return { x: 0, y: 1 };
+
+    return null;
+}
+
+function isJumpTargetAheadOfPlayer(destNode) {
+    const player = state.player;
+    if (!player || !destNode) return false;
+
+    const travel = getPlayerTravelVector();
+    if (!travel) return true;
+
+    const dx = destNode.x - player.x;
+    const dy = destNode.y - player.y;
+    const len = Math.hypot(dx, dy);
+    if (!len) return true;
+
+    const nx = dx / len;
+    const ny = dy / len;
+
+    const dot = nx * travel.x + ny * travel.y;
+
+    // Allow:
+    // - targets ahead
+    // - mostly vertical/upward targets
+    // Reject:
+    // - clearly behind the player
+    if (dot >= -0.15) return true;
+
+    // Special allowance: if the target is substantially above the player,
+    // allow the catch even if horizontal dot is weak.
+    const upwardAmount = player.y - destNode.y;
+    if (upwardAmount >= 45 && Math.abs(dx) <= 115) return true;
+
+    return false;
 }
 
 function startPlayerHop() {
@@ -2447,7 +2893,12 @@ function checkRopeReturn() {
 
     if (!current?.returnTo) return;
 
-    if (player.previousNode === current.returnTo) {
+    const validLandingOrigins = Array.isArray(current.returnFrom)
+        ? current.returnFrom
+        : [current.returnTo];
+
+    // If we just landed here from one of its jump origins, stay here.
+    if (validLandingOrigins.includes(player.previousNode)) {
         return;
     }
 
@@ -2476,38 +2927,46 @@ function getPlayerJumpOriginNodeId() {
 
     const nodeMap = getCurrentNodeMap();
 
+    function candidateIsUsable(nodeId) {
+        const node = nodeMap[nodeId];
+        if (!node) return false;
+
+        const jumpToId = getCurrentJumpDestination(node);
+        if (!jumpToId) return false;
+
+        const dest = nodeMap[jumpToId];
+        if (!dest) return false;
+
+        return isJumpTargetAheadOfPlayer(dest);
+    }
+
     // 1. Exact current node.
-    const current = nodeMap[player.currentNode];
-    if (getCurrentJumpDestination(current)) {
+    if (candidateIsUsable(player.currentNode)) {
         return player.currentNode;
     }
 
     // 2. Node we are already moving into.
-    if (player.targetNode) {
+    if (player.targetNode && candidateIsUsable(player.targetNode)) {
         const target = nodeMap[player.targetNode];
 
-        if (getCurrentJumpDestination(target)) {
-            const distToTarget = Math.hypot(
-                target.x - player.x,
-                target.y - player.y
-            );
+        const distToTarget = Math.hypot(
+            target.x - player.x,
+            target.y - player.y
+        );
 
-            // Forgiving but not huge.
-            if (distToTarget <= 115) {
-                return player.targetNode;
-            }
+        if (distToTarget <= 115) {
+            return player.targetNode;
         }
     }
 
-    // 3. Physical vicinity fallback.
-    // This is the phone-friendly part.
+    // 3. Physical vicinity fallback, but only if target is not behind.
     let bestId = null;
     let bestDist = Infinity;
 
     for (const id in nodeMap) {
-        const node = nodeMap[id];
-        if (!getCurrentJumpDestination(node)) continue;
+        if (!candidateIsUsable(id)) continue;
 
+        const node = nodeMap[id];
         const d = Math.hypot(node.x - player.x, node.y - player.y);
 
         if (d < bestDist) {
@@ -2516,8 +2975,6 @@ function getPlayerJumpOriginNodeId() {
         }
     }
 
-    // Tune this. I would start around player diameter + forgiveness.
-    // Player radius is 22, so 70-95 is reasonable.
     if (bestId && bestDist <= 90) {
         return bestId;
     }
@@ -2780,6 +3237,37 @@ function drawCoconutKongUnderlay() {
     if (!img || !img.complete || img.naturalWidth <= 0) return;
 
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+}
+
+function drawCoconutKongBosses() {
+    if (state.scene !== "boss") return;
+
+    const intro = state.boss?.kongIntro;
+    const introPhase = intro?.phase || "done";
+
+    const shouldDrawStaticBoss =
+        !state.kongIntroSeenThisGame &&
+        introPhase === "waiting";
+
+    if (shouldDrawStaticBoss) {
+        const bossImg = spriteStore.bossKong;
+
+        if (bossImg?.complete && bossImg.naturalWidth > 0) {
+            ctx.drawImage(bossImg, 0, 0);
+        }
+    }
+
+    const baby = state.boss?.babyKong;
+
+    if (baby) {
+        drawBabyKong(baby);
+    } else {
+        const babyImg = spriteStore.babyKong;
+
+        if (babyImg?.complete && babyImg.naturalWidth > 0) {
+            ctx.drawImage(babyImg, 804, 0);
+        }
+    }
 }
 
 function drawCloudLayer() {
@@ -3494,12 +3982,13 @@ function releaseTroopFromEntry() {
 }
 
 function respawnTroopSafely(troop) {
-  if (!troop || state.scene !== "main") return;
+  if (!troop) return;
 
   const nodeMap = getCurrentNodeMap();
   const spawnNodeId = getCurrentEnemyEntryNodeId();
 
   if (!spawnNodeId || !nodeMap[spawnNodeId]) return;
+
   troop.startNodeId = spawnNodeId;
   troop.currentNode = spawnNodeId;
   troop.speed = troop.baseSpeed * troop.speedMultiplier;
@@ -3513,32 +4002,51 @@ function respawnTroopSafely(troop) {
 }
 
 function updateEnemyRelease(dt) {
-  if (state.scene !== "main") return;
   if (!state.enemyRelease) return;
+  if (state.mode !== "playing") return;
+
+  const sceneConfig = getSceneConfig();
+  const entryIds = sceneConfig.enemyEntryNodeIds || [];
+
+  // No entry nodes means this scene simply does not support released troops yet.
+  if (!entryIds.length) return;
 
   const r = state.enemyRelease;
 
   if (r.releasedCount < r.targetCount) {
     r.releaseTimer -= dt;
+
     if (r.releaseTimer <= 0) {
       releaseTroopFromEntry();
       r.releasedCount += 1;
       r.releaseTimer = r.releaseInterval;
 
-      if (r.butterflyUnlocked && !r.butterflyReleased && r.releasedCount >= 1) {
+      if (
+        r.butterflyUnlocked &&
+        !r.butterflyReleased &&
+        r.releasedCount >= 1 &&
+        state.scene === "main"
+      ) {
         state.butterfly = createButterfly("BB5", getCurrentNodeMap());
         r.butterflyReleased = true;
       }
 
-      if (r.pjUnlocked && !r.pjReleased && r.releasedCount >= 2) {
+      if (
+        r.pjUnlocked &&
+        !r.pjReleased &&
+        r.releasedCount >= 2 &&
+        state.scene === "main"
+      ) {
         state.pj = createPJ("BB24", getCurrentNodeMap());
         r.pjReleased = true;
       }
     }
+
     return;
   }
 
   r.reinforcementTimer -= dt;
+
   if (r.reinforcementTimer <= 0) {
     releaseTroopFromEntry();
     r.releasedCount += 1;
@@ -3634,8 +4142,14 @@ function updateNanaSnatcherCollisions() {
 }
 
 function updateSnatcherRelease(dt) {
-  if (state.scene !== "main") return;
   if (!state.snatcherRelease) return;
+  if (state.mode !== "playing") return;
+
+  const sceneConfig = getSceneConfig();
+  const entryIds = sceneConfig.enemyEntryNodeIds || [];
+
+  // No entry nodes means no snatcher release for this scene yet.
+  if (!entryIds.length) return;
 
   const r = state.snatcherRelease;
 
@@ -3665,9 +4179,9 @@ function applyLevelConfig() {
     pjReleased: false
   };
 
-  const snatchersActive =
-    state.scene === "main" &&
-    state.level >= 2;
+const snatchersActive =
+  state.level >= 2 &&
+  !!(getSceneConfig().enemyEntryNodeIds || []).length;
 
   state.snatcherRelease = snatchersActive
     ? {
@@ -3756,6 +4270,25 @@ function resetActors() {
   state.troops = [];
 }
 
+function resetPlayerTemporaryState(invuln = 2.0) {
+    if (!state.player) return;
+
+    state.player.invuln = invuln;
+    state.player.portalCooldown = 0;
+    state.player.speedMultiplierOverride = 1;
+    state.player.hasBanana = false;
+
+    state.playerJump = null;
+
+    if (state.playerHop) {
+        state.playerHop.active = false;
+        state.playerHop.timer = 0;
+    }
+
+    state.playerVisualOffsetY = 0;
+    state.dizzyTimer = 0;
+}
+
 function startGame() {
     state.mode = "playing";
     state.paused = false;
@@ -3780,6 +4313,7 @@ function startGame() {
     state.level = DEBUG ? DEBUG_TEST_LEVEL : 1;    state.levelUp = null;
     state.levelIntro = null;
     state.bossIntro = null;
+    state.kongIntroSeenThisGame = false;
     state.hands = [];
     state.bananas = [];
     state.bananaTimestamps = [];
@@ -4168,8 +4702,6 @@ function updateBananas(dt) {
 }
 
 function spawnPJRewardBunch(x, y, minValue, maxValue, source = "pj") {
-    if (state.scene !== "main") return;
-
     if (!state.pjRewardBunches) {
         state.pjRewardBunches = [];
     }
@@ -4588,6 +5120,7 @@ function updateBossHeartCollection() {
         if (heart.nodeId !== player.currentNode) continue;
 
         heart.collected = true;
+
         boss.heartsCollected = Math.min(
             boss.requiredHearts || 3,
             (boss.heartsCollected || 0) + 1
@@ -4598,15 +5131,24 @@ function updateBossHeartCollection() {
         state.lastHeartNodeId = heart.nodeId;
         state.lastHeartPickupTime = performance.now() / 1000;
 
-        playSfx(sounds.ahh);
+        playSfx(sounds.ahh, null, "bossHeart");
 
         state.hearts.push({
             x: player.x,
             y: player.y - 10,
             t: 0
         });
-
+        // This is the missing trigger:
+        // pulse works from heart count, but explosion/overlay/sound need secretReveal.unlocked.
         showHeartProgressPopup(boss.heartsCollected);
+
+        if (
+            boss.heartsCollected >= boss.requiredHearts &&
+            !boss.secretReveal?.unlocked
+        ) {
+            startBossSecretReveal();
+        }
+
         break;
     }
 }
@@ -5051,6 +5593,8 @@ function updateBossMode(dt) {
     if (!state.boss) return;
     updateHands(dt);
     updateBananas(dt);
+    updateBossSpotlight(dt);
+    updateSceneDelivery(dt);
     ensureBananasAvailable();
     updateZookeeper(dt);
     updateZookeeper2(dt);
@@ -5060,9 +5604,14 @@ function updateBossMode(dt) {
     updatePendingHeartThrow(dt);
     updateFlyingHearts(dt);
     updateFieldHeartLifetime(dt);
-    updatePlayer(dt);
-    if (!state.boss) return;
+updatePlayer(dt);
+
+updateBossBalloonReleaseTrigger(dt);
+updateKongEvent(state, dt, getCurrentNodeMap);
+updateKongEventCollisions(state, playSfx, sounds);
     updateBossSecretReveal(dt);
+    updateBossKongIntro(dt);
+    updateScreenShake(dt);
     updateTroops(dt);
     if (!state.boss) return;
 
@@ -5251,6 +5800,7 @@ function update(dt) {
     if (state.scene === "boss") {
         updateBossMode(dt);
         updateClouds(dt);
+        updateBossSecretReveal(dt);
         return;
     }
 
@@ -5287,18 +5837,11 @@ function update(dt) {
     updateHands(dt);
     updateBananas(dt);
 
-  state.deliveryTimer -= dt;
-
-if ((state.scene === "main" || state.scene === "boss")) {
     state.deliveryTimer -= dt;
-    if (state.deliveryTimer <= 0 && !state.deliveryEvent && !state.deliveryCrate) {
-        spawnDeliveryEvent(state, getCurrentNodeMap);
-    }
 
-    updateDeliveryEvent(state, dt, getCurrentNodeMap, sounds);
-    updateDeliveryCrate(state, dt, sounds);
-}
-  if (state.scene === "main" && state.butterfly) {
+    updateSceneDelivery(dt);
+
+    if (state.scene === "main" && state.butterfly) {
         updateButterfly(state.butterfly, dt, getCurrentNodeMap(), choose);
     }
 
@@ -5324,15 +5867,18 @@ if ((state.scene === "main" || state.scene === "boss")) {
     }
 
     if (state.scene === "main") {
-      if (state.scene === "main" && state.kongEvent && !state.kongEvent.introDone) {
-        startKongBalloonIntro(state);
-      }
+    //   if (state.scene === "main" && state.kongEvent && !state.kongEvent.introDone) {
+    //     startKongBalloonIntro(state);
+    //   }
 
-      updateKongEvent(state, dt, getCurrentNodeMap);
-      updateKongEventCollisions(state, playSfx, sounds);
-      maybeTriggerKongEvent(state, getCurrentNodeMap);
-      updateEnemyRelease(dt);
-      updateSnatcherRelease(dt);
+    if (state.scene !== "boss") {
+        updateKongEvent(state, dt, getCurrentNodeMap);
+        updateKongEventCollisions(state, playSfx, sounds);
+        maybeTriggerKongEvent(state, getCurrentNodeMap);
+    }
+
+    updateEnemyRelease(dt);
+    updateSnatcherRelease(dt);
       updateNanaSnatchers(dt);
       updateNanaSnatcherCollisions();
       ensureBananasAvailable();
@@ -5368,30 +5914,6 @@ if ((state.scene === "main" || state.scene === "boss")) {
 // ======================================================
 // RENDER
 // ======================================================
-
-function drawCoconutKongBosses() {
-    if (state.scene !== "boss") return;
-
-    const bossImg = spriteStore.bossKong;
-
-    if (bossImg?.complete && bossImg.naturalWidth > 0) {
-        // You said bossKong can be placed at 0,0.
-        ctx.drawImage(bossImg, 0, 0);
-    }
-
-    const baby = state.boss?.babyKong;
-
-    if (baby) {
-        drawBabyKong(baby);
-    } else {
-        const babyImg = spriteStore.babyKong;
-
-        if (babyImg?.complete && babyImg.naturalWidth > 0) {
-            // You said static babyKong can be placed at 804,0.
-            ctx.drawImage(babyImg, 804, 0);
-        }
-    }
-}
 
 const BABY_KONG_DRAW_OFFSET_X = 0;
 const BABY_KONG_DRAW_OFFSET_Y = -180;
@@ -5815,12 +6337,14 @@ function draw() {
 
     if (state.mode === "start") {
         drawStartCard(ctx);
+        ctx.restore();
         return;
     }
 
     if (state.mode === "sceneEnding") {
         drawMainEndingOverlay();
         drawDebugConsole();
+        ctx.restore();
         return;
     }
 
@@ -5839,11 +6363,13 @@ function draw() {
             ctx.textAlign = "center";
             ctx.font = "bold 48px Arial";
             ctx.fillText("Cave Explodes", canvas.width / 2, canvas.height / 2);
+            ctx.restore();
             return;
         }
 
         if (state.mode === "sceneWin") {
             drawSceneCompleteOverlay();
+            ctx.restore();
             return;
         }
         drawBossIntroOverlay();
@@ -5855,13 +6381,15 @@ function draw() {
         drawCoconutKongUnderlay();
         drawCloudLayer();
         drawCoconutKongBosses();
-        drawBossSecretRevealLayer();
         drawDeliveryEvent(ctx, state, spriteStore);
         drawDeliveryCrate(ctx, state, spriteStore);
     }
     drawBackground();
 
     if (state.scene === "boss") {
+        drawKongEvent(ctx, state, spriteStore, getCurrentNodeMap);
+        drawBossIntroBalloons();
+        drawBossIntroKongActor();
         drawBabyKongPathDebug();
     }
 
@@ -5915,6 +6443,7 @@ function draw() {
     if (state.pj) {
       drawPJ(ctx, state.pj, spriteStore);
     }
+    drawBossSpotlight();
     drawHudOverlay();
     drawCavePreview();
     drawDebugConsole();

@@ -4,9 +4,9 @@ export const DEBUG_TEST_LEVEL = 1;
 export const CANVAS_WIDTH = 1080;
 export const CANVAS_HEIGHT = 1920;
 
-export const DEBUG = true;
+export const DEBUG = false;
 export const DEBUG_LOOP_MAIN_SCENE = false;
-export const DEBUG_LOOP_KONG_SCENE = true;
+export const DEBUG_LOOP_KONG_SCENE = false;
 export let NODE_DEBUG = false;
 
 export const SWIPE_THRESHOLD = 16;

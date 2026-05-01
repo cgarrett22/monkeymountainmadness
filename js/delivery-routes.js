@@ -4,6 +4,6 @@ export const DELIVERY_ROUTES = {
   ],
 
   boss: [
-    ["CK48", "CK34", "CK35", "CK36", "CK37", "CK17", "CK47"]
+    ["CK48", "CK34", "CK35", "CK36", "N45", "CK37", "N46", "N49", "CK17", "CK47"]
   ]
 };

@@ -100,6 +100,7 @@ export function createInitialState() {
     dizzyTimer: 0,
     dizzyDuration: 1.0,
     dizzySlowMultiplier: 0.15,
+    bossStartSpotlight: null,
     unlocks: {
       butterfly: false,
       pj: false,
