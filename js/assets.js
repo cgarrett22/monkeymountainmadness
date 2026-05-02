@@ -219,6 +219,7 @@ export function loadSounds(state) {
 
   sounds.victory = new Howl({
     src: ["assets/victory.m4a"],
+    rate: 1,
     volume: 0.75,
     preload: true
   });

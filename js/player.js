@@ -42,6 +42,12 @@ export class Player {
 
   reset(startNodeId) {
     const p = this.deps.nodePos(startNodeId);
+
+    if (!p) {
+      console.warn("Player.reset: missing start node", startNodeId);
+      return;
+    }
+
     this.currentNode = startNodeId;
     this.previousNode = null;
     this.targetNode = null;

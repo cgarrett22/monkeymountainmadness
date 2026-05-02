@@ -54,7 +54,11 @@ import { DELIVERY_ROUTES } from "./delivery-routes.js";
 import { bossNodes } from "./scene-data-boss-nodes.js";
 import { bossConfig, bossCoconutLanes, babyKongPath, coconutKongSecretRewards } from "./scene-data-boss.js";
 import { chillNodes } from "./scene-data-chill-nodes.js";
-import { chillConfig, CHILL_BANANA_NODE_IDS } from "./scene-data-chill.js";
+import {
+  chillConfig,
+  CHILL_BANANA_NODE_IDS,
+  chillSecretRewards
+} from "./scene-data-chill.js";
 
 import { SCENE_CONFIGS } from "./scene-config.js";
 
@@ -116,6 +120,8 @@ import {
   drawDeliveryCrate,
   cancelDeliveryAhh
 } from "./delivery-event.js";
+
+
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -291,7 +297,8 @@ Object.defineProperties(window, {
 
 const SECRET_REWARDS = {
   main: bananaBonanzaSecretRewards,
-  boss: coconutKongSecretRewards
+  boss: coconutKongSecretRewards,
+  chill: chillSecretRewards
 };
 
 function getSceneConfig() {
@@ -638,8 +645,11 @@ function checkChillHillDebugWin() {
     if (state.scene !== "chill") return;
     if (!state.player) return;
     if (state.mode !== "playing") return;
-
-    if (state.player.currentNode === "CG" && !state.player.targetNode) {
+    if (state.player.targetNode) return;
+    if (canCompleteChillHill()) {
+        onSceneWin();
+    }
+    if (state.player.currentNode === chillConfig.goalNode) {
         onSceneWin();
     }
 }
@@ -1832,7 +1842,7 @@ function drawBossRunningAt(x, y) {
     const img = spriteStore.kongRunning || spriteStore.kongSquat || spriteStore.kong;
     if (!img || !img.complete || img.naturalWidth <= 0) return;
 
-    const cols = 5;
+    const cols = 4;
     const frameW = img.naturalWidth / cols;
     const frameH = img.naturalHeight;
     const frame = Math.floor(performance.now() * 0.014) % cols;
@@ -1896,6 +1906,22 @@ function startChillHill() {
     state.heartCooldown = 0;
     state.lastHeartNodeId = null;
 
+    state.deliveryEvent = null;
+state.deliveryCrate = null;
+state.deliveryTimer = 6;
+state.delayedPopups = [];
+
+state.unlocks.butterfly = true;
+state.unlocks.pj = true;
+state.unlocks.kongEvent = true;
+
+resetKongEvent(state);
+
+state.butterfly = createButterfly("CH38", getCurrentNodeMap());
+state.pj = createPJ("CH53", getCurrentNodeMap());
+
+refillBananas();
+
     if (!state.player) {
         state.player = new Player(chillConfig.startNode, sharedDeps);
     } else {
@@ -1939,6 +1965,16 @@ function startChillHill() {
     state.secretRewardsFound = {};
     state.secretRewardPopups = [];
     state.bananaTimestamps = [];
+}
+
+function canCompleteChillHill() {
+  return (
+    state.scene === "chill" &&
+    state.player &&
+    !state.player.targetNode &&
+    state.player.currentNode === chillConfig.goalNode &&
+    (state.acceptance || 0) >= 3
+  );
 }
 
 function runAudioTest() {
@@ -2133,21 +2169,21 @@ function drawBossIntroOverlay() {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    ctx.fillStyle = "rgba(0,0,0,0.45)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // ctx.fillStyle = "rgba(0,0,0,0.45)";
+    // ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
+    // ctx.textAlign = "center";
+    // ctx.textBaseline = "middle";
 
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 64px Arial";
-    ctx.strokeText("Rescue Mother", canvas.width / 2, 420);
-    ctx.fillText("Rescue Mother", canvas.width / 2, 420);
+    // ctx.fillStyle = "#ffffff";
+    // ctx.font = "bold 64px Arial";
+    // ctx.strokeText("Rescue Mother", canvas.width / 2, 420);
+    // ctx.fillText("Rescue Mother", canvas.width / 2, 420);
 
-    ctx.font = "36px Arial";
-    ctx.fillStyle = "#f3f4f6";
-    ctx.fillText("Carry Mother to the cave.", canvas.width / 2, 600);
-    ctx.fillText("Collect 3 hearts before escaping.", canvas.width / 2, 660);
+    // ctx.font = "36px Arial";
+    // ctx.fillStyle = "#f3f4f6";
+    // ctx.fillText("Carry Mother to the cave.", canvas.width / 2, 600);
+    // ctx.fillText("Collect 3 hearts before escaping.", canvas.width / 2, 660);
 
     ctx.restore();
 }
@@ -3507,10 +3543,14 @@ function showSceneWin() {
 // }
 
 function getSecretRoomBackgroundImage() {
-    if (state.scene === "boss") {
-        return spriteStore.secretRoom_ck;
+    const secret = getSecretRoomConfig();
+    const key = secret?.cutsceneBackgroundKey;
+
+    if (key && spriteStore[key]) {
+        return spriteStore[key];
     }
-    return spriteStore.secretRoom_bb;
+
+    return spriteStore.secretRoom_bb || null;
 }
 
 function drawSceneCompleteOverlay() {
@@ -4374,16 +4414,35 @@ function startGame() {
 }
 
 function newRound() {
+    clearQueuedDirectionCompat();
     queuedDirection = null;
     queuedDirectionName = null;
 
     state.roundState = "waiting";
     state.catchAnim = null;
+    state.hands = [];
+    state.bananas = [];
 
-    state.player.reset(SCENE_CONFIGS.main.startNode);
-    state.troops.forEach(t => t.reset());
+    const sceneConfig = getSceneConfig();
+    const nodeMap = getCurrentNodeMap();
+    const startNode = sceneConfig.startNode;
 
-    tossBanana();
+    if (!startNode || !nodeMap[startNode]) {
+        console.warn("newRound: invalid scene start node", state.scene, startNode);
+        return;
+    }
+
+    state.player.reset(startNode);
+
+    state.troops.forEach(t => {
+        if (typeof t.reset === "function") {
+            t.reset();
+        } else {
+            respawnTroopSafely(t);
+        }
+    });
+
+    refillBananas();
 }
 
 function resetScene() {
@@ -5173,7 +5232,7 @@ function updatePlayer(dt) {
     state.player.speedMultiplierOverride = dizzyMult;
 
     state.player.update(dt);
-
+    if (state.mode !== "playing") return;
     checkSecretReward();
 
     if (state.scene === "boss") {
@@ -5183,6 +5242,11 @@ function updatePlayer(dt) {
     }
 
     checkRopeReturn();
+
+    if (canCompleteChillHill()) {
+        onSceneWin();
+        return;
+    }
 
     if (state.player.portalCooldown > 0) {
         state.player.portalCooldown = Math.max(0, state.player.portalCooldown - dt);
@@ -5196,7 +5260,12 @@ function updatePlayer(dt) {
         state.roundState = "chase";
     }
 
-    if (state.scene === "chill" && state.player.currentNode === chillConfig.goalNode) {
+    if (
+        state.scene === "chill" &&
+        state.player.currentNode === chillConfig.goalNode &&
+        (state.acceptance || 0) >= 3 &&
+        !getSecretRoomConfig()
+    ) {
         onSceneWin();
         return;
     }
@@ -5204,13 +5273,20 @@ function updatePlayer(dt) {
 
 function startCatch(troop) {
     if (state.player?.invuln > 0) return;
+
+    const respawn = getSceneRespawnTarget();
+    if (!respawn) return;
+
     navigator.vibrate?.(120);
+
     state.catchAnim = {
         troop,
         startX: state.player.x,
         startY: state.player.y,
-        endX: SCENE_CONFIGS.main.nodes[HOME_NODE].x,
-        endY: SCENE_CONFIGS.main.nodes[HOME_NODE].y,        t: 0,
+        endX: respawn.node.x,
+        endY: respawn.node.y,
+        endNodeId: respawn.nodeId,
+        t: 0,
         duration: 0.8
     };
 
@@ -5218,6 +5294,7 @@ function startCatch(troop) {
         x: 0,
         y: 0
     };
+
     playSfx(sounds.catch);
 }
 
@@ -5247,8 +5324,7 @@ function updateMainEnding(dt) {
 
     if (state.mainEnding.phase === "hug") {
         const fps = 12;
-        const frameCount = 32;
-
+        const frameCount = state.scene === "chill" ? 8 : 32;
         state.mainEnding.frame = Math.min(
             frameCount - 1,
             Math.floor(state.mainEnding.time * fps)
@@ -5312,8 +5388,37 @@ function restartBossLevel() {
     startBossMode();
 }
 
+function getSceneRespawnTarget() {
+    const sceneConfig = getSceneConfig();
+    const nodeMap = getCurrentNodeMap();
+
+    let nodeId = sceneConfig?.startNode;
+
+    if (!nodeId || !nodeMap[nodeId]) {
+        console.warn(
+            "getSceneRespawnTarget: invalid scene start node",
+            state.scene,
+            nodeId
+        );
+
+        nodeId = Object.keys(nodeMap)[0];
+    }
+
+    if (!nodeId || !nodeMap[nodeId]) {
+        return null;
+    }
+
+    return {
+        nodeId,
+        node: nodeMap[nodeId]
+    };
+}
+
 function respawnPlayerHome() {
     if (!state.player) return;
+
+    const respawn = getSceneRespawnTarget();
+    if (!respawn) return;
 
     clearQueuedDirectionCompat();
     queuedDirection = null;
@@ -5323,9 +5428,10 @@ function respawnPlayerHome() {
     state.hands = [];
     state.bananas = [];
 
-    state.player.reset(SCENE_CONFIGS.main.startNode);
+    state.player.reset(respawn.nodeId);
+    resetPlayerTemporaryState(2.0);
+
     refillBananas();
-    spawnNextBanana();
 }
 
 function updateBossCollisions() {
@@ -5708,6 +5814,84 @@ function maybeStartHighScoreEntry() {
   return true;
 }
 
+function updateDelayedPopups(dt) {
+    if (!state.delayedPopups?.length) return;
+
+    for (let i = state.delayedPopups.length - 1; i >= 0; i--) {
+        const item = state.delayedPopups[i];
+        item.delay -= dt;
+
+        if (item.delay <= 0) {
+            state.secretRewardPopups.push(item.popup);
+            state.delayedPopups.splice(i, 1);
+        }
+    }
+}
+
+function updateHeartProgressPopup(dt) {
+    const p = state.heartProgressPopup;
+    if (!p) return;
+
+    p.time += dt;
+
+    if (p.time >= p.duration) {
+        state.heartProgressPopup = null;
+    }
+}
+
+function updateChillMode(dt) {
+    updateHands(dt);
+    updateBananas(dt);
+    ensureBananasAvailable();
+
+    updateSceneDelivery(dt);
+    updateDelayedPopups(dt);
+
+    if (state.butterfly) {
+        updateButterfly(state.butterfly, dt, getCurrentNodeMap(), choose);
+    }
+
+    if (state.pj) {
+        updatePJ(state.pj, dt, getCurrentNodeMap(), state.butterfly, choose);
+    }
+
+    updateKongEvent(state, dt, getCurrentNodeMap);
+    updateKongEventCollisions(state, playSfx, sounds);
+    maybeTriggerKongEvent(state, getCurrentNodeMap);
+
+    updateEnemyRelease(dt);
+    updateSnatcherRelease(dt);
+    updateNanaSnatchers(dt);
+    updateNanaSnatcherCollisions();
+
+    if (!state.catchAnim) {
+        updatePlayer(dt);
+    }
+
+    if (state.player) {
+        updateTroops(dt);
+    }
+
+    updatePJRewardBunches(dt);
+
+    updateZookeeper(dt);
+    updateZookeeper2(dt);
+    updateHeartThrowing(dt);
+
+    updateKeeperAction(state.zookeeper, dt);
+    updateKeeperAction(state.zookeeper2, dt);
+
+    updatePendingHeartThrow(dt);
+    updateFlyingHearts(dt);
+    updateFieldHeartLifetime(dt);
+    updateHeartProgressPopup(dt);
+
+    updateCatch(dt);
+    updateParticles(dt);
+
+    checkChillHillDebugWin();
+}
+
 function updateParticles(dt) {
     state.hearts.forEach(h => h.t += dt);
     state.hearts = state.hearts.filter(h => h.t < 1.1);
@@ -5804,34 +5988,10 @@ function update(dt) {
         return;
     }
 
-    if (state.scene === "chill") {
-        updateHands(dt);
-        updateBananas(dt);
-
-        if (!state.catchAnim) {
-            updatePlayer(dt);
-        }
-
-        if (state.player) {
-            updateTroops(dt);
-        }
-
-
-        updateZookeeper(dt);
-        updateZookeeper2(dt);
-        updateHeartThrowing(dt);
-
-        updateKeeperAction(state.zookeeper, dt);
-        // updateKeeperAction(state.zookeeper2, dt);
-        updatePendingHeartThrow(dt);
-        updateFlyingHearts(dt);
-        updateFieldHeartLifetime(dt);
-        updateCatch(dt);
-        updateParticles(dt);
-
-        checkChillHillDebugWin();
-        return;
-    }
+if (state.scene === "chill") {
+    updateChillMode(dt);
+    return;
+}
 
     updateClouds(dt);
     updateHands(dt);
@@ -5894,12 +6054,7 @@ function update(dt) {
         state.player.invuln = Math.max(0, state.player.invuln - dt);
     }
 
-    if (state.heartProgressPopup) {
-        state.heartProgressPopup.time += dt;
-        if (state.heartProgressPopup.time >= state.heartProgressPopup.duration) {
-            state.heartProgressPopup = null;
-        }
-    }
+    updateHeartProgressPopup(dt);
 
     updateZookeeper(dt);
     updateZookeeper2(dt);
@@ -6003,7 +6158,9 @@ function drawMainEndingOverlay() {
 
     const secret = getSecretRoomConfig();
 
-    if (secret?.endingType === "butterfly") {
+    if (secret?.endingType === "chillJab") {
+        drawSecretRoomChillJab(cx + 230, cy - 180, ending.frame || 0);
+    } else if (secret?.endingType === "butterfly") {
         drawSecretRoomButterflyFlutter(cx - 230, cy + 20, t);
         drawSecretRoomPJDance(cx + 220, cy + 300, t);
     } else {
@@ -6013,7 +6170,6 @@ function drawMainEndingOverlay() {
             drawSecretRoomMotherHug(cx, cy + 120, ending.frame || 0);
         }
     }
-
     ctx.restore();
 }
 
@@ -6093,6 +6249,37 @@ function drawSecretRoomPJDance(x, y, t) {
     );
 
     ctx.restore();
+}
+
+function drawSecretRoomChillJab(cx, cy, frame = 0) {
+    const img = spriteStore.secretRoom_ch_jab;
+    if (!img || !img.complete || img.naturalWidth <= 0) return;
+
+    const cols = 4;
+    const rows = 2;
+    const totalFrames = cols * rows;
+    const safeFrame = Math.max(0, frame) % totalFrames;
+
+    const frameWidth = img.naturalWidth / cols;
+    const frameHeight = img.naturalHeight / rows;
+
+    const col = safeFrame % cols;
+    const row = Math.floor(safeFrame / cols);
+
+    const drawW = 420;
+    const drawH = drawW * (frameHeight / frameWidth);
+
+    ctx.drawImage(
+        img,
+        col * frameWidth,
+        row * frameHeight,
+        frameWidth,
+        frameHeight,
+        cx - drawW / 2,
+        cy - drawH / 2,
+        drawW,
+        drawH
+    );
 }
 
 function drawSecretRoomMotherHug(cx, cy, frame = 0) {

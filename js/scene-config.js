@@ -15,7 +15,13 @@ import {
   coconutKongSecretRoom,
   coconutKongEnemyEntryNodeIds
 } from "./scene-data-boss.js";
-import { chillConfig } from "./scene-data-chill.js";
+
+import {
+  chillConfig,
+  chillPortals,
+  chillSecretRoom,
+  chillEnemyEntryNodeIds
+} from "./scene-data-chill.js";
 
 export const SCENE_CONFIGS = {
   main: {
@@ -37,10 +43,8 @@ export const SCENE_CONFIGS = {
   chill: {
     nodes: chillNodes,
     startNode: chillConfig.startNode,
-    secretRoom: null,
-    portals: {
-      cave: {},
-      wrap: {}
-    }
+    secretRoom: chillSecretRoom,
+    portals: chillPortals,
+    enemyEntryNodeIds: chillEnemyEntryNodeIds
   }
 };

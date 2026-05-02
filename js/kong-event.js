@@ -1,3 +1,20 @@
+import { DELIVERY_ROUTES } from "./delivery-routes.js";
+
+// function getKongEventRouteForScene(state, nodeMap) {
+//   const sceneKey =
+//     state.scene === "main" ? "main" :
+//     state.scene === "boss" ? "boss" :
+//     state.scene === "chill" ? "chill" :
+//     null;
+
+//   if (!sceneKey) return null;
+
+//   const routes = DELIVERY_ROUTES[sceneKey] || [];
+//   if (!routes.length) return null;
+
+//   return routes.find(route => route.every(id => !!nodeMap[id])) || null;
+// }
+
 export function createKongEventState() {
   return {
     introDone: false,
@@ -135,6 +152,21 @@ export function maybeTriggerKongEvent(state, getCurrentNodeMap) {
   forceTriggerKongEvent(state, getCurrentNodeMap, balloonType);
 }
 
+function getKongEventRouteForScene(state, nodeMap) {
+  const sceneKey =
+    state.scene === "main" ? "main" :
+    state.scene === "boss" ? "boss" :
+    state.scene === "chill" ? "chill" :
+    null;
+
+  if (!sceneKey) return null;
+
+  const routes = DELIVERY_ROUTES[sceneKey] || [];
+  if (!routes.length) return null;
+
+  return routes.find(route => route.every(id => !!nodeMap[id])) || null;
+}
+
 export function forceTriggerKongEvent(state, getCurrentNodeMap, balloonType = "banana") {
   if (!canKongEventRunInScene(state)) return;
 
@@ -146,8 +178,10 @@ export function forceTriggerKongEvent(state, getCurrentNodeMap, balloonType = "b
       ? "balloonChasesKong"
       : "kongChasesBalloon";
 
-  const route = ["BB20", "BB32", "BB18", "BB23", "BB24"];
   const nodeMap = getCurrentNodeMap();
+  const route = getKongEventRouteForScene(state, nodeMap);
+  if (!route) return;
+
   const first = nodeMap[route[0]];
   if (!first) return;
 
@@ -155,7 +189,7 @@ export function forceTriggerKongEvent(state, getCurrentNodeMap, balloonType = "b
   e.type = type;
   e.balloonType = balloonType;
   e.phase = "squat";
-  e.route = route;
+  e.route = [...route];
   e.routeIndex = 0;
   e.x = first.x;
   e.y = first.y;
@@ -241,10 +275,19 @@ export function updateKongEventCollisions(state, playSfx, sounds) {
 function canKongEventRunInScene(state) {
   if (!state.unlocks?.kongEvent) return false;
 
-  return (
-    state.scene === "chill" ||
-    (state.scene === "main" && state.level >= 2)
-  );
+  if (state.scene === "boss") {
+    return true;
+  }
+
+  if (state.scene === "chill") {
+    return true;
+  }
+
+  if (state.scene === "main") {
+    return state.level >= 2;
+  }
+
+  return false;
 }
 
 function getBalloonImage(spriteStore, type, animated = false) {
@@ -401,11 +444,10 @@ export function drawKongEvent(ctx, state, spriteStore, getCurrentNodeMap) {
     }
 
     if (runningImg && runningImg.complete && runningImg.naturalWidth > 0) {
-      const cols = 5;
+      const cols = 4;
       const frameWidth = runningImg.naturalWidth / cols;
       const frameHeight = runningImg.naturalHeight;
       const frame = Math.floor(performance.now() * 0.012) % cols;
-
       const drawW = 256;
       const drawH = drawW * (frameHeight / frameWidth);
 
