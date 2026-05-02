@@ -101,7 +101,7 @@ export function updateDeliveryEvent(
       d.time = 0;
       d.frame = 0;
 
-      playSfx?.(sounds?.eOh);
+      playSfx?.(sounds?.love);
       scheduleDeliveryAhh(state, sounds, playSfx);
     }
 

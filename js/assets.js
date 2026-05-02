@@ -248,6 +248,12 @@ export function loadSounds(state) {
     preload: true
   });
 
+  sounds.love = new Howl({
+    src: ["assets/love.m4a"],
+    volume: 0.85,
+    preload: true
+  });
+
   sounds.grunt = new Howl({
     src: ["assets/grunt.m4a"],
     volume: 0.75,

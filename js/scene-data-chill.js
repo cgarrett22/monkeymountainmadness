@@ -35,7 +35,7 @@ export const chillPortals = {
   }
 };
 
-export const chillEnemyEntryNodeIds = ["Ch22", "CH51"];
+export const chillEnemyEntryNodeIds = ["CH22", "CH51"];
 
 
 export const chillSecretRewards = {

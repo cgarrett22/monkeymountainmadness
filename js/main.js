@@ -190,7 +190,7 @@ const BOSS_INTRO_RUN_ROUTE = [
     "CK47"
 ];
 
-const BOSS_START_SPOTLIGHT = {
+const SCENE_START_SPOTLIGHT = {
   duration: 1.8,
   alpha: 0.72,
   radiusStart: 360,
@@ -722,7 +722,7 @@ function showBossIntro(level) {
     state.bossIntro = {
         level,
         time: 0,
-        duration: 1.8
+        duration: 4.5
     };
 }
 
@@ -849,42 +849,21 @@ function updateLevelIntro(dt) {
 }
 
 function getSceneIntroFocus(nextScene = "main") {
-    if (nextScene === "main") {
-        const node = getCurrentNodeMap()[HOME_NODE];
-        return node ? {
-            x: node.x,
-            y: node.y
-        } : {
-            x: canvas.width * 0.8,
-            y: 120
-        };
-    }
+    const config = SCENE_CONFIGS[nextScene] || getSceneConfig();
+    const nodeMap = config.nodes || getCurrentNodeMap();
+    const startNodeId = config.startNode;
+    const node = nodeMap[startNodeId];
 
-    if (nextScene === "boss") {
-        const node = getCurrentNodeMap()[HOME_NODE];
-        return node ? {
+    if (node) {
+        return {
             x: node.x,
             y: node.y
-        } : {
-            x: canvas.width / 2,
-            y: 180
-        };
-    }
-
-    if (nextScene === "chill") {
-        const node = getCurrentNodeMap()[HOME_NODE];
-        return node ? {
-            x: node.x,
-            y: node.y
-        } : {
-            x: canvas.width / 2,
-            y: 180
         };
     }
 
     return {
         x: canvas.width / 2,
-        y: 180
+        y: canvas.height * 0.75
     };
 }
 
@@ -1290,6 +1269,7 @@ function startMainScene() {
     state.cardBackground = backgroundImage;
     state.boss = null;
     state.catchAnim = null;
+    resetHeartObjectiveState() ;
     state.hearts = [];
     state.fieldHearts = [];
     state.flyingHearts = [];
@@ -1348,6 +1328,7 @@ function startMainScene() {
     state.pjRewardBunches = [];
     state.dizzyTimer = 0;
     resetPlayerTemporaryState(2.0);
+    startSceneSpotlight();
 }
 
 function createSceneHeartTargets(count = 3) {
@@ -1367,47 +1348,89 @@ function createSceneHeartTargets(count = 3) {
     return hearts;
 }
 
-function startBossSpotlight() {
-  const node = getCurrentNodeMap()[bossConfig.startNode];
+function startSceneSpotlight({ force = false } = {}) {
+  if (!force && state.levelIntro) return;
 
-  state.bossStartSpotlight = {
+  const nodeMap = getCurrentNodeMap();
+  const startNodeId = getSceneConfig().startNode;
+  const node = nodeMap[startNodeId];
+
+  state.sceneStartSpotlight = {
     time: 0,
-    duration: BOSS_START_SPOTLIGHT.duration,
+    duration: SCENE_START_SPOTLIGHT.duration,
     x: node ? node.x : canvas.width / 2,
     y: node ? node.y - 20 : canvas.height * 0.78
   };
 }
 
-function updateBossSpotlight(dt) {
-  const s = state.bossStartSpotlight;
+function updateSceneSpotlight(dt) {
+  const s = state.sceneStartSpotlight;
   if (!s) return;
 
   s.time += dt;
 
   if (s.time >= s.duration) {
-    state.bossStartSpotlight = null;
+    state.sceneStartSpotlight = null;
   }
 }
 
-function drawBossSpotlight() {
-  const s = state.bossStartSpotlight;
-  if (!s) return;
+function startRespawnSpotlight() {
+    if (!state.player) return;
 
-  const progress = Math.min(s.time / s.duration, 1);
-  const alpha = BOSS_START_SPOTLIGHT.alpha * (1 - progress);
-  const radius =
-    BOSS_START_SPOTLIGHT.radiusStart +
-    (BOSS_START_SPOTLIGHT.radiusEnd - BOSS_START_SPOTLIGHT.radiusStart) * progress;
+    state.sceneStartSpotlight = {
+        time: 0,
+        duration: 0.55,
+        alpha: 0.62,
+        radiusStart: 210,
+        radiusEnd: 125,
+        x: state.player.x,
+        y: state.player.y - 20
+    };
+}
 
-  ctx.save();
+function drawSceneSpotlight() {
+    const s = state.sceneStartSpotlight;
+    if (!s) return;
 
-  ctx.fillStyle = `rgba(0,0,0,${alpha})`;
-  ctx.beginPath();
-  ctx.rect(0, 0, canvas.width, canvas.height);
-  ctx.arc(s.x, s.y, radius, 0, Math.PI * 2, true);
-  ctx.fill("evenodd");
+    const progress = Math.min(s.time / s.duration, 1);
 
-  ctx.restore();
+    const baseAlpha = s.alpha ?? SCENE_START_SPOTLIGHT.alpha;
+    const radiusStart = s.radiusStart ?? SCENE_START_SPOTLIGHT.radiusStart;
+    const radiusEnd = s.radiusEnd ?? SCENE_START_SPOTLIGHT.radiusEnd;
+
+    const alpha = baseAlpha * (1 - progress);
+    const radius = radiusStart + (radiusEnd - radiusStart) * progress;
+
+    ctx.save();
+
+    ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+    ctx.beginPath();
+    ctx.rect(0, 0, canvas.width, canvas.height);
+    ctx.arc(s.x, s.y, radius, 0, Math.PI * 2, true);
+    ctx.fill("evenodd");
+
+    ctx.restore();
+}
+
+function drawLanternMask() {
+    if (!state.lanternActive) return;
+    if (!state.player) return;
+    if (state.mode !== "playing") return;
+
+    const x = state.player.x;
+    const y = state.player.y - 20;
+    const radius = state.lanternRadius || 150;
+    const alpha = state.lanternAlpha ?? 0.80;
+
+    ctx.save();
+
+    ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+    ctx.beginPath();
+    ctx.rect(0, 0, canvas.width, canvas.height);
+    ctx.arc(x, y, radius, 0, Math.PI * 2, true);
+    ctx.fill("evenodd");
+
+    ctx.restore();
 }
 
 function startBossMode() {
@@ -1415,6 +1438,7 @@ function startBossMode() {
   state.mode = "playing";
   state.cardBackground = spriteStore.ckBackground;
   state.catchAnim = null;
+  resetHeartObjectiveState() ;
   state.hearts = [];
   state.fieldHearts = [];
   state.flyingHearts = [];
@@ -1542,7 +1566,7 @@ state.boss.kongIntro = {
     sounds,
     isBossScene: true
   });
-  startBossSpotlight();
+  startSceneSpotlight();
 }
 
 function createBossKongIntroState() {
@@ -1892,6 +1916,7 @@ function startChillHill() {
     state.mode = "playing";
     state.boss = null;
     state.catchAnim = null;
+    resetHeartObjectiveState() ;
     state.hearts = [];
     state.fieldHearts = [];
     state.flyingHearts = [];
@@ -1965,6 +1990,7 @@ refillBananas();
     state.secretRewardsFound = {};
     state.secretRewardPopups = [];
     state.bananaTimestamps = [];
+    startSceneSpotlight();
 }
 
 function canCompleteChillHill() {
@@ -2684,7 +2710,7 @@ function tryPlayerJump() {
     if (state.playerJump?.active) return false;
 
     // Boss-only for now.
-    if (state.scene !== "boss") return false;
+    //if (state.scene !== "boss") return false;
 
     if (
     state.scene === "boss" &&
@@ -3497,9 +3523,9 @@ function drawHearts() {
 }
 
 const CAVE_REVEAL_DURATION = 1.0;
-const SCENE_WIN_DURATION = 3.0;
+const SCENE_WIN_DURATION = 4.0;
 const SCENE_INTRO_TIMING = {
-    cardDuration: 2.35,
+    cardDuration: 4.5,
     overlayDuration: 2.0,
     overlayAlpha: 0.75,
     spotlightRadius: 115,
@@ -3553,6 +3579,98 @@ function getSecretRoomBackgroundImage() {
     return spriteStore.secretRoom_bb || null;
 }
 
+function drawMultilineText(lines, x, y, lineHeight, opts = {}) {
+    const {
+        font = "bold 38px Arial",
+        color = "#ffffff",
+        align = "left",
+        strokeColor = null,
+        lineWidth = 4
+    } = opts;
+
+    ctx.save();
+    ctx.font = font;
+    ctx.fillStyle = color;
+    ctx.textAlign = align;
+    ctx.textBaseline = "top";
+
+    if (strokeColor) {
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = lineWidth;
+    }
+
+    lines.forEach((line, index) => {
+        const yy = y + index * lineHeight;
+
+        if (strokeColor) {
+            ctx.strokeText(line, x, yy);
+        }
+
+        ctx.fillText(line, x, yy);
+    });
+
+    ctx.restore();
+}
+
+function debugShowSceneCompleteScreen() {
+    state.mode = "sceneWin";
+    state.sceneWinTimer = 0;
+    state.sceneWinAwarded = true;
+
+    state.sceneWinBonus = 100;
+    state.bananasCollectedThisScene = 37;
+
+    state.loadScreenImage =
+        spriteStore.sceneCompleteCard ||
+        spriteStore.sceneWinCard ||
+        spriteStore.levelUpCard;
+}
+
+function drawCompletionHudSummary(x, y) {
+    const lives = state.lives ?? 0;
+    const acceptanceScore = state.acceptanceScore ?? 0;
+    const bananaTotal = state.score ?? 0;
+    const level = state.level ?? 1;
+
+    ctx.save();
+
+    // backing plate
+    ctx.fillStyle = "rgba(0,0,0,0.42)";
+    roundRect(ctx, x, y, 710, 95, 18);
+    ctx.fill();
+
+    ctx.font = "bold 34px Arial";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#ffffff";
+
+    ctx.fillText(`❤️ ${acceptanceScore}`, x + 35, y + 48);
+    ctx.fillText(`🍌 ${bananaTotal}`, x + 245, y + 48);
+    ctx.fillText(`🐵 ${lives}`, x + 455, y + 48);
+    ctx.fillText(`⛰️ ${level}`, x + 585, y + 48);
+
+    ctx.restore();
+}
+
+function drawCompletionRewardLines(x, y, completionBonus, collected, total) {
+    drawMultilineText(
+        [
+            `🍌 Completion Bonus: +${completionBonus}`,
+            `🍌 Collected This Scene: +${collected}`,
+            `TOTAL SCENE REWARD: 🍌 ${total}`
+        ],
+        x,
+        y,
+        76,
+        {
+            font: "bold 38px Arial",
+            color: "#ffffff",
+            strokeColor: "rgba(0,0,0,0.62)",
+            lineWidth: 5
+        }
+    );
+}
+
 function drawSceneCompleteOverlay() {
     if (
         state.loadScreenImage &&
@@ -3576,12 +3694,16 @@ function drawSceneCompleteOverlay() {
     ctx.fillStyle = "#ffffff";
     ctx.textAlign = "left";
 
-    ctx.font = "bold 38px Arial";
-    ctx.fillText(`🍌 Completion Bonus: +${completionBonus}`, 185, 315);
-    ctx.fillText(`🍌 Collected: +${collected}`, 185, 405);
-    ctx.fillText(`TOTAL: 🍌 ${total}`, 185, 505);
+drawCompletionHudSummary(185, 275);
 
-    ctx.font = "bold 34px Arial";
+drawCompletionRewardLines(
+    185,
+    410,
+    completionBonus,
+    collected,
+    total
+);  
+    ctx.font = "bold 40px Arial";
     ctx.fillText(
         `🛞 Tire Swing (${tireUnlocked ? "available" : "locked"})`,
         185,
@@ -4920,6 +5042,21 @@ function showChillIntro() {
     };
 }
 
+function resetHeartObjectiveState() {
+  state.acceptance = 0;
+
+  if (state.boss) {
+    state.boss.heartsCollected = 0;
+  }
+
+  state.hearts = [];
+  state.fieldHearts = [];
+  state.flyingHearts = [];
+  state.heartProgressPopup = null;
+  state.heartCooldown = 0;
+  state.lastHeartNodeId = null;
+}
+
 function goToNextScene() {
     state.mode = "playing";
     state.sceneWinTimer = 0;
@@ -5430,7 +5567,7 @@ function respawnPlayerHome() {
 
     state.player.reset(respawn.nodeId);
     resetPlayerTemporaryState(2.0);
-
+    startRespawnSpotlight();
     refillBananas();
 }
 
@@ -5699,7 +5836,7 @@ function updateBossMode(dt) {
     if (!state.boss) return;
     updateHands(dt);
     updateBananas(dt);
-    updateBossSpotlight(dt);
+    updateSceneSpotlight(dt);
     updateSceneDelivery(dt);
     ensureBananasAvailable();
     updateZookeeper(dt);
@@ -5915,7 +6052,7 @@ function updateParticles(dt) {
 
 function update(dt) {
     if (state.paused) return;
-
+    updateSceneSpotlight(dt);
     if (state.levelUp) {
         updateLevelUp(dt);
         return;
@@ -6630,7 +6767,8 @@ function draw() {
     if (state.pj) {
       drawPJ(ctx, state.pj, spriteStore);
     }
-    drawBossSpotlight();
+    drawSceneSpotlight();
+    drawLanternMask();
     drawHudOverlay();
     drawCavePreview();
     drawDebugConsole();
@@ -6808,7 +6946,10 @@ document.addEventListener("keydown", (e) => {
       forceTriggerKongEvent(state, getCurrentNodeMap, cycle[state.debugKongBalloonIndex]);
       e.preventDefault();
   }
-
+if (e.key === "x") {
+    debugShowSceneCompleteScreen();
+    return;
+}
 if (e.key.toLowerCase() === "j") {
     tryPlayerJump();
     e.preventDefault();

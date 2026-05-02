@@ -100,7 +100,11 @@ export function createInitialState() {
     dizzyTimer: 0,
     dizzyDuration: 1.0,
     dizzySlowMultiplier: 0.15,
-    bossStartSpotlight: null,
+    //bossStartSpotlight: null,
+    sceneStartSpotlight: null,
+    lanternActive: false,
+    lanternRadius: 150,
+    lanternAlpha: 0.80,
     unlocks: {
       butterfly: false,
       pj: false,
