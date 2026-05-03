@@ -203,10 +203,10 @@ export function updateKongEvent(state, dt, getCurrentNodeMap) {
 
   if (e.phase === "tethered" || e.phase === "intro") {
     updateKongBalloonIntro(state, dt);
-    return;
+    return null;
   }
 
-  if (!e.active) return;
+  if (!e.active) return null;
 
   e.timer += dt;
 
@@ -214,11 +214,12 @@ export function updateKongEvent(state, dt, getCurrentNodeMap) {
     if (e.timer >= 0.7) {
       e.phase = "run";
       e.timer = 0;
+      return "kongLand";
     }
-    return;
+    return null;
   }
 
-  if (e.phase !== "run") return;
+  if (e.phase !== "run") return null;
 
   const route = e.route;
   const nextIndex = e.routeIndex + 1;
@@ -227,7 +228,7 @@ export function updateKongEvent(state, dt, getCurrentNodeMap) {
     e.active = false;
     e.phase = "idle";
     e.triggeredThisScene += 1;
-    return;
+    return null;
   }
 
   const nodeMap = getCurrentNodeMap();
@@ -235,7 +236,7 @@ export function updateKongEvent(state, dt, getCurrentNodeMap) {
   if (!target) {
     e.active = false;
     e.phase = "idle";
-    return;
+    return null;
   }
 
   const dx = target.x - e.x;

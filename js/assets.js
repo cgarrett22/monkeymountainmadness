@@ -171,8 +171,14 @@ export function loadSprites() {
   spriteStore.godzillaBalloonSprite = new Image();
   spriteStore.godzillaBalloonSprite.src = "sprites/godzilla-balloon-sprite.webp";  
 
+  spriteStore.secretRoom_bananas = new Image();
+  spriteStore.secretRoom_bananas.src = "sprites/secret-room-bananas.webp";  
+
   spriteStore.secretRoom_bb = new Image();
   spriteStore.secretRoom_bb.src = "sprites/secret-room-bb.webp";  
+
+  spriteStore.secretRoom_bb_overlay = new Image();
+  spriteStore.secretRoom_bb_overlay.src = "sprites/secret-room-overlay-bb.webp"; 
 
   spriteStore.secretRoom_ck_overlay = new Image();
   spriteStore.secretRoom_ck_overlay.src = "sprites/secret-room-overlay-ck.webp"; 
@@ -257,6 +263,12 @@ export function loadSounds(state) {
   sounds.grunt = new Howl({
     src: ["assets/grunt.m4a"],
     volume: 0.75,
+    preload: true
+  });
+
+  sounds.thud = new Howl({
+    src: ["assets/thud.m4a"],
+    volume: 1,
     preload: true
   });
 

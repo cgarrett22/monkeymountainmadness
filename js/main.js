@@ -376,26 +376,59 @@ function getBananaNodeIds() {
 
 function checkSecretReward() {
     if (!state.player) return;
-    //console.log("SECRET CHECK", state.scene, state.player.currentNode);
+
     const sceneRewards = SECRET_REWARDS[state.scene];
     if (!sceneRewards) return;
 
-    const nodeId = state.player.currentNode;
-    const reward = sceneRewards[nodeId];
-    if (!reward) return;
+    const nodeMap = getCurrentNodeMap();
+
+    let rewardNodeId = null;
+    let reward = null;
+
+    // Exact node first.
+    const currentNodeId = state.player.currentNode;
+    if (sceneRewards[currentNodeId]) {
+        rewardNodeId = currentNodeId;
+        reward = sceneRewards[currentNodeId];
+    }
+
+    // Proximity / jump-through pickup.
+    if (!reward) {
+        for (const nodeId in sceneRewards) {
+            const candidate = sceneRewards[nodeId];
+            const node = nodeMap[nodeId];
+            if (!node) continue;
+
+            const rewardKey = `${state.scene}:${nodeId}`;
+            if (state.secretRewardsFound?.[rewardKey]) continue;
+
+            const hitRadius = candidate.hitRadius || 78;
+
+            if (isPlayerTouchingNode(node, hitRadius)) {
+                rewardNodeId = nodeId;
+                reward = candidate;
+                break;
+            }
+        }
+    }
+
+    if (!reward || !rewardNodeId) return;
 
     if (!state.secretRewardsFound) state.secretRewardsFound = {};
-    const rewardKey = `${state.scene}:${nodeId}`;
+    const rewardKey = `${state.scene}:${rewardNodeId}`;
     if (state.secretRewardsFound[rewardKey]) return;
 
     const bonus = randInt(reward.min, reward.max);
 
     state.secretRewardsFound[rewardKey] = true;
     state.score += bonus;
-    state.bananasCollectedThisScene = (state.bananasCollectedThisScene || 0) + bonus;
+    state.bananasCollectedThisScene =
+        (state.bananasCollectedThisScene || 0) + bonus;
+
     addAcceptanceScore(bonus, "secret reward");
+
     state.secretRewardPopups.push({
-        nodeId,
+        nodeId: rewardNodeId,
         type: reward.type,
         value: bonus,
         x: reward.x,
@@ -404,8 +437,29 @@ function checkSecretReward() {
         duration: 1.8
     });
 
-    //sounds.score?.play().catch(() => {});
     playSfx(sounds.score);
+}
+
+function shouldUseBigSecretReveal() {
+    return (state.level || 1) === 1;
+}
+
+function getSecretRevealOverlayImage() {
+    if (!shouldUseBigSecretReveal()) return null;
+
+    if (state.scene === "main") {
+        return spriteStore.secretRoom_bb_overlay || null;
+    }
+
+    if (state.scene === "boss") {
+        return spriteStore.secretRoom_ck_overlay || null;
+    }
+
+    if (state.scene === "chill") {
+        return spriteStore.secretRoom_ch_overlay || null;
+    }
+
+    return null;
 }
 
 function drawSecretRewardSparkles() {
@@ -1185,16 +1239,56 @@ function getBestNeighbor(currentNodeId, inputVec, inputName) {
 }
 
 function tryConsumeQueuedTurn(actor) {
-    if (!queuedDirection || !queuedDirectionName) return false;
+    if (!queuedDirection || !queuedDirectionName) {
+        if (shouldIceSlideForward(actor)) {
+            return tryContinueForward(actor);
+        }
 
-    const nextId = getBestNeighbor(actor.currentNode, queuedDirection, queuedDirectionName);
-    if (!nextId) return false;
+        return false;
+    }
+
+    const nextId = getBestNeighbor(
+        actor.currentNode,
+        queuedDirection,
+        queuedDirectionName
+    );
+
+    if (!nextId) {
+        if (shouldIceSlideForward(actor)) {
+            return tryContinueForward(actor);
+        }
+
+        return false;
+    }
 
     actor.targetNode = nextId;
 
     queuedDirection = null;
     queuedDirectionName = null;
     return true;
+}
+
+function isIceSceneActor(actor) {
+    return actor === state.player && state.scene === "chill";
+}
+
+function isIceGripNode(node) {
+    return !!(
+        node?.iceGrip ||
+        node?.stopHere ||
+        node?.tags?.includes?.("iceGrip") ||
+        node?.tags?.includes?.("ladderExit")
+    );
+}
+
+function shouldIceSlideForward(actor) {
+    if (!isIceSceneActor(actor)) return false;
+    if (!actor.previousNode) return false;
+
+    const current = getCurrentNodeMap()[actor.currentNode];
+    if (!current) return false;
+
+    return !isIceGripNode(current);
 }
 
 function isLockedSecretNode(nodeId) {
@@ -1273,6 +1367,7 @@ function startMainScene() {
     state.hearts = [];
     state.fieldHearts = [];
     state.flyingHearts = [];
+    state.secretReveal = null;
     state.mainSecretUnlocked = false;
     state.mainSecretEntered = false;
     state.mainMotherPose = "sit";
@@ -1452,7 +1547,6 @@ function startBossMode() {
   state.maxActiveHearts = 1;
   state.heartCooldown = 0;
   state.lastHeartNodeId = null;
-
   const startNodeId = SCENE_CONFIGS.boss.startNode;
   const start = SCENE_CONFIGS.boss.nodes[startNodeId];
 
@@ -1523,6 +1617,8 @@ function startBossMode() {
       nodeId: bossConfig.motherStartNode
     }
   };
+
+  state.secretReveal = null;
 
     if (!state.kongIntroSeenThisGame) {
         startKongBalloonIntro(state, getCurrentNodeMap, BOSS_BALLOON_RELEASE_NODE_ID);
@@ -1930,7 +2026,7 @@ function startChillHill() {
     state.maxActiveHearts = 1;
     state.heartCooldown = 0;
     state.lastHeartNodeId = null;
-
+    state.secretReveal = null;
     state.deliveryEvent = null;
 state.deliveryCrate = null;
 state.deliveryTimer = 6;
@@ -2566,7 +2662,13 @@ function updateHeartCollection() {
 
     for (const heart of state.fieldHearts) {
         if (heart.collected) continue;
-        if (heart.nodeId !== state.player.currentNode) continue;
+        const node = getCurrentNodeMap()[heart.nodeId];
+        if (
+            heart.nodeId !== state.player.currentNode &&
+            !isPlayerTouchingNode(node, 72)
+        ) {
+            continue;
+        }
 
         heart.collected = true;
 
@@ -2589,28 +2691,96 @@ function updateHeartCollection() {
 
         if (collected >= 3) {
             state.mainSecretUnlocked = true;
+
+            if (!state.secretReveal?.unlocked) {
+                startSecretReveal();
+            }
         }
         break;
     }
 }
 
-function startBossSecretReveal() {
-    if (!state.boss) return;
+function getSecretRevealPoint() {
+    const secret = getSecretRoomConfig();
+    const nodeMap = getCurrentNodeMap();
 
-    if (!state.boss.secretReveal) {
-        state.boss.secretReveal = {};
+    const node =
+        nodeMap[secret?.lockedNodeId] ||
+        nodeMap[secret?.entryNodeId] ||
+        nodeMap[secret?.destinationNodeId];
+
+    if (!node) {
+        return {
+            x: canvas.width / 2,
+            y: canvas.height / 2
+        };
     }
 
-    state.boss.secretReveal.unlocked = true;
-    state.boss.secretReveal.exploding = true;
-    state.boss.secretReveal.exposed = false;
-    state.boss.secretReveal.timer = 0;
-    state.boss.secretReveal.duration = 1.15;
-    state.boss.secretReveal.frame = 0;
+    return {
+        x: node.x,
+        y: node.y
+    };
+}
 
-    debugLog(state, "[BOSS SECRET] reveal started");
+function startSecretReveal() {
+    const point = getSecretRevealPoint();
+    const bigReveal = shouldUseBigSecretReveal();
 
-    playSfx(sounds.explosion, null, "explosion");
+    state.secretReveal = {
+        unlocked: true,
+        exploding: bigReveal,
+        exposed: !bigReveal,
+        timer: 0,
+        duration: 1.15,
+        frame: 0,
+        x: point.x,
+        y: point.y,
+        bigReveal
+    };
+
+    // Compatibility for existing CK code that still reads boss.secretReveal.
+    if (state.boss) {
+        state.boss.secretReveal = state.secretReveal;
+    }
+
+    debugLog(state, "[SECRET] reveal started", {
+        scene: state.scene,
+        level: state.level,
+        bigReveal,
+        x: Math.round(point.x),
+        y: Math.round(point.y)
+    });
+
+    if (bigReveal) {
+        playSfx(sounds.explosion, null, "secretExplosion");
+        startScreenShake(0.38, 18);
+        pulseVibrate([45, 25, 45]);
+    } else {
+        // Optional lighter feedback for later levels.
+        playSfx(sounds.score, null, "secretUnlock");
+    }
+}   
+
+function startBossSecretReveal() {
+    startSecretReveal();
+}
+
+function updateSecretReveal(dt) {
+    const reveal = state.secretReveal || state.boss?.secretReveal;
+    if (!reveal) return;
+    if (!reveal.exploding) return;
+
+    reveal.timer += dt;
+
+    const fps = 20;
+    const totalFrames = 32;
+    reveal.frame = Math.min(totalFrames - 1, Math.floor(reveal.timer * fps));
+
+    if (reveal.timer >= reveal.duration) {
+        reveal.exploding = false;
+        reveal.exposed = true;
+        reveal.frame = totalFrames - 1;
+    }
 }
 
 function hasActiveGroundHeart() {
@@ -2755,6 +2925,16 @@ function tryPlayerJump() {
     const jumpToId = getCurrentJumpDestination(originNode);
     const dest = jumpToId ? nodeMap[jumpToId] : null;
 
+    let finalJumpToId = jumpToId;
+    let finalDest = dest;
+
+    // If no explicit jumpFrom/jumpTo node is found,
+    // allow marked nearby jumpTarget nodes.
+    if (!finalDest) {
+        finalJumpToId = getNearbyJumpTargetNodeId();
+        finalDest = finalJumpToId ? nodeMap[finalJumpToId] : null;
+    }
+
     state.lastJumpDebug = {
         called: true,
         phase: "resolved",
@@ -2769,31 +2949,34 @@ function tryPlayerJump() {
     };
 
     // NAVIGATION JUMP
-    if (originNode && dest) {
+    if (finalDest) {
+        const startX = originNode ? originNode.x : player.x;
+        const startY = originNode ? originNode.y : player.y;
+        const fromNodeId = originNodeId || player.currentNode;
+
         state.playerJump = {
             active: true,
-            fromNodeId: originNodeId,
-            toNodeId: jumpToId,
+            fromNodeId,
+            toNodeId: finalJumpToId,
             time: 0,
             duration: 0.48,
             height: 145,
-            startX: originNode.x,
-            startY: originNode.y,
-            endX: dest.x,
-            endY: dest.y
+            startX,
+            startY,
+            endX: finalDest.x,
+            endY: finalDest.y
         };
 
-        // Snap to the launch node so the jump always starts cleanly.
-        player.currentNode = originNodeId;
         player.previousNode = null;
         player.targetNode = null;
-        player.x = originNode.x;
-        player.y = originNode.y;
+        player.x = startX;
+        player.y = startY;
         player.dir = { x: 0, y: 0 };
 
         clearQueuedDirectionCompat();
 
-        state.lastJumpDebug.phase = "navigation jump created";
+        state.lastJumpDebug.phase = "navigation/proximity jump created";
+        state.lastJumpDebug.jumpToId = finalJumpToId;
         state.lastJumpDebug.playerJumpActive = true;
 
         return true;
@@ -2806,6 +2989,56 @@ function tryPlayerJump() {
     state.lastJumpDebug.hopActive = true;
 
     return true;
+}
+
+function getNearbyJumpTargetNodeId() {
+    const player = state.player;
+    if (!player) return null;
+
+    const nodeMap = getCurrentNodeMap();
+    let bestId = null;
+    let bestScore = Infinity;
+
+    for (const id in nodeMap) {
+        const node = nodeMap[id];
+        if (!node?.jumpTarget) continue;
+
+        const radius = node.jumpRadius || 120;
+        const dx = node.x - player.x;
+        const dy = node.y - player.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist > radius) continue;
+
+        // Prefer upward targets, but allow any specifically marked target.
+        const upwardBonus = dy < 0 ? -45 : 0;
+        const score = dist + upwardBonus;
+
+        if (score < bestScore) {
+            bestScore = score;
+            bestId = id;
+        }
+    }
+
+    return bestId;
+}
+
+function getPlayerPickupPoint() {
+    if (!state.player) return null;
+
+    const visualY = state.playerVisualOffsetY || 0;
+
+    return {
+        x: state.player.x,
+        y: state.player.y + visualY - 35
+    };
+}
+
+function isPlayerTouchingNode(node, radius = 58) {
+    const p = getPlayerPickupPoint();
+    if (!p || !node) return false;
+
+    return Math.hypot(p.x - node.x, p.y - node.y) <= radius;
 }
 
 function getPlayerTravelVector() {
@@ -3569,6 +3802,15 @@ function showSceneWin() {
 // }
 
 function getSecretRoomBackgroundImage() {
+    if (useGenericBananaSecretRoomEnding()) {
+        return (
+            spriteStore.secretRoom_bananas ||
+            spriteStore.secretRoom_ch ||
+            spriteStore.secretRoom_bb ||
+            null
+        );
+    }
+
     const secret = getSecretRoomConfig();
     const key = secret?.cutsceneBackgroundKey;
 
@@ -3635,9 +3877,9 @@ function drawCompletionHudSummary(x, y) {
     ctx.save();
 
     // backing plate
-    ctx.fillStyle = "rgba(0,0,0,0.42)";
-    roundRect(ctx, x, y, 710, 95, 18);
-    ctx.fill();
+    // ctx.fillStyle = "rgba(0,0,0,0.42)";
+    // roundRect(ctx, x, y, 710, 95, 18);
+    // ctx.fill();
 
     ctx.font = "bold 34px Arial";
     ctx.textAlign = "left";
@@ -3655,9 +3897,9 @@ function drawCompletionHudSummary(x, y) {
 function drawCompletionRewardLines(x, y, completionBonus, collected, total) {
     drawMultilineText(
         [
-            `🍌 Completion Bonus: +${completionBonus}`,
-            `🍌 Collected This Scene: +${collected}`,
-            `TOTAL SCENE REWARD: 🍌 ${total}`
+            `🍌 COMPLETION BONUS: +${completionBonus}`,
+            `🍌 COLLECTED THIS SCENE: +${collected}`,
+            `🍌 TOTAL SCENE REWARD: ${total}`
         ],
         x,
         y,
@@ -3703,19 +3945,23 @@ drawCompletionRewardLines(
     collected,
     total
 );  
-    ctx.font = "bold 40px Arial";
-    ctx.fillText(
-        `🛞 Tire Swing (${tireUnlocked ? "available" : "locked"})`,
-        185,
-        680
-    );
-    ctx.fillText(
-        `🕯️ Lantern (${lanternUnlocked ? "available" : "locked"})`,
-        185,
-        755
-    );
+    // ctx.font = "bold 40px Arial";
+    // ctx.fillText(
+    //     `🛞 Tire Swing (${tireUnlocked ? "available" : "locked"})`,
+    //     185,
+    //     680
+    // );
+    // ctx.fillText(
+    //     `🕯️ Lantern (${lanternUnlocked ? "available" : "locked"})`,
+    //     185,
+    //     755
+    // );
 
     ctx.restore();
+}
+
+function useGenericBananaSecretRoomEnding() {
+    return (state.level || 1) > 1;
 }
 
 function showBananaPickupPopup(x, y, age) {
@@ -5313,7 +5559,13 @@ function updateBossHeartCollection() {
 
     for (const heart of state.fieldHearts) {
         if (heart.collected) continue;
-        if (heart.nodeId !== player.currentNode) continue;
+        const node = getCurrentNodeMap()[heart.nodeId];
+        if (
+            heart.nodeId !== player.currentNode &&
+            !isPlayerTouchingNode(node, 72)
+        ) {
+            continue;
+        }
 
         heart.collected = true;
 
@@ -5366,8 +5618,9 @@ function updatePlayer(dt) {
         return;
     }
     const dizzyMult = state.dizzyTimer > 0 ? state.dizzySlowMultiplier : 1;
-    state.player.speedMultiplierOverride = dizzyMult;
+    const iceMult = state.scene === "chill" ? 1.08 : 1;
 
+    state.player.speedMultiplierOverride = dizzyMult * iceMult;
     state.player.update(dt);
     if (state.mode !== "playing") return;
     checkSecretReward();
@@ -5442,7 +5695,9 @@ function updateMainEnding(dt) {
 
     const secret = getSecretRoomConfig();
 
-    if (secret?.endingType === "butterfly") {
+    const genericBananaEnding = useGenericBananaSecretRoomEnding();
+
+    if (!genericBananaEnding && secret?.endingType === "butterfly") {
         if (state.mainEnding.time >= 3.0) {
             state.mainEnding.phase = "done";
             showSceneWin();
@@ -5460,9 +5715,11 @@ function updateMainEnding(dt) {
     }
 
     if (state.mainEnding.phase === "hug") {
-        const fps = 12;
-        const frameCount = state.scene === "chill" ? 8 : 32;
-        state.mainEnding.frame = Math.min(
+    const fps = 12;
+    const frameCount =
+    genericBananaEnding || secret?.endingType === "chillJab"
+        ? 8
+        : 32;        state.mainEnding.frame = Math.min(
             frameCount - 1,
             Math.floor(state.mainEnding.time * fps)
         );
@@ -5852,7 +6109,7 @@ updatePlayer(dt);
 updateBossBalloonReleaseTrigger(dt);
 updateKongEvent(state, dt, getCurrentNodeMap);
 updateKongEventCollisions(state, playSfx, sounds);
-    updateBossSecretReveal(dt);
+    updateSecretReveal(dt);
     updateBossKongIntro(dt);
     updateScreenShake(dt);
     updateTroops(dt);
@@ -5992,7 +6249,13 @@ function updateChillMode(dt) {
         updatePJ(state.pj, dt, getCurrentNodeMap(), state.butterfly, choose);
     }
 
-    updateKongEvent(state, dt, getCurrentNodeMap);
+    const kongEventResult = updateKongEvent(state, dt, getCurrentNodeMap);
+
+    if (kongEventResult === "kongLand") {
+        playSfx(sounds.thud || sounds.grunt, null, "kongThud");
+        startScreenShake(0.28, 14);
+        pulseVibrate([35, 20, 35]);
+    }
     updateKongEventCollisions(state, playSfx, sounds);
     maybeTriggerKongEvent(state, getCurrentNodeMap);
 
@@ -6052,7 +6315,9 @@ function updateParticles(dt) {
 
 function update(dt) {
     if (state.paused) return;
+    updateScreenShake(dt);
     updateSceneSpotlight(dt);
+    updateSecretReveal(dt);
     if (state.levelUp) {
         updateLevelUp(dt);
         return;
@@ -6121,7 +6386,7 @@ function update(dt) {
     if (state.scene === "boss") {
         updateBossMode(dt);
         updateClouds(dt);
-        updateBossSecretReveal(dt);
+        updateSecretReveal(dt);
         return;
     }
 
@@ -6294,8 +6559,9 @@ function drawMainEndingOverlay() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const secret = getSecretRoomConfig();
+    const genericBananaEnding = useGenericBananaSecretRoomEnding();
 
-    if (secret?.endingType === "chillJab") {
+    if (genericBananaEnding || secret?.endingType === "chillJab") {
         drawSecretRoomChillJab(cx + 230, cy - 180, ending.frame || 0);
     } else if (secret?.endingType === "butterfly") {
         drawSecretRoomButterflyFlutter(cx - 230, cy + 20, t);
@@ -6417,6 +6683,23 @@ function drawSecretRoomChillJab(cx, cy, frame = 0) {
         drawW,
         drawH
     );
+}
+
+function drawSecretRevealOverlay() {
+    const reveal = state.secretReveal || state.boss?.secretReveal;
+    if (!reveal?.unlocked) return;
+
+    // Only draw the big map overlay on Level 1.
+    const overlay = getSecretRevealOverlayImage();
+
+    if (overlay?.complete && overlay.naturalWidth > 0) {
+        ctx.drawImage(overlay, 0, 0, canvas.width, canvas.height);
+    }
+
+    // Only draw explosion for big reveal.
+    if (reveal.bigReveal && reveal.exploding) {
+        drawExplosionSprite(reveal.x, reveal.y, reveal.frame || 0);
+    }
 }
 
 function drawSecretRoomMotherHug(cx, cy, frame = 0) {
@@ -6728,9 +7011,7 @@ function draw() {
     drawFlyingHearts();
     drawFieldHearts();
     drawPJRewardBunches();
-    if (state.scene === "boss") {
-        drawBossSecretRevealOverlay();
-    }
+    drawSecretRevealOverlay();
     drawActors();
     drawDizzyRings();
     drawMainSecretMother();
@@ -6921,7 +7202,7 @@ canvas.addEventListener("pointerup", (e) => {
 
     if (
         wasTap &&
-        state.scene === "boss" &&
+        //state.scene === "boss" &&
         state.mode === "playing"
     ) {
         tryPlayerJump();
