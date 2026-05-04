@@ -4813,6 +4813,15 @@ function startGame() {
     state.levelIntro = null;
     state.bossIntro = null;
     state.kongIntroSeenThisGame = false;
+    state.unlocks = {
+        butterfly: false,
+        pj: false,
+        snatchers: false,
+        kongEvent: false,
+        lantern: false,
+        tireSwing: false
+    };
+
     state.hands = [];
     state.bananas = [];
     state.bananaTimestamps = [];
@@ -4841,6 +4850,10 @@ function startGame() {
         state.zookeeper.actionTimer = 0;
     }
     refillBananas();
+    state.pj = null;
+    state.butterfly = null;
+    state.nanaSnatchers = [];
+    state.pjRewardBunches = [];
     resetActors();
     applyLevelConfig();
     // newRound();
@@ -4862,14 +4875,6 @@ function startGame() {
     resetKongEvent(state);
     state.pjRewardBunches = [];
     state.dizzyTimer = 0;
-    state.unlocks = {
-      butterfly: false,
-      pj: false,
-      snatchers: false,
-      kongEvent: false,
-      lantern: false,
-      tireSwing: false
-  };
 }
 
 function newRound() {
