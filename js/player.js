@@ -100,30 +100,60 @@ export class Player {
 
     const nodeMap = getCurrentNodeMap();
 
-    // Handle Directional Reversal (Quick Turnaround)
-    if (this.targetNode && inputState.queuedDirection) {
+  // Handle Directional Reversal / Quick Turnaround
+  if (this.targetNode && inputState.queuedDirection) {
       const from = nodeMap[this.currentNode];
       const to = nodeMap[this.targetNode];
+
       if (from && to) {
-        const dx = to.x - from.x;
-        const dy = to.y - from.y;
-        const len = Math.hypot(dx, dy) || 1;
+          const dx = to.x - from.x;
+          const dy = to.y - from.y;
+          const len = Math.hypot(dx, dy) || 1;
 
-        const forwardX = dx / len;
-        const forwardY = dy / len;
+          const forwardX = dx / len;
+          const forwardY = dy / len;
 
-        const dot =
-          forwardX * inputState.queuedDirection.x +
-          forwardY * inputState.queuedDirection.y;
+          const dot =
+              forwardX * inputState.queuedDirection.x +
+              forwardY * inputState.queuedDirection.y;
 
-        if (dot < -0.85) {
-          const oldCurrent = this.currentNode;
-          this.currentNode = this.targetNode;
-          this.targetNode = oldCurrent;
-          this.previousNode = oldCurrent;
-        }
+          const isReverse = dot < -0.85;
+          let allowQuickReverse = isReverse;
+
+          if (isReverse && state.scene === "chill") {
+              this.iceReverseHoldTime = (this.iceReverseHoldTime || 0) + dt;
+
+              const chillReverseDelay = 0.36;
+              const p = Math.min(this.iceReverseHoldTime / chillReverseDelay, 1);
+
+              // Starts near full speed, then eases down while "braking."
+              // Tune 0.42 upward/downward as needed.
+              this.iceBrakeMultiplier = 1 - p * 0.85;
+
+              if (this.iceReverseHoldTime < chillReverseDelay) {
+                  allowQuickReverse = false;
+              }
+          }
+
+          if (allowQuickReverse) {
+              const oldCurrent = this.currentNode;
+              this.currentNode = this.targetNode;
+              this.targetNode = oldCurrent;
+              this.previousNode = oldCurrent;
+
+              this.iceReverseHoldTime = 0;
+              this.iceBrakeMultiplier = 1;
+          }
+
+          if (!isReverse) {
+              this.iceReverseHoldTime = 0;
+              this.iceBrakeMultiplier = 1;
+          }
       }
-    }
+  } else {
+      this.iceReverseHoldTime = 0;
+      this.iceBrakeMultiplier = 1;
+  }
 
     // Process Movement
     if (!this.targetNode) {

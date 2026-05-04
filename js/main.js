@@ -1261,10 +1261,46 @@ function tryConsumeQueuedTurn(actor) {
         return false;
     }
 
+    actor.iceReverseDelay = 0;
+    actor.iceReverseBlockedOnce = false;
     actor.targetNode = nextId;
 
     queuedDirection = null;
     queuedDirectionName = null;
+    return true;
+}
+
+function isDirectReverseInput(actor) {
+    if (!isIceSceneActor(actor)) return false;
+    if (!queuedDirection || !queuedDirectionName) return false;
+
+    const nodeMap = getCurrentNodeMap();
+    const current = nodeMap[actor.currentNode];
+    const prev = actor.previousNode ? nodeMap[actor.previousNode] : null;
+
+    if (!current || !prev) return false;
+
+    const travelDx = current.x - prev.x;
+    const travelDy = current.y - prev.y;
+    const travelLen = Math.hypot(travelDx, travelDy);
+    if (!travelLen) return false;
+
+    const tx = travelDx / travelLen;
+    const ty = travelDy / travelLen;
+
+    const dot = tx * queuedDirection.x + ty * queuedDirection.y;
+
+    // Strong negative dot means the player is trying to go back
+    // the way they just came from.
+    return dot <= -0.72;
+}
+
+function shouldDelayIceReverse(actor) {
+    if (!isDirectReverseInput(actor)) return false;
+
+    const current = getCurrentNodeMap()[actor.currentNode];
+    if (isIceGripNode(current)) return false;
+
     return true;
 }
 
@@ -1348,8 +1384,12 @@ function tryContinueForward(actor) {
         }
     }
 
-    // only auto-continue if one option is a clear continuation
-    if (bestScore >= 0.75) {
+    // only auto-continue if one option is a clear continuation.
+    // Chill gets a lower threshold so angled paths still feel slippery.
+    const requiredForwardScore =
+        state.scene === "chill" && actor === state.player ? 0.45 : 0.75;
+
+    if (bestScore >= requiredForwardScore) {
         actor.targetNode = bestNeighbor;
         return true;
     }
@@ -2972,6 +3012,7 @@ function tryPlayerJump() {
         player.x = startX;
         player.y = startY;
         player.dir = { x: 0, y: 0 };
+        player.iceTurnDelay = 0;
 
         clearQueuedDirectionCompat();
 
@@ -4022,7 +4063,56 @@ function drawParticles() {
 
             ctx.restore();
         }
+
+        // if (p.kind === "iceTrail") {
+        //     const progress = Math.min(p.t / (p.life || 0.35), 1);
+        //     const alpha = 1 - progress;
+
+        //     ctx.save();
+        //     ctx.globalAlpha = alpha * 0.45;
+        //     ctx.fillStyle = "rgba(210,245,255,0.75)";
+        //     ctx.beginPath();
+        //     ctx.ellipse(p.x, p.y, 18 + progress * 18, 5 + progress * 5, 0, 0, Math.PI * 2);
+        //     ctx.fill();
+        //     ctx.restore();
+        // }
     });
+}
+
+function drawIceTrailParticles() {
+    for (const p of state.particles || []) {
+        if (p.kind !== "iceTrail") continue;
+
+        const progress = Math.min(p.t / (p.life || 0.35), 1);
+        const alpha = 1 - progress;
+
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.38;
+        ctx.fillStyle = "rgba(210,245,255,0.75)";
+        ctx.beginPath();
+        ctx.ellipse(
+            p.x,
+            p.y,
+            18 + progress * 18,
+            5 + progress * 5,
+            0,
+            0,
+            Math.PI * 2
+        );
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+function drawNonIceParticles() {
+    const originalParticles = state.particles || [];
+
+    for (const p of originalParticles) {
+        if (p.kind === "iceTrail") continue;
+
+        // move the existing drawParticles body here,
+        // minus the iceTrail block
+    }
 }
 
 function showFloatingText(x, y, text, color = "#fff", life = 1.8) {
@@ -4685,9 +4775,10 @@ function resetPlayerTemporaryState(invuln = 2.0) {
     state.player.portalCooldown = 0;
     state.player.speedMultiplierOverride = 1;
     state.player.hasBanana = false;
-
+    state.player.iceReverseDelay = 0;
+    state.player.iceReverseBlockedOnce = false;
+    state.player.iceReverseHoldTime = 0;
     state.playerJump = null;
-
     if (state.playerHop) {
         state.playerHop.active = false;
         state.playerHop.timer = 0;
@@ -5601,11 +5692,51 @@ function updateBossHeartCollection() {
     }
 }
 
+function getIceTrailPoint() {
+    const p = state.player;
+    if (!p) return null;
+
+    const dir = p.dir || { x: 0, y: 0 };
+
+    const len = Math.hypot(dir.x || 0, dir.y || 0);
+
+    if (len < 0.001) {
+        return {
+            x: p.x,
+            y: p.y + 30
+        };
+    }
+
+    const nx = dir.x / len;
+    const ny = dir.y / len;
+
+    return {
+        x: p.x - nx * 26,
+        y: p.y - ny * 26 + 30
+    };
+}
+
 function updatePlayer(dt) {
     if (!state.player) return;
-
     updatePlayerHop(dt);
+    if (
+        state.scene === "chill" &&
+        state.player &&
+        state.mode === "playing" &&
+        (state.player.targetNode || Math.abs(state.player.dir?.x || 0) > 0.001 || Math.abs(state.player.dir?.y || 0) > 0.001)
+    ) {
+        const trail = getIceTrailPoint();
 
+        if (trail) {
+            state.particles.push({
+                kind: "iceTrail",
+                x: trail.x,
+                y: trail.y,
+                t: 0,
+                life: 0.35
+            });
+        }
+    }
     if (updatePlayerJump(dt)) {
         checkSecretReward();
 
@@ -5619,8 +5750,12 @@ function updatePlayer(dt) {
     }
     const dizzyMult = state.dizzyTimer > 0 ? state.dizzySlowMultiplier : 1;
     const iceMult = state.scene === "chill" ? 1.08 : 1;
+    const iceBrakeMult =
+        state.scene === "chill"
+            ? (state.player.iceBrakeMultiplier ?? 1)
+            : 1;
 
-    state.player.speedMultiplierOverride = dizzyMult * iceMult;
+    state.player.speedMultiplierOverride = dizzyMult * iceMult * iceBrakeMult;
     state.player.update(dt);
     if (state.mode !== "playing") return;
     checkSecretReward();
@@ -6813,6 +6948,7 @@ function drawMainSecretMother() {
 }
 
 function drawActors() {
+    drawIceTrailParticles();
     state.player?.draw();
     state.troops.forEach(t => t.draw());
     drawHearts();
