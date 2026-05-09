@@ -242,7 +242,7 @@ export function loadSounds(state) {
 
   sounds.introLoop = new Howl({
     src: ["assets/introLoop.m4a"],
-    volume: 0.25,
+    volume: 0.75,
     rate: 1.12,
     preload: true
   });
