@@ -322,15 +322,22 @@ export function loadSounds(state) {
     preload: true
   });
 
-  // Keep music as HTMLAudio for now
-  sounds.music = new Audio("assets/retro-arcade.mp3");
-  sounds.music.loop = true;
-  sounds.music.volume = 0.75;
+    // Music via Howler for better mobile/iOS behavior
+  sounds.music = new Howl({
+    src: ["assets/retro-arcade.mp3"],
+    volume: 0.75,
+    loop: true,
+    preload: true,
+    html5: true
+  });
 
-  // sounds.bossMusic = new Audio("assets/boss-loop.mp3");
-  sounds.bossMusic = new Audio("assets/retro-arcade.mp3");
-  sounds.bossMusic.loop = true;
-  sounds.bossMusic.volume = 0.75;
+  sounds.bossMusic = new Howl({
+    src: ["assets/retro-arcade.mp3"],
+    volume: 0.75,
+    loop: true,
+    preload: true,
+    html5: true
+  });
 
   applyMuteState(sounds, state);
   return sounds;
