@@ -236,13 +236,13 @@ export function loadSounds(state) {
   // Short SFX via Howler
   sounds.hiMommy = new Howl({
     src: ["assets/introHiMommy.m4a"],
-    volume: 1,
+    volume: 1.5,
     preload: true
   });
 
   sounds.introLoop = new Howl({
     src: ["assets/introLoop.m4a"],
-    volume: 0.75,
+    volume: 0.55,
     rate: 1.12,
     preload: true
   });
