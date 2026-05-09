@@ -236,7 +236,7 @@ export function loadSounds(state) {
   // Short SFX via Howler
   sounds.hiMommy = new Howl({
     src: ["assets/introHiMommy.m4a"],
-    volume: 0.75,
+    volume: 1,
     preload: true
   });
 
