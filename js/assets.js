@@ -362,14 +362,18 @@ export function applyMuteState(sounds, state) {
 }
 
 export function stopAllMusic(sounds) {
-  if (sounds.music) {
-    sounds.music.pause();
-    sounds.music.currentTime = 0;
-  }
+  for (const track of [sounds.music, sounds.bossMusic]) {
+    if (!track) continue;
 
-  if (sounds.bossMusic) {
-    sounds.bossMusic.pause();
-    sounds.bossMusic.currentTime = 0;
+    try {
+      track.pause();
+
+      if (Number.isFinite(track.duration) || track.readyState > 0) {
+        track.currentTime = 0;
+      }
+    } catch (err) {
+      console.log("[AUDIO] stopAllMusic skipped reset", err);
+    }
   }
 }
 
@@ -377,8 +381,18 @@ export function playSceneMusic({ sounds, isBossScene }) {
   stopAllMusic(sounds);
 
   const track = isBossScene ? sounds.bossMusic : sounds.music;
-  if (track) {
-    track.play().catch(() => {});
+  if (!track) return;
+
+  try {
+    const p = track.play();
+
+    if (p && typeof p.catch === "function") {
+      p.catch(err => {
+        console.log("[AUDIO] scene music play blocked/failed", err);
+      });
+    }
+  } catch (err) {
+    console.log("[AUDIO] scene music play threw", err);
   }
 }
 
