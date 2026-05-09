@@ -195,6 +195,38 @@ export function loadSprites() {
   spriteStore.secretRoom_ch_jab = new Image();
   spriteStore.secretRoom_ch_jab.src = "sprites/jab-secret-room-ch.webp";  
 
+  // === intro sprites
+
+  // spriteStore.introBackground = new Image();
+  // spriteStore.introBackground.src = "sprites/intro/introBackground.webp";  
+
+  spriteStore.introBackgroundClose = new Image();
+  spriteStore.introBackgroundClose.src = "sprites/intro/introAltBG.png";  
+
+  spriteStore.introJabBlinking = new Image();
+  spriteStore.introJabBlinking.src = "sprites/intro/introJabBlinking.webp";  
+
+  spriteStore.introJabWeeping = new Image();
+  spriteStore.introJabWeeping.src = "sprites/intro/introJabWeeping.webp";  
+
+  spriteStore.introBrokenHeart = new Image();
+  spriteStore.introBrokenHeart.src = "sprites/intro/introBrokenHeart.webp";
+
+  spriteStore.introHeart = new Image();
+  spriteStore.introHeart.src = "sprites/intro/intro-heart.webp";
+
+  spriteStore.introJabDirectional = new Image();
+  spriteStore.introJabDirectional.src = "sprites/intro/introJabDirectional.webp";  
+
+  spriteStore.introZookeepers = new Image();
+  spriteStore.introZookeepers.src = "sprites/intro/introZookeepers.webp";  
+
+  spriteStore.introThoughtBubble = new Image();
+  spriteStore.introThoughtBubble.src = "sprites/intro/introThoughtBubble.webp";  
+
+  spriteStore.introMother = new Image();
+  spriteStore.introMother.src = "sprites/intro/introMother.webp";  
+
   return spriteStore;
 }
 
@@ -202,10 +234,16 @@ export function loadSounds(state) {
   const sounds = {};
 
   // Short SFX via Howler
-  sounds.pickup = new Howl({
-    src: ["assets/squeak.m4a"],
-    volume: 0.55,
-    rate: 0.5,
+  sounds.hiMommy = new Howl({
+    src: ["assets/introHiMommy.m4a"],
+    volume: 0.75,
+    preload: true
+  });
+
+  sounds.introLoop = new Howl({
+    src: ["assets/introLoop.m4a"],
+    volume: 0.25,
+    rate: 1.12,
     preload: true
   });
 

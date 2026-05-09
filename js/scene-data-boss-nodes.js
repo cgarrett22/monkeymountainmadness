@@ -243,7 +243,7 @@ export const bossNodes = {
     id: "CK38",
     x: 649,
     y: 1225,
-    neighbors: ["CK43", "CK39", "CK13"],
+    neighbors: ["CK43", "CK39", "CK13", "N54"],
     tags: ["jumpFrom"]
   },
 
@@ -417,8 +417,8 @@ export const bossNodes = {
   N52: {
     id: "N52",
     x: 456,
-    y: 1379,
-    neighbors: ["CK4", "CK39"],
+    y: 1328,
+    neighbors: ["CK4", "CK39", "N54"],
     returnTo: "CK49",
     returnFrom: ["CK1", "CK49"],
     requireInputForReturn: "down",
@@ -430,6 +430,14 @@ export const bossNodes = {
     x: 126,
     y: 1374,
     neighbors: ["CK2", "CK3"],
+    tags: []
+  },
+
+  N54: {
+    id: "N54",
+    x: 635,
+    y: 1328,
+    neighbors: ["N52", "CK38"],
     tags: []
   }
 };

@@ -197,6 +197,289 @@ const SCENE_START_SPOTLIGHT = {
   radiusEnd: 115
 };
 
+const DEBUG_SHOW_OPENING_EVERY_TIME = true;
+
+// const OPENING_INTRO_TIMING = {
+//     jabWalkStart: 0.00,
+//     jabWalkDuration: 2.10,
+
+//     jabBlinkStart: 2.10,
+//     jabBlinkDuration: 1.25,
+
+//     hiMommyStart: 2.35,
+//     hiMommyDuration: 1.20,
+
+//     brokenHeartStart: 2.22,
+
+//     motherShunStart: 3.35,
+//     motherShunDuration: 1.35,
+
+//     jabWeepStart: 4.45,
+//     heartAnimStart: 4.45,
+//     introLoopStart: 4.45,
+
+//     zookeeperStart: 5.35,
+//     zookeeperDuration: 2.10,
+
+//     totalDuration: 8.10
+// };
+
+function easeInOutQuad(t) {
+    t = clamp(t, 0, 1);
+    return t < 0.5
+        ? 2 * t * t
+        : 1 - Math.pow(-2 * t + 2, 2) / 2;
+}
+
+function getIntroFrame(t, start, fps, frameCount, loop = false) {
+    const local = Math.max(0, t - start);
+    const frame = Math.floor(local * fps);
+
+    if (loop) {
+        return frame % frameCount;
+    }
+
+    return Math.max(0, Math.min(frameCount - 1, frame));
+}
+
+function getIntroJabWalkFrame(t) {
+    return getIntroFrame(t, OPENING_INTRO_TIMING.jabWalkStart, 9, 4, true);
+}
+
+// function getIntroJabBlinkFrame(t) {
+//     return getIntroFrame(t, OPENING_INTRO_TIMING.jabBlinkStart, 5, 4, false);
+// }
+
+// function getIntroJabWeepFrame(t) {
+//     return getIntroFrame(t, OPENING_INTRO_TIMING.jabWeepStart, 9, 8, true);
+// }
+
+// function getIntroMotherFrame(t) {
+//     return getIntroFrame(t, OPENING_INTRO_TIMING.motherShunStart, 6, 4, false);
+// }
+
+function getIntroHeartFrame(t) {
+    return getIntroFrame(t, OPENING_INTRO_TIMING.heartAnimStart, 10, 8, true);
+}
+
+function getIntroLoopFrame(t) {
+    return getIntroFrame(t, OPENING_INTRO_TIMING.introLoopStart, 6, 4, true);
+}
+
+function shouldDrawIntroHiMommy(t) {
+    return (
+        t >= OPENING_INTRO_TIMING.hiMommyStart &&
+        t < OPENING_INTRO_TIMING.hiMommyStart + OPENING_INTRO_TIMING.hiMommyDuration
+    );
+}
+
+function shouldDrawStaticBrokenHeart(t) {
+    return (
+        t >= OPENING_INTRO_TIMING.brokenHeartStart &&
+        t < OPENING_INTRO_TIMING.heartAnimStart
+    );
+}
+
+function shouldDrawIntroHeartAnim(t) {
+    return t >= OPENING_INTRO_TIMING.heartAnimStart;
+}
+
+function shouldDrawIntroLoop(t) {
+    return t >= OPENING_INTRO_TIMING.introLoopStart;
+}
+
+function shouldDrawIntroZookeepers(t) {
+    return t >= OPENING_INTRO_TIMING.zookeeperStart;
+}
+
+function drawIntroSpeechBubble(text, x, y, alpha = 1) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    ctx.font = "bold 38px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    const metrics = ctx.measureText(text);
+    const boxW = metrics.width + 52;
+    const boxH = 74;
+    const boxX = x - boxW / 2;
+    const boxY = y - boxH / 2;
+
+    ctx.fillStyle = "rgba(255,255,255,0.94)";
+    ctx.strokeStyle = "rgba(75,45,35,0.78)";
+    ctx.lineWidth = 5;
+
+    roundRect(ctx, boxX, boxY, boxW, boxH, 24);
+    ctx.fill();
+    ctx.stroke();
+
+    // small speech tail
+    ctx.beginPath();
+    ctx.moveTo(x + 40, boxY + boxH - 4);
+    ctx.lineTo(x + 72, boxY + boxH + 36);
+    ctx.lineTo(x + 12, boxY + boxH - 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#5a2d20";
+    ctx.fillText(text, x, y + 1);
+
+    ctx.restore();
+}
+
+const INTRO_TIMING = {
+    totalDuration: 12.75,
+
+    // Punch enters
+    jabWalkStart: 0.0,
+    jabWalkEnd: 2.10,
+
+    // Punch pauses/blinks after entering
+    jabBlinkStart: 2.10,
+
+    // "Hi Mommy" moment
+    hiMommyAt: 2.55,
+
+    // Heart appears while Punch is hopeful
+    heartStaticStart: 2.45,
+
+    // Mother reaction
+    motherStart: 3.45,
+    motherDuration: 2.15,
+
+    // Heartbreak starts near the end of Mother's rejection
+    heartAnimStart: 5.35,
+
+    // Small gap before weeping
+    jabWeepStart: 5.75,
+
+    // Sad music/loop begins with weeping
+    introLoopAt: 4.75,
+
+    // Heart clears
+    heartEnd: 7.10,
+
+    // Zookeepers need more time to read
+    zookeeperStart: 7.45,
+    zookeeperEnd: 11.75,
+
+    // Thought bubble stays longer
+    thoughtStart: 9.30,
+    thoughtEnd: 11.35,
+
+    // Fade only after zookeeper beat finishes
+    fadeOutStart: 11.75,
+    fadeOutEnd: 12.75
+};
+
+const INTRO_LAYOUT = {
+    backgroundClose: {
+        key: "introBackgroundClose",
+        x: 0,
+        y: 0,
+        w: CANVAS_WIDTH,
+        h: CANVAS_HEIGHT
+    },
+    zookeepers: {
+        key: "introZookeepers",
+        cols: 8,
+        rows: 1,
+        frames: 8,
+        x: 410,
+        y: 660,
+        drawW: 540,
+        drawH: 625
+    },
+    thoughtBubble: {
+        key: "introThoughtBubble",
+        x: 566,
+        y: 350,
+        w: 518,
+        h: 518
+    },
+
+    mother: {
+        key: "introMother",
+        cols: 8,
+        rows: 4,
+        frames: 32,
+        x: 120,
+        y: 1300,
+        drawW: 347.5,
+        drawH: 695
+    },
+
+    jabBlinking: {
+        key: "introJabBlinking",
+        cols: 4,
+        rows: 2,
+        frames: 8,
+        x: 650,
+        y: 1580,
+        drawW: 320,
+        drawH: 320
+    },
+
+    jabWeeping: {
+        key: "introJabWeeping",
+        cols: 4,
+        rows: 3,
+        frames: 12,
+        x: 650,
+        y: 1580,
+        drawW: 320,
+        drawH: 320
+    },
+
+    jabDirectional: {
+        key: "introJabDirectional",
+        cols: 4,
+        rows: 3,
+        frames: 12,
+        x: 676,
+        y: 1625,
+        drawW: 285,
+        drawH: 285
+    },
+
+    brokenHeart: {
+        key: "introBrokenHeart",
+        cols: 4,
+        rows: 1,
+        frames: 4,
+        x: 588,
+        y: 1200,
+        drawW: 466,
+        drawH: 466
+    }
+};
+
+function logIntroSpriteInfoOnce() {
+    if (state.loggedIntroSpriteInfo) return;
+    state.loggedIntroSpriteInfo = true;
+
+    const keys = [
+        "introBackground",
+        "introMother",
+        "introJabBlinking",
+        "introJabWeeping",
+        "introJabDirectional",
+        "introZookeepers",
+        "introThoughtBubble"
+    ];
+
+    for (const key of keys) {
+        const img = spriteStore[key];
+        console.log("[INTRO SPRITE]", key, {
+            complete: !!img?.complete,
+            naturalWidth: img?.naturalWidth,
+            naturalHeight: img?.naturalHeight
+        });
+    }
+}
+
 // keep compatibility with the rest of the existing file for now
 function drawStartCard(ctx) {
   const img = state.cardBackground;
@@ -1397,6 +1680,252 @@ function tryContinueForward(actor) {
     return false;
 }
 
+// ==========
+// intro
+// ==========
+
+// use this in dev tools to reset local storage
+// localStorage.removeItem("mmmOpeningCutsceneSeen");
+
+function getIntroJabWalkX(t) {
+    const startX = 1110;
+    const endX = INTRO_LAYOUT.jabBlinking.x;
+    const p = clamp(
+        (t - INTRO_TIMING.jabWalkStart) /
+        (INTRO_TIMING.jabWalkEnd - INTRO_TIMING.jabWalkStart),
+        0,
+        1
+    );
+
+    const eased = easeInOutCubic(p);
+    return startX + (endX - startX) * eased;
+}
+
+function getIntroJabDirectionalFrame(t) {
+    const local = Math.max(0, t - INTRO_TIMING.jabWalkStart);
+    return Math.floor(local * 9) % 4; // row 1/left handled by basic sheet index for now
+}
+
+function getIntroBrokenHeartFrame(t) {
+    if (t < INTRO_TIMING.heartAnimStart) return 0;
+
+    const local = Math.max(0, t - INTRO_TIMING.heartAnimStart);
+    return Math.min(3, Math.floor(local * 8));
+}
+
+function shouldDrawIntroHeart(t) {
+    return t >= INTRO_TIMING.heartStaticStart && t < INTRO_TIMING.heartEnd;
+}
+
+function shouldDrawZookeepers(t) {
+    return t >= INTRO_TIMING.zookeeperStart;
+}
+
+function getIntroZookeeperFrame(t) {
+    if (t < INTRO_TIMING.zookeeperStart) return 0;
+
+    const start = INTRO_TIMING.zookeeperStart;
+    const end = INTRO_TIMING.zookeeperEnd ?? INTRO_TIMING.totalDuration;
+    const duration = Math.max(0.001, end - start);
+
+    const p = clamp((t - start) / duration, 0, 1);
+
+    // 8 frames: 0 through 7.
+    return Math.min(7, Math.floor(p * 8));
+}
+
+function easeInOutCubic(t) {
+    t = Math.max(0, Math.min(1, t));
+    return t < 0.5
+        ? 4 * t * t * t
+        : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function hasSeenOpeningCutscene() {
+    if (DEBUG_SHOW_OPENING_EVERY_TIME) return false;
+
+    try {
+        return localStorage.getItem("mmmOpeningCutsceneSeen") === "1";
+    } catch {
+        return false;
+    }
+}
+
+function markOpeningCutsceneSeen() {
+    try {
+        localStorage.setItem("mmmOpeningCutsceneSeen", "1");
+    } catch {
+        // ignore
+    }
+}
+
+function startOpeningCutscene() {
+    state.mode = "openingCutscene";
+    state.openingCutscene = {
+        time: 0,
+        phase: "emotional",
+        playedHiMommy: false,
+        playedIntroLoop: false
+    };
+
+    stopAllMusic(sounds);
+}
+
+function shouldDrawIntroThoughtBubble(t) {
+    return t >= INTRO_TIMING.thoughtStart && t < INTRO_TIMING.thoughtEnd;
+}
+
+function getIntroMotherFrame(t) {
+    const local = Math.max(0, t - INTRO_TIMING.motherStart);
+    const p = Math.min(local / INTRO_TIMING.motherDuration, 1);
+    return Math.min(31, Math.floor(p * 32));
+}
+
+function getIntroJabBlinkFrame(t) {
+    return Math.floor(t * 8) % 8;
+}
+
+function getIntroJabWeepFrame(t) {
+    const local = Math.max(0, t - INTRO_TIMING.jabWeepStart);
+    return Math.min(11, Math.floor(local * 10));
+}
+
+function drawIntroSheet(layout, frame, override = {}) {
+    if (!layout?.key) return;
+
+    const img = spriteStore[layout.key];
+    if (!img || !img.complete || img.naturalWidth <= 0) return;
+
+    const cols = layout.cols || 1;
+    const rows = layout.rows || 1;
+    const totalFrames = layout.frames || cols * rows;
+
+    const f = Math.max(0, Math.min(frame || 0, totalFrames - 1));
+
+    const sourceFrameW = img.naturalWidth / cols;
+    const sourceFrameH = img.naturalHeight / rows;
+
+    const sx = (f % cols) * sourceFrameW;
+    const sy = Math.floor(f / cols) * sourceFrameH;
+
+    const drawW = override.w ?? layout.drawW ?? layout.frameW ?? sourceFrameW;
+    const drawH = override.h ?? layout.drawH ?? layout.frameH ?? sourceFrameH;
+    const x = override.x ?? layout.x;
+    const y = override.y ?? layout.y;
+
+    ctx.drawImage(
+        img,
+        sx,
+        sy,
+        sourceFrameW,
+        sourceFrameH,
+        x,
+        y,
+        drawW,
+        drawH
+    );
+}
+
+function drawIntroImage(layout) {
+    if (!layout?.key) return;
+
+    const img = spriteStore[layout.key];
+    if (!img || !img.complete || img.naturalWidth <= 0) return;
+
+    ctx.drawImage(
+        img,
+        layout.x,
+        layout.y,
+        layout.w,
+        layout.h
+    );
+}
+
+function drawIntroFadeOut(t) {
+    const start = INTRO_TIMING.fadeOutStart;
+    const end = INTRO_TIMING.fadeOutEnd;
+
+    if (t < start) return;
+
+    const p = clamp((t - start) / (end - start), 0, 1);
+
+    ctx.save();
+    ctx.fillStyle = `rgba(0,0,0,${p})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+}
+
+function drawOpeningCutscene() {
+    const cut = state.openingCutscene;
+    const t = cut?.time || 0;
+
+    drawIntroImage(INTRO_LAYOUT.backgroundClose);
+
+    // Mother: idle, then shuns, then disappears.
+    const motherEnd = INTRO_TIMING.motherStart + INTRO_TIMING.motherDuration;
+
+    if (t < INTRO_TIMING.motherStart) {
+        drawIntroSheet(INTRO_LAYOUT.mother, 0);
+    } else if (t < motherEnd) {
+        drawIntroSheet(INTRO_LAYOUT.mother, getIntroMotherFrame(t));
+    }
+
+    // Punch/Jab: walks in, then blinks, then weeps.
+    if (t < INTRO_TIMING.jabWalkEnd) {
+        drawIntroSheet(INTRO_LAYOUT.jabDirectional, getIntroJabDirectionalFrame(t), {
+            x: getIntroJabWalkX(t),
+            y: INTRO_LAYOUT.jabBlinking.y,
+            w: INTRO_LAYOUT.jabBlinking.drawW,
+            h: INTRO_LAYOUT.jabBlinking.drawH
+        });
+    } else if (t < INTRO_TIMING.jabWeepStart) {
+        drawIntroSheet(INTRO_LAYOUT.jabBlinking, getIntroJabBlinkFrame(t));
+    } else {
+        drawIntroSheet(INTRO_LAYOUT.jabWeeping, getIntroJabWeepFrame(t));
+    }
+
+    // Heart / broken heart bubble.
+    if (shouldDrawIntroHeart(t)) {
+        drawIntroSheet(INTRO_LAYOUT.brokenHeart, getIntroBrokenHeartFrame(t));
+    }
+
+    // Zookeepers appear after heartbreak.
+    if (shouldDrawZookeepers(t)) {
+        drawIntroSheet(INTRO_LAYOUT.zookeepers, getIntroZookeeperFrame(t));
+    }
+
+    if (shouldDrawIntroThoughtBubble(t)) {
+        drawIntroImage(INTRO_LAYOUT.thoughtBubble);
+    }
+    drawIntroFadeOut(t);
+}
+
+function updateOpeningCutscene(dt) {
+    const cut = state.openingCutscene;
+    if (!cut) return;
+
+    cut.time += dt;
+    const t = cut.time;
+
+    if (!cut.playedHiMommy && t >= INTRO_TIMING.hiMommyAt) {
+        cut.playedHiMommy = true;
+        playSfx(sounds.hiMommy, null, "hiMommy");
+    }
+
+    if (!cut.playedIntroLoop && t >= INTRO_TIMING.introLoopAt) {
+        cut.playedIntroLoop = true;
+        playSfx(sounds.introLoop, null, "introLoop");
+    }
+
+    if (t >= INTRO_TIMING.totalDuration) {
+        markOpeningCutsceneSeen();
+        state.openingCutscene = null;
+        showLevelIntro(state.level || 1, "main");
+    }
+}
+
+// === end intro
+
 function startMainScene() {
     state.mode = "playing";
     state.scene = "main";
@@ -1660,29 +2189,12 @@ function startBossMode() {
 
   state.secretReveal = null;
 
-    if (!state.kongIntroSeenThisGame) {
-        startKongBalloonIntro(state, getCurrentNodeMap, BOSS_BALLOON_RELEASE_NODE_ID);
-    }
-state.boss.kongIntro = {
-    phase: state.kongIntroSeenThisGame ? "done" : "waiting",
-    timer: 0,
-
-    releaseDelay: BOSS_BALLOON_RELEASE_DELAY,
-    releaseTimer: 0,
-
-    jumpY: 0,
-
-    fallX: 0,
-    fallY: -320,
-
-    runRoute: [],
-    runIndex: 0,
-    runX: 0,
-    runY: 0,
-    runSpeed: 420,
-
-    stunnedPlayer: false
-};
+    // Kong intro is now handled by the one-time opening cutscene.
+    state.kongIntroSeenThisGame = true;
+    state.boss.kongIntro = {
+        phase: "done",
+        timer: 0
+    };
 
   state.player.setCarryingMother(false);
 
@@ -2764,64 +3276,54 @@ function getSecretRevealPoint() {
 
 function startSecretReveal() {
     const point = getSecretRevealPoint();
-    const bigReveal = shouldUseBigSecretReveal();
 
     state.secretReveal = {
         unlocked: true,
-        exploding: bigReveal,
-        exposed: !bigReveal,
+        exploding: false,
+        exposed: true,
         timer: 0,
-        duration: 1.15,
+        duration: 0,
         frame: 0,
         x: point.x,
         y: point.y,
-        bigReveal
+        bigReveal: false
     };
 
-    // Compatibility for existing CK code that still reads boss.secretReveal.
     if (state.boss) {
         state.boss.secretReveal = state.secretReveal;
     }
 
-    debugLog(state, "[SECRET] reveal started", {
+    debugLog(state, "[SECRET] portal unlocked", {
         scene: state.scene,
         level: state.level,
-        bigReveal,
         x: Math.round(point.x),
         y: Math.round(point.y)
     });
 
-    if (bigReveal) {
-        playSfx(sounds.explosion, null, "secretExplosion");
-        startScreenShake(0.38, 18);
-        pulseVibrate([45, 25, 45]);
-    } else {
-        // Optional lighter feedback for later levels.
-        playSfx(sounds.score, null, "secretUnlock");
-    }
-}   
+    playSfx(sounds.score, null, "secretUnlock");
+}
 
 function startBossSecretReveal() {
     startSecretReveal();
 }
 
-function updateSecretReveal(dt) {
-    const reveal = state.secretReveal || state.boss?.secretReveal;
-    if (!reveal) return;
-    if (!reveal.exploding) return;
+// function updateSecretReveal(dt) {
+//     const reveal = state.secretReveal || state.boss?.secretReveal;
+//     if (!reveal) return;
+//     if (!reveal.exploding) return;
 
-    reveal.timer += dt;
+//     reveal.timer += dt;
 
-    const fps = 20;
-    const totalFrames = 32;
-    reveal.frame = Math.min(totalFrames - 1, Math.floor(reveal.timer * fps));
+//     const fps = 20;
+//     const totalFrames = 32;
+//     reveal.frame = Math.min(totalFrames - 1, Math.floor(reveal.timer * fps));
 
-    if (reveal.timer >= reveal.duration) {
-        reveal.exploding = false;
-        reveal.exposed = true;
-        reveal.frame = totalFrames - 1;
-    }
-}
+//     if (reveal.timer >= reveal.duration) {
+//         reveal.exploding = false;
+//         reveal.exposed = true;
+//         reveal.frame = totalFrames - 1;
+//     }
+// }
 
 function hasActiveGroundHeart() {
     return (state.fieldHearts || []).some(h => !h.collected);
@@ -4716,16 +5218,12 @@ function beginGame() {
     });
 
     if (state.mode === "start") {
-        if (DEBUG_LOOP_KONG_SCENE) {
-            state.mode = "playing";
-            state.levelIntro = null;
-            state.bossIntro = null;
-            showBossIntro(state.level || 1);
+        if (!hasSeenOpeningCutscene()) {
+            startOpeningCutscene();
             return;
         }
 
-        state.mode = "levelIntro";
-        showLevelIntro(state.level);
+        showLevelIntro(state.level || 1, "main");
         return;
     }
 
@@ -5403,26 +5901,17 @@ function goToNextScene() {
     state.mode = "playing";
     state.sceneWinTimer = 0;
 
-    // DEV: keep testing Banana Bonanza only.
     if (DEBUG_LOOP_MAIN_SCENE) {
         startMainScene();
         return;
     }
 
-    // DEV: keep testing Coconut Kong only.
-    // If a boss scene completes, restart boss.
-    // If another scene somehow completes, send tester into boss.
     if (DEBUG_LOOP_KONG_SCENE) {
         showBossIntro(state.level);
         return;
     }
 
     if (state.scene === "main") {
-        showBossIntro(state.level);
-        return;
-    }
-
-    if (state.scene === "boss") {
         state.unlocks.butterfly = true;
         state.unlocks.pj = true;
         state.unlocks.kongEvent = true;
@@ -5432,6 +5921,11 @@ function goToNextScene() {
     }
 
     if (state.scene === "chill") {
+        showBossIntro(state.level);
+        return;
+    }
+
+    if (state.scene === "boss") {
         state.level += 1;
         showLevelUp(state.level);
         return;
@@ -6249,7 +6743,7 @@ updatePlayer(dt);
 updateBossBalloonReleaseTrigger(dt);
 updateKongEvent(state, dt, getCurrentNodeMap);
 updateKongEventCollisions(state, playSfx, sounds);
-    updateSecretReveal(dt);
+    //  (dt);
     updateBossKongIntro(dt);
     updateScreenShake(dt);
     updateTroops(dt);
@@ -6457,7 +6951,11 @@ function update(dt) {
     if (state.paused) return;
     updateScreenShake(dt);
     updateSceneSpotlight(dt);
-    updateSecretReveal(dt);
+    // updateSecretReveal(dt);
+    if (state.mode === "openingCutscene") {
+        updateOpeningCutscene(dt);
+        return;
+    }
     if (state.levelUp) {
         updateLevelUp(dt);
         return;
@@ -6526,7 +7024,7 @@ function update(dt) {
     if (state.scene === "boss") {
         updateBossMode(dt);
         updateClouds(dt);
-        updateSecretReveal(dt);
+        // updateSecretReveal(dt);
         return;
     }
 
@@ -6826,20 +7324,8 @@ function drawSecretRoomChillJab(cx, cy, frame = 0) {
 }
 
 function drawSecretRevealOverlay() {
-    const reveal = state.secretReveal || state.boss?.secretReveal;
-    if (!reveal?.unlocked) return;
-
-    // Only draw the big map overlay on Level 1.
-    const overlay = getSecretRevealOverlayImage();
-
-    if (overlay?.complete && overlay.naturalWidth > 0) {
-        ctx.drawImage(overlay, 0, 0, canvas.width, canvas.height);
-    }
-
-    // Only draw explosion for big reveal.
-    if (reveal.bigReveal && reveal.exploding) {
-        drawExplosionSprite(reveal.x, reveal.y, reveal.frame || 0);
-    }
+    // Secret reveal is now communicated by drawSecretHolePulse().
+    // Kept as a no-op compatibility function for existing draw() calls.
 }
 
 function drawSecretRoomMotherHug(cx, cy, frame = 0) {
@@ -6960,116 +7446,116 @@ function drawActors() {
     drawParticles();
 }
 
-function updateBossSecretReveal(dt) {
-    const reveal = state.boss?.secretReveal;
-    if (!reveal) return;
+// function updateBossSecretReveal(dt) {
+//     const reveal = state.boss?.secretReveal;
+//     if (!reveal) return;
 
-    if (!reveal.exploding) return;
+//     if (!reveal.exploding) return;
 
-    reveal.timer += dt;
+//     reveal.timer += dt;
 
-    const fps = 20;
-    const totalFrames = 32;
-    reveal.frame = Math.min(totalFrames - 1, Math.floor(reveal.timer * fps));
+//     const fps = 20;
+//     const totalFrames = 32;
+//     reveal.frame = Math.min(totalFrames - 1, Math.floor(reveal.timer * fps));
 
-    if (reveal.timer >= reveal.duration) {
-        reveal.exploding = false;
-        reveal.exposed = true;
-        reveal.frame = totalFrames - 1;
-    }
-}
+//     if (reveal.timer >= reveal.duration) {
+//         reveal.exploding = false;
+//         reveal.exposed = true;
+//         reveal.frame = totalFrames - 1;
+//     }
+// }
 
-function drawBossSecretRevealLayer() {
-    const reveal = state.boss?.secretReveal;
-    if (!reveal?.unlocked) return;
+// function drawBossSecretRevealLayer() {
+//     const reveal = state.boss?.secretReveal;
+//     if (!reveal?.unlocked) return;
 
-    // Once unlocked, show the overlay on the gameplay map.
-    const overlay = spriteStore.secretRoom_ck_overlay;
-    if (overlay?.complete && overlay.naturalWidth > 0) {
-        ctx.drawImage(overlay, 0, 0, canvas.width, canvas.height);
-    }
+//     // Once unlocked, show the overlay on the gameplay map.
+//     const overlay = spriteStore.secretRoom_ck_overlay;
+//     if (overlay?.complete && overlay.naturalWidth > 0) {
+//         ctx.drawImage(overlay, 0, 0, canvas.width, canvas.height);
+//     }
 
-    // While exploding, draw the explosion sprite animation.
-    if (reveal.exploding) {
-        drawExplosionSprite(786, 1569, reveal.frame);
-    }
-}
+//     // While exploding, draw the explosion sprite animation.
+//     if (reveal.exploding) {
+//         drawExplosionSprite(786, 1569, reveal.frame);
+//     }
+// }
 
-function drawBossSecretRevealOverlay() {
-    if (state.scene !== "boss") return;
+// function drawBossSecretRevealOverlay() {
+//     if (state.scene !== "boss") return;
 
-    const reveal = state.boss?.secretReveal;
-    if (!reveal) return;
+//     const reveal = state.boss?.secretReveal;
+//     if (!reveal) return;
 
-    // Once unlocked, draw the static overlay over the map to expose the hole area.
-    if (reveal.unlocked) {
-        const overlay = spriteStore.secretRoom_ck_overlay;
-        if (overlay?.complete && overlay.naturalWidth > 0) {
-            ctx.drawImage(overlay, 0, 0, canvas.width, canvas.height);
-        }
-    }
+//     // Once unlocked, draw the static overlay over the map to expose the hole area.
+//     if (reveal.unlocked) {
+//         const overlay = spriteStore.secretRoom_ck_overlay;
+//         if (overlay?.complete && overlay.naturalWidth > 0) {
+//             ctx.drawImage(overlay, 0, 0, canvas.width, canvas.height);
+//         }
+//     }
 
-    // While exploding, draw explosion sprite on top.
-    if (reveal.exploding) {
-        const img = spriteStore.explosion;
-        if (!img || !img.complete || img.naturalWidth <= 0) return;
+//     // While exploding, draw explosion sprite on top.
+//     if (reveal.exploding) {
+//         const img = spriteStore.explosion;
+//         if (!img || !img.complete || img.naturalWidth <= 0) return;
 
-        const cols = 8;
-        const rows = 4;
-        const totalFrames = 32;
-        const frame = Math.min(totalFrames - 1, reveal.frame || 0);
+//         const cols = 8;
+//         const rows = 4;
+//         const totalFrames = 32;
+//         const frame = Math.min(totalFrames - 1, reveal.frame || 0);
 
-        const frameW = img.naturalWidth / cols;
-        const frameH = img.naturalHeight / rows;
+//         const frameW = img.naturalWidth / cols;
+//         const frameH = img.naturalHeight / rows;
 
-        const sx = (frame % cols) * frameW;
-        const sy = Math.floor(frame / cols) * frameH;
+//         const sx = (frame % cols) * frameW;
+//         const sy = Math.floor(frame / cols) * frameH;
 
-        const drawW = 320;
-        const drawH = 320;
+//         const drawW = 320;
+//         const drawH = 320;
 
-        const cx = 786;
-        const cy = 1569;
+//         const cx = 786;
+//         const cy = 1569;
 
-        ctx.drawImage(
-            img,
-            sx, sy, frameW, frameH,
-            cx - drawW / 2,
-            cy - drawH / 2,
-            drawW,
-            drawH
-        );
-    }
-}
+//         ctx.drawImage(
+//             img,
+//             sx, sy, frameW, frameH,
+//             cx - drawW / 2,
+//             cy - drawH / 2,
+//             drawW,
+//             drawH
+//         );
+//     }
+// }
 
-function drawExplosionSprite(x, y, frameIndex) {
-    const img = spriteStore.explosion;
-    if (!img || !img.complete || img.naturalWidth <= 0) return;
+// function drawExplosionSprite(x, y, frameIndex) {
+//     const img = spriteStore.explosion;
+//     if (!img || !img.complete || img.naturalWidth <= 0) return;
 
-    const cols = 8;
-    const rows = 4;
-    const totalFrames = 32;
+//     const cols = 8;
+//     const rows = 4;
+//     const totalFrames = 32;
 
-    const frame = Math.max(0, Math.min(totalFrames - 1, frameIndex));
-    const fw = img.naturalWidth / cols;
-    const fh = img.naturalHeight / rows;
+//     const frame = Math.max(0, Math.min(totalFrames - 1, frameIndex));
+//     const fw = img.naturalWidth / cols;
+//     const fh = img.naturalHeight / rows;
 
-    const sx = (frame % cols) * fw;
-    const sy = Math.floor(frame / cols) * fh;
+//     const sx = (frame % cols) * fw;
+//     const sy = Math.floor(frame / cols) * fh;
 
-    const scale = 1.5;
-    const drawW = fw * scale;
-    const drawH = fh * scale;
+//     const scale = 1.5;
+//     const drawW = fw * scale;
+//     const drawH = fh * scale;
 
-    ctx.drawImage(
-        img,
-        sx, sy, fw, fh,
-        Math.round(x - drawW / 2),
-        Math.round(y - drawH / 2),
-        drawW,
-        drawH
-    );
-}
+//     ctx.drawImage(
+//         img,
+//         sx, sy, fw, fh,
+//         Math.round(x - drawW / 2),
+//         Math.round(y - drawH / 2),
+//         drawW,
+//         drawH
+//     );
+// }
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -7085,6 +7571,13 @@ function draw() {
 
     if (state.mode === "start") {
         drawStartCard(ctx);
+        ctx.restore();
+        return;
+    }
+
+    if (state.mode === "openingCutscene") {
+        drawOpeningCutscene();
+        drawDebugConsole();
         ctx.restore();
         return;
     }

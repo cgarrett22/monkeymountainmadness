@@ -12,7 +12,7 @@ export const bananaBonanzaNodes = {
   BB13: { id: "BB13", x: 759, y: 1428, neighbors: ["BB15", "BB37", "BB29"], tags: ["banana"] },
   BB14: { id: "BB14", x: 1071, y: 1427, neighbors: ["BB29"], tags: ["portal"] },
   BB15: { id: "BB15", x: 550, y: 1459, neighbors: ["BB16", "BB39", "BB13", "BB17"], tags: ["ladderExit", "banana"] },
-  BB16: { id: "BB16", x: 554, y: 1805, neighbors: ["BB15", "BB35"], tags: ["ladderExit", "banana"] },
+  BB16: { id: "BB16", x: 554, y: 1805, neighbors: ["BB15", "BB35", "N40"], tags: ["ladderExit", "banana"] },
   BB17: { id: "BB17", x: 582, y: 1326, neighbors: ["BB15", "BB18"], tags: ["banana"] },
   BB18: { id: "BB18", x: 549, y: 978, neighbors: ["BB23", "BB17", "BB32", "BB43"], inputMap: { up: "BB43", left: "BB32", right: "BB23", down: "BB17" }, tags: ["ladderExit", "banana"] },
   BB19: { id: "BB19", x: -1, y: 994, neighbors: ["BB20"], tags: ["portal"] },
@@ -23,7 +23,7 @@ export const bananaBonanzaNodes = {
   BB25: { id: "BB25", x: 1077, y: 931, neighbors: ["BB24"], tags: ["portal"] },
   BB26: { id: "BB26", x: 982, y: 1779, neighbors: [], tags: ["portal"] },
   BB28: { id: "BB28", x: 211, y: 870, neighbors: ["BB32"], tags: ["portal"] },
-  BB29: { id: "BB29", x: 880, y: 1422, neighbors: ["BB13", "BB30", "BB14"], tags: [] },
+  BB29: { id: "BB29", x: 880, y: 1422, neighbors: ["BB13", "BB30", "BB14", "N42"], tags: [] },
   BB33: { id: "BB33", x: 144, y: 1469, neighbors: ["BB34", "BB20", "BB39"], tags: [] },
   BB34: { id: "BB34", x: 95, y: 1811, neighbors: ["BB35", "BB33"], tags: [] },
   BB30: { id: "BB30", x: 883, y: 1317, neighbors: ["BB29"], tags: ["portal"] },
@@ -37,5 +37,9 @@ export const bananaBonanzaNodes = {
   BB40: { id: "BB40", x: 293, y: 1251, neighbors: ["BB39"], tags: [] },
   BB41: { id: "BB41", x: 385, y: 740, neighbors: ["BB42", "BB7"], inputMap: { up: "BB7", down: "BB42" }, allowedInputs: ["up", "down"], tags: [] },
   BB42: { id: "BB42", x: 374, y: 830, neighbors: ["BB41", "BB43"], inputMap: { up: "BB41", down: "BB43" }, allowedInputs: ["up", "down"], tags: [] },
-  BB43: { id: "BB43", x: 484, y: 887, neighbors: ["BB42", "BB18"], inputMap: { up: "BB42", down: "BB18" }, allowedInputs: ["up", "down"], tags: [] }
+  BB43: { id: "BB43", x: 484, y: 887, neighbors: ["BB42", "BB18"], inputMap: { up: "BB42", down: "BB18" }, allowedInputs: ["up", "down"], tags: [] },
+  N40: { id: "N40", x: 883, y: 1781, neighbors: ["N42", "BB16"], tags: [] },
+  N41: { id: "N41", x: 707, y: 1572, neighbors: ["N42"], tags: [] },
+  N42: { id: "N42", x: 889, y: 1572, neighbors: ["BB29", "N41", "N40"], tags: [] }
+
 };

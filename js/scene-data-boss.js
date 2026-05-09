@@ -22,10 +22,10 @@ export const bossConfig = {
 
 export const bossCoconutLanes = [
   // ["CK30", "CK29", "CK28", "CK24", "CK22", "CK37", "CK36", "CK40", "CK39", "CK4", "CK1", "CK2", "CK3"],
-  ["CK30", "CK31", "CK32", "CK33", "CK34", "CK41", "CK40", "CK39", "CK4", "CK1", "CK2", "CK3"],
+  ["CK30", "CK31", "CK32", "CK33", "CK34", "CK41", "CK40", "CK39", "CK4", "CK1"],
   // ["CK42", "CK20", "CK23", "CK22", "CK37", "CK36", "CK40", "CK39", "CK4", "CK1", "CK2", "CK3"],
-  ["CK29", "CK28", "CK24", "CK25", "CK22", "CK37", "CK36", "CK40", "CK39", "CK4", "CK1", "CK2", "CK3"],
-  ["CK23", "CK20", "CK21", "CK18", "CK17", "CK16", "CK15", "CK14", "CK13", "CK12", "CK49", "CK4", "CK1", "CK2", "CK3"],
+  ["CK29", "CK28", "CK24", "CK25", "CK22", "CK37", "CK36", "CK40", "CK39", "CK4", "CK1"],
+  ["CK23", "CK20", "CK21", "CK18", "CK17", "CK16", "CK15", "CK14", "CK13", "CK12", "CK49", "CK4", "CK1"],
   ["CK17", "CK16", "CK15", "CK14"]
 ];
 
@@ -70,6 +70,13 @@ export const coconutKongSecretRewards = {
     type: "bananaBunch",
     x: 782,
     y: 538,
+    min: 5,
+    max: 10
+  },
+  N54: {
+    type: "bananaBunch",
+    x: 635,
+    y: 1328,
     min: 5,
     max: 10
   }

@@ -14,6 +14,13 @@ export const bananaBonanzaSecretRewards = {
     y: 1251,
     min: 4,
     max: 9
+  },
+  N41: {
+    type: "bananaBunch",
+    x: 707,
+    y: 1572,
+    min: 4,
+    max: 9
   }
 };
 
