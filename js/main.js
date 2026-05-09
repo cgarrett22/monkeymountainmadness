@@ -8006,27 +8006,49 @@ function loop(ts) {
     try {
         const dt = Math.min((ts - state.lastTime) / 1000, 0.05);
         state.lastTime = ts;
+
         update(dt || 0);
         draw();
-    // } catch (err) {
-    //     console.error("LOOP CRASH", err);
-    //     console.log("scene:", state.scene);
-    //     console.log("boss:", state.boss);
-    //     console.log("player:", state.player);
-    //     debugger;
-    //     return; // stop the loop so the error stays visible
 
-
-    // }
+        requestAnimationFrame(loop);
     } catch (err) {
-    console.error("LOOP CRASH", err);
-    console.log("scene:", state.scene);
-    console.log("boss:", state.boss);
-    console.log("player:", state.player);
-    return;
+        console.error("LOOP CRASH", err);
+        console.log("scene:", state.scene);
+        console.log("mode:", state.mode);
+        console.log("levelIntro:", state.levelIntro);
+        console.log("boss:", state.boss);
+        console.log("player:", state.player);
+
+        ctx.save();
+        ctx.fillStyle = "rgba(0,0,0,0.86)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = "#ffdddd";
+        ctx.font = "bold 34px monospace";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+
+        const msg = String(err?.stack || err?.message || err);
+        const lines = [
+            "LOOP CRASH",
+            `mode: ${state.mode}`,
+            `scene: ${state.scene}`,
+            `levelIntro: ${state.levelIntro ? state.levelIntro.phase : "none"}`,
+            "",
+            ...msg.slice(0, 900).match(/.{1,42}/g)
+        ];
+
+        lines.forEach((line, i) => {
+            ctx.fillText(line, 40, 80 + i * 42);
+        });
+
+        ctx.restore();
+
+        // Leave frozen so the error stays visible.
+        return;
+    }
 }
-    requestAnimationFrame(loop);
-}
+
 // ======================================================
 // STARTUP
 // ======================================================
