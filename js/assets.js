@@ -236,13 +236,13 @@ export function loadSounds(state) {
   // Short SFX via Howler
   sounds.hiMommy = new Howl({
     src: ["assets/introHiMommy.m4a"],
-    volume: 1.5,
+    volume: 1.75,
     preload: true
   });
 
   sounds.introLoop = new Howl({
     src: ["assets/introLoop.m4a"],
-    volume: 0.55,
+    volume: 0.50,
     rate: 1.12,
     preload: true
   });
@@ -330,6 +330,7 @@ export function loadSounds(state) {
   // sounds.bossMusic = new Audio("assets/boss-loop.mp3");
   sounds.bossMusic = new Audio("assets/retro-arcade.mp3");
   sounds.bossMusic.loop = true;
+  sounds.bossMusic.volume = 0.75;
 
   applyMuteState(sounds, state);
   return sounds;
