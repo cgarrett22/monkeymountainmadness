@@ -657,6 +657,45 @@ function getBananaNodeIds() {
   return getNodeIdsByTag(getCurrentNodeMap(), "banana");
 }
 
+const ACCEPTANCE_BONUSES = {
+    noBullyToss: 100,
+    allSecretRewards: 150
+};
+
+function awardEndOfSceneAcceptanceBonuses() {
+    if (state.sceneEndBonusesAwarded) return;
+    state.sceneEndBonusesAwarded = true;
+
+    const stats = state.sceneStats || {};
+
+    if ((stats.bullyTosses || 0) === 0) {
+        addAcceptanceScore(
+            ACCEPTANCE_BONUSES.noBullyToss,
+            "no bully toss",
+            {
+                itemize: true,
+                icon: "🛡️",
+                label: "No bully tosses"
+            }
+        );
+    }
+
+    const totalSecrets = stats.secretRewardsTotal || 0;
+    const foundSecrets = stats.secretRewardsCollected || 0;
+
+    if (totalSecrets > 0 && foundSecrets >= totalSecrets) {
+        addAcceptanceScore(
+            ACCEPTANCE_BONUSES.allSecretRewards,
+            "all secret rewards",
+            {
+                itemize: true,
+                icon: "✨",
+                label: "All secret rewards found"
+            }
+        );
+    }
+}
+
 function checkSecretReward() {
     if (!state.player) return;
 
@@ -704,6 +743,9 @@ function checkSecretReward() {
     const bonus = randInt(reward.min, reward.max);
 
     state.secretRewardsFound[rewardKey] = true;
+    state.sceneStats = state.sceneStats || {};
+    state.sceneStats.secretRewardsCollected =
+        (state.sceneStats.secretRewardsCollected || 0) + 1;
     state.score += bonus;
     state.bananasCollectedThisScene =
         (state.bananasCollectedThisScene || 0) + bonus;
@@ -917,12 +959,22 @@ function drawHeartProgressPopup() {
     ctx.restore();
 }
 
-function addAcceptanceScore(amount, reason = "") {
-  if (!amount) return;
-  state.acceptanceScore = (state.acceptanceScore || 0) + amount;
+function addAcceptanceScore(amount, reason = "", opts = {}) {
+    if (!amount) return;
 
-  // Optional debug:
-  // if (reason) debugLog(state, `[ACCEPTANCE] +${amount} ${reason}`);
+    state.acceptanceScore = (state.acceptanceScore || 0) + amount;
+    state.acceptanceEarnedThisScene =
+        (state.acceptanceEarnedThisScene || 0) + amount;
+
+    if (opts.itemize) {
+        state.sceneBonusLines = state.sceneBonusLines || [];
+        state.sceneBonusLines.push({
+            icon: opts.icon || "❤️",
+            label: opts.label || reason || "Acceptance",
+            reason,
+            amount
+        });
+    }
 }
 
 function getBossScale(x, y) {
@@ -936,8 +988,20 @@ function getLevelCardImage(level) {
     return spriteStore.bananaBonanzaCard;
 }
 
-function getSceneCard(scene, level) {
+function getSceneCard(scene, level = state.level || 1) {
     if (scene === "main") {
+        const useMotherCard =
+            !!state.motherAcquired ||
+            level > 1;
+
+        if (useMotherCard) {
+            return (
+                spriteStore.bananaBonanzaCardMother ||
+                spriteStore.bananaBonanzaCard ||
+                getLevelCardImage(level)
+            );
+        }
+
         return spriteStore.bananaBonanzaCard || getLevelCardImage(level);
     }
 
@@ -1054,7 +1118,7 @@ function showBossIntro(level) {
     state.levelIntro = null;
     state.levelUp = null;
 
-    state.loadScreenImage = getSceneCard("boss");
+    state.loadScreenImage = getSceneCard("boss", level);
 
     state.bossIntro = {
         level,
@@ -1070,7 +1134,7 @@ function showLevelIntro(level, nextScene = "main") {
     state.bossIntro = null;
     state.levelUp = null;
 
-    state.loadScreenImage = getSceneCard(nextScene);
+    state.loadScreenImage = getSceneCard(nextScene, level);
 
     state.levelIntro = {
         level,
@@ -1129,6 +1193,7 @@ function updateBossIntro(dt) {
     if (state.bossIntro.time >= state.bossIntro.duration) {
         state.bossIntro = null;
         startBossMode();
+        dequeueSceneMusic();
     }
 }
 
@@ -1181,6 +1246,14 @@ function updateLevelIntro(dt) {
     if (li.phase === "overlay") {
         if (li.time >= SCENE_INTRO_TIMING.overlayDuration) {
             state.levelIntro = null;
+            playPendingSceneMusic();
+        }
+    }
+
+    if (li.phase === "overlay") {
+        if (li.time >= SCENE_INTRO_TIMING.overlayDuration) {
+            state.levelIntro = null;
+            dequeueSceneMusic();
         }
     }
 }
@@ -1742,21 +1815,64 @@ function easeInOutCubic(t) {
 }
 
 function hasSeenOpeningCutscene() {
-    if (DEBUG_SHOW_OPENING_EVERY_TIME) return false;
-
-    try {
-        return localStorage.getItem("mmmOpeningCutsceneSeen") === "1";
-    } catch {
-        return false;
-    }
+    return false;
 }
 
 function markOpeningCutsceneSeen() {
-    try {
-        localStorage.setItem("mmmOpeningCutsceneSeen", "1");
-    } catch {
-        // ignore
-    }
+    // no-op: intro is always available; player may skip instead
+}
+
+const INTRO_SKIP_BUTTON = {
+    x: CANVAS_WIDTH - 235,
+    y: 38,
+    w: 190,
+    h: 62
+};
+
+function finishOpeningCutscene() {
+    stopAllMusic(sounds);
+    state.openingCutscene = null;
+    showLevelIntro(state.level || 1, "main");
+}
+
+function skipOpeningCutscene() {
+    if (state.mode !== "openingCutscene") return;
+
+    debugLog(state, "[INTRO] skipped");
+    finishOpeningCutscene();
+}
+
+function drawIntroSkipButton() {
+    if (state.mode !== "openingCutscene") return;
+
+    ctx.save();
+
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    ctx.strokeStyle = "rgba(255,255,255,0.5)";
+    ctx.lineWidth = 2;
+
+    roundRect(
+        ctx,
+        INTRO_SKIP_BUTTON.x,
+        INTRO_SKIP_BUTTON.y,
+        INTRO_SKIP_BUTTON.w,
+        INTRO_SKIP_BUTTON.h,
+        18
+    );
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 30px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(
+        "SKIP",
+        INTRO_SKIP_BUTTON.x + INTRO_SKIP_BUTTON.w / 2,
+        INTRO_SKIP_BUTTON.y + INTRO_SKIP_BUTTON.h / 2 + 1
+    );
+
+    ctx.restore();
 }
 
 function startOpeningCutscene() {
@@ -1771,6 +1887,44 @@ function startOpeningCutscene() {
     stopAllMusic(sounds);
 }
 
+// function queueSceneMusic(isBossScene = false) {
+//     state.pendingSceneMusic = {
+//         isBossScene
+//     };
+// }
+
+function playPendingSceneMusic() {
+    if (!state.pendingSceneMusic) return;
+
+    playSceneMusic({
+        sounds,
+        isBossScene: !!state.pendingSceneMusic.isBossScene
+    });
+
+    state.pendingSceneMusic = null;
+}
+
+function queueSceneMusic(isBossScene = false) {
+    state.pendingSceneMusic = {
+        isBossScene: !!isBossScene
+    };
+
+    // Keep silence during cards/overlays.
+    stopAllMusic(sounds);
+}
+
+function dequeueSceneMusic() {
+    if (!state.pendingSceneMusic) return;
+
+    const pending = state.pendingSceneMusic;
+    state.pendingSceneMusic = null;
+
+    playSceneMusic({
+        sounds,
+        isBossScene: !!pending.isBossScene
+    });
+}
+
 function shouldDrawIntroThoughtBubble(t) {
     return t >= INTRO_TIMING.thoughtStart && t < INTRO_TIMING.thoughtEnd;
 }
@@ -1779,6 +1933,41 @@ function getIntroMotherFrame(t) {
     const local = Math.max(0, t - INTRO_TIMING.motherStart);
     const p = Math.min(local / INTRO_TIMING.motherDuration, 1);
     return Math.min(31, Math.floor(p * 32));
+}
+
+function isMotherRequiredForCurrentExit() {
+    const mother = getActiveMother();
+    const config = getMotherConfig();
+
+    return !!(
+        state.motherAcquired &&
+        (
+            mother?.requiredForExit ||
+            config?.requiredForExit
+        )
+    );
+}
+
+function isMotherCarriedForExit() {
+    return !!getActiveMother()?.carried;
+}
+
+function blockExitUntilMotherCarried() {
+    if (!state.player) return;
+
+    showFloatingText(
+        state.player.x,
+        state.player.y - 80,
+        "Bring Mother!",
+        "#fff7cc",
+        1.5
+    );
+
+    debugLog(state, "[MOTHER] exit blocked - mother required", {
+        scene: state.scene,
+        motherNodeId: getActiveMother()?.nodeId || null,
+        carried: !!getActiveMother()?.carried
+    });
 }
 
 function getIntroJabBlinkFrame(t) {
@@ -1898,6 +2087,7 @@ function drawOpeningCutscene() {
         drawIntroImage(INTRO_LAYOUT.thoughtBubble);
     }
     drawIntroFadeOut(t);
+    drawIntroSkipButton();
 }
 
 function updateOpeningCutscene(dt) {
@@ -1918,9 +2108,7 @@ function updateOpeningCutscene(dt) {
     }
 
     if (t >= INTRO_TIMING.totalDuration) {
-        markOpeningCutsceneSeen();
-        state.openingCutscene = null;
-        showLevelIntro(state.level || 1, "main");
+        finishOpeningCutscene();
     }
 }
 
@@ -1929,6 +2117,7 @@ function updateOpeningCutscene(dt) {
 function startMainScene() {
     state.mode = "playing";
     state.scene = "main";
+    resetSceneScoringStats();
     state.cardBackground = backgroundImage;
     state.boss = null;
     state.catchAnim = null;
@@ -1971,11 +2160,7 @@ function startMainScene() {
     resetActors();
     applyLevelConfig();
     resetScene();
-    // debugLog(state, "[AUDIO] playSceneMusic main");
-    playSceneMusic({
-        sounds,
-        isBossScene: false
-    });
+    queueSceneMusic(false);
     state.butterfly = null;
     state.pj = null;
     state.bananaTimestamps = [];
@@ -1992,6 +2177,7 @@ function startMainScene() {
     state.pjRewardBunches = [];
     state.dizzyTimer = 0;
     resetPlayerTemporaryState(2.0);
+    setupSceneCompanions();
     startSceneSpotlight();
 }
 
@@ -2099,6 +2285,7 @@ function drawLanternMask() {
 
 function startBossMode() {
   state.scene = "boss";
+  resetSceneScoringStats();
   state.mode = "playing";
   state.cardBackground = spriteStore.ckBackground;
   state.catchAnim = null;
@@ -2131,7 +2318,7 @@ function startBossMode() {
     state.player.dir = { x: 0, y: 0 };
     state.player.facing = "down";
     resetPlayerTemporaryState(2.0);
-
+    setupSceneCompanions();
   state.troops = [];
   state.coconuts = [];
 
@@ -2205,14 +2392,11 @@ function startBossMode() {
   state.secretRewardsFound = {};
   state.secretRewardPopups = [];
   refillBananas();
-
-  debugLog(state, "[AUDIO] playSceneMusic boss");
-  playSceneMusic({
-    sounds,
-    isBossScene: true
-  });
+  dequeueSceneMusic(true);
   startSceneSpotlight();
 }
+
+
 
 function createBossKongIntroState() {
     const nodeMap = getCurrentNodeMap();
@@ -2558,6 +2742,7 @@ function drawBossSquatAt(x, y) {
 
 function startChillHill() {
     state.scene = "chill";
+    resetSceneScoringStats();
     state.mode = "playing";
     state.boss = null;
     state.catchAnim = null;
@@ -2599,7 +2784,7 @@ refillBananas();
     }
 
     resetPlayerTemporaryState(2.0);
-
+    setupSceneCompanions();
     createSceneMother();
     syncLegacyBossMother();
     
@@ -2622,12 +2807,7 @@ refillBananas();
     state.troops = [];
     applyLevelConfig();
     state.player.hasBanana = false;
-
-    // debugLog(state, "[AUDIO] playSceneMusic chill");
-    playSceneMusic({
-        sounds,
-        isBossScene: false
-    });
+    queueSceneMusic(false);
     state.bananaTimestamps = [];
     state.mainEnding = null;
     state.mainSecretEntered = false;
@@ -4322,13 +4502,31 @@ function showSceneWin() {
 
     // prevent double-add if function fires twice
     if (!state.sceneWinAwarded) {
-        state.score += completionBonus;
-        state.sceneWinBonus = completionBonus;
-        state.sceneWinAwarded = true;
-        addAcceptanceScore(100 + ((state.level || 1) * 25), "scene clear");
-    }
+        if (!state.sceneWinAwarded) {
+    state.score += completionBonus;
+    state.sceneWinBonus = completionBonus;
 
-    state.loadScreenImage =
+    addAcceptanceScore(
+        100 + ((state.level || 1) * 25),
+        "scene clear",
+        {
+            itemize: true,
+            icon: "❤️",
+            label: "Scene cleared"
+        }
+    );
+
+    awardEndOfSceneAcceptanceBonuses();
+
+    state.sceneWinAwarded = true;
+}
+    state.score += completionBonus;
+    state.sceneWinBonus = completionBonus;
+    state.sceneWinAwarded = true;
+    addAcceptanceScore(100 + ((state.level || 1) * 25), "scene clear");
+}
+
+state.loadScreenImage =
         spriteStore.sceneCompleteCard ||
         spriteStore.sceneWinCard ||
         spriteStore.levelUpCard;
@@ -4438,12 +4636,55 @@ function drawCompletionHudSummary(x, y) {
     ctx.restore();
 }
 
+// function resetSceneScoringStats() {
+//     const sceneRewards = SECRET_REWARDS[state.scene] || {};
+
+//     state.acceptanceEarnedThisScene = 0;
+//     state.sceneBonusLines = [];
+//     state.sceneStats = {
+//         bullyTosses: 0,
+//         secretRewardsCollected: 0,
+//         secretRewardsTotal: Object.keys(sceneRewards).length
+//     };
+// }
+
+function resetSceneScoringStats() {
+    state.bananasCollectedThisScene = 0;
+    state.sceneWinBonus = 0;
+    state.sceneWinAwarded = false;
+
+    state.acceptanceEarnedThisScene = 0;
+    state.sceneBonusLines = [];
+    state.sceneEndBonusesAwarded = false;
+
+    state.sceneStats = {
+        bananasCollected: 0,
+
+        secretRewardBananas: 0,
+        secretRewardsCollected: 0,
+        secretRewardsTotal: getSceneSecretRewardCount(),
+
+        pjRewardBananas: 0,
+        deliveryRewardBananas: 0,
+
+        bullyTosses: 0,
+
+        motherWasPresent: !!getMotherConfig?.(),
+        motherPickedUp: false,
+        motherDropped: false
+    };
+}
+
+function getSceneSecretRewardCount() {
+    return Object.keys(SECRET_REWARDS[state.scene] || {}).length;
+}
+
 function drawCompletionRewardLines(x, y, completionBonus, collected, total) {
     drawMultilineText(
         [
+            `🍌 BANANAS COLLECTED: +${collected}`,
             `🍌 COMPLETION BONUS: +${completionBonus}`,
-            `🍌 COLLECTED THIS SCENE: +${collected}`,
-            `🍌 TOTAL SCENE REWARD: ${total}`
+            `🍌 TOTAL BANANA REWARD: ${total}`
         ],
         x,
         y,
@@ -4457,6 +4698,35 @@ function drawCompletionRewardLines(x, y, completionBonus, collected, total) {
     );
 }
 
+function drawAcceptanceRewardLines(x, y) {
+    const earned = state.acceptanceEarnedThisScene || 0;
+    const total = state.acceptanceScore || 0;
+    const lines = state.sceneBonusLines || [];
+
+    const displayLines = [
+        `❤️ ACCEPTANCE EARNED: +${earned}`,
+        `❤️ TOTAL ACCEPTANCE: ${total}`
+    ];
+
+    for (const item of lines) {
+        displayLines.push(
+            `${item.icon || "❤️"} ${item.label}: +${item.amount}`
+        );
+    }
+
+    drawMultilineText(
+        displayLines,
+        x,
+        y,
+        54,
+        {
+            font: "bold 32px Arial",
+            color: "#ffffff",
+            strokeColor: "rgba(0,0,0,0.62)",
+            lineWidth: 5
+        }
+    );
+}
 function drawSceneCompleteOverlay() {
     if (
         state.loadScreenImage &&
@@ -4480,26 +4750,20 @@ function drawSceneCompleteOverlay() {
     ctx.fillStyle = "#ffffff";
     ctx.textAlign = "left";
 
-drawCompletionHudSummary(185, 275);
+    drawCompletionHudSummary(185, 275);
 
-drawCompletionRewardLines(
-    185,
-    410,
-    completionBonus,
-    collected,
-    total
-);  
-    // ctx.font = "bold 40px Arial";
-    // ctx.fillText(
-    //     `🛞 Tire Swing (${tireUnlocked ? "available" : "locked"})`,
-    //     185,
-    //     680
-    // );
-    // ctx.fillText(
-    //     `🕯️ Lantern (${lanternUnlocked ? "available" : "locked"})`,
-    //     185,
-    //     755
-    // );
+    drawCompletionRewardLines(
+        185,
+        410,
+        completionBonus,
+        collected,
+        total
+    );
+
+    drawAcceptanceRewardLines(
+        185,
+        660
+    );
 
     ctx.restore();
 }
@@ -4808,16 +5072,11 @@ function handlePortalTravel(actor) {
 
     if (
         portal.type === "secret" &&
-        state.scene === "boss" &&
-        !state.boss?.mother?.carried
+        actor === state.player &&
+        isMotherRequiredForCurrentExit() &&
+        !isMotherCarriedForExit()
     ) {
-        showFloatingText(
-            state.player.x,
-            state.player.y - 80,
-            "Bring Mother!",
-            "#fff7cc",
-            1.5
-        );
+        blockExitUntilMotherCarried();
         return;
     }
 
@@ -5102,44 +5361,102 @@ function updateNanaSnatchers(dt) {
 }
 
 function updateNanaSnatcherCollisions() {
-  if (state.catchAnim) return;
-  if (state.player?.invuln > 0) return;
+    if (state.catchAnim) return;
+    if (state.player?.invuln > 0) return;
 
-  for (const snatcher of state.nanaSnatchers) {
-    if (!snatcher.active || snatcher.hidden) continue;
+    for (const snatcher of state.nanaSnatchers) {
+        if (!snatcher.active || snatcher.hidden) continue;
 
-    // PJ swats snatcher
-    if (
-    canPJSwatEnemies() &&
-    Math.hypot(state.pj.x - troop.x, state.pj.y - troop.y) < 42
-    ) {
-      triggerPJSwat(state.pj);
-      playSfx(sounds.grunt);
-      showFloatingText(snatcher.x, snatcher.y - 36, "Shoo!", "#fff", 0.9);
-      spawnPJRewardBunch(snatcher.x, snatcher.y, 8, 16, "snatcher");
+        if (
+            canPJSwatEnemies() &&
+            Math.hypot(state.pj.x - snatcher.x, state.pj.y - snatcher.y) < 42
+        ) {
+            triggerPJSwat(state.pj);
+            playSfx(sounds.grunt);
+            showFloatingText(snatcher.x, snatcher.y - 36, "Shoo!", "#fff", 0.9);
+            spawnPJRewardBunch(snatcher.x, snatcher.y, 8, 16, "snatcher");
 
-      snatcher.hidden = true;
-      snatcher.active = false;
-      snatcher.respawnTimer = 2.0;
+            snatcher.hidden = true;
+            snatcher.active = false;
+            snatcher.respawnTimer = 2.0;
 
-      // reset mission state so it doesn't resume an old cave route
-      snatcher.carryingBanana = false;
-      snatcher.targetBananaId = null;
-      snatcher.exitNodeId = null;
-      snatcher.targetNode = null;
-      snatcher.previousNode = null;
-      snatcher.waitTime = 0;
+            snatcher.carryingBanana = false;
+            snatcher.targetBananaId = null;
+            snatcher.exitNodeId = null;
+            snatcher.targetNode = null;
+            snatcher.previousNode = null;
+            snatcher.waitTime = 0;
 
-      continue;
+            continue;
+        }
+
+        if (distance(state.player, snatcher) < 34) {
+            handleEnemyBodyCollision(snatcher);
+            break;
+        }
+    }
+}
+
+function getFirstExistingNodeId(...ids) {
+    const nodeMap = getCurrentNodeMap();
+
+    for (const id of ids) {
+        if (id && nodeMap[id]) return id;
     }
 
-    // Punch collides with snatcher -> same catch logic as troops
-    if (distance(state.player, snatcher) < 34) {
-      //startCatch(snatcher);
-      handleEnemyBodyCollision(troop);
-      break;
+    return getSceneConfig().startNode;
+}
+
+function setupSceneCompanions() {
+    const unlocked = !!state.unlocks?.pj;
+
+    if (!unlocked) {
+        state.butterfly = null;
+        state.pj = null;
+        return;
     }
-  }
+
+    if (state.scene === "main") {
+        state.butterfly = createButterfly(
+            getFirstExistingNodeId("BB5", "BB24", getSceneConfig().startNode),
+            getCurrentNodeMap()
+        );
+
+        state.pj = createPJ(
+            getFirstExistingNodeId("BB24", "BB5", getSceneConfig().startNode),
+            getCurrentNodeMap()
+        );
+        return;
+    }
+
+    if (state.scene === "chill") {
+        state.butterfly = createButterfly(
+            getFirstExistingNodeId("CH38", "CH53", getSceneConfig().startNode),
+            getCurrentNodeMap()
+        );
+
+        state.pj = createPJ(
+            getFirstExistingNodeId("CH53", "CH38", getSceneConfig().startNode),
+            getCurrentNodeMap()
+        );
+        return;
+    }
+
+    if (state.scene === "boss") {
+        state.butterfly = createButterfly(
+            getFirstExistingNodeId("CK37", "CK40", "CK17", getSceneConfig().startNode),
+            getCurrentNodeMap()
+        );
+
+        state.pj = createPJ(
+            getFirstExistingNodeId("CK40", "CK37", "CK17", getSceneConfig().startNode),
+            getCurrentNodeMap()
+        );
+        return;
+    }
+
+    state.butterfly = null;
+    state.pj = null;
 }
 
 function updateSnatcherRelease(dt) {
@@ -5218,24 +5535,15 @@ function beginGame() {
         scene: state.scene
     });
 
-    if (state.mode === "start") {
-        if (!hasSeenOpeningCutscene()) {
-            startOpeningCutscene();
-            return;
-        }
-
-        showLevelIntro(state.level || 1, "main");
+    if (state.mode === "start" || state.mode === "gameOver") {
+        hardResetForNewGame();
+        startOpeningCutscene();
         return;
     }
 
     if (state.mode === "sceneWin") {
         goToNextScene();
         return;
-    }
-
-    if (state.mode === "gameOver") {
-        state.mode = "playing";
-        startGame();
     }
 }
 
@@ -5287,94 +5595,150 @@ function resetPlayerTemporaryState(invuln = 2.0) {
     state.dizzyTimer = 0;
 }
 
-function startGame() {
-    state.mode = "playing";
-    state.paused = false;
-    state.scene = "main";
-    state.boss = null;
-    state.cardBackground = backgroundImage;
-    state.loadScreenImage = getLevelCardImage(1);
-    state.score = 0;
-    state.acceptanceScore = 0;
-    state.lives = 3;
-    state.hearts = [];
-    state.fieldHearts = [];
-    state.flyingHearts = [];
-    state.mainSecretUnlocked = false;
-    state.mainSecretEntered = false;
-    state.mainMotherPose = "sit";
-    state.mainMotherTimer = 0;
-    state.particles = [];
-    state.catchAnim = null;
-    state.acceptance = 0;
-    // state.level = 1;
-    state.level = DEBUG ? DEBUG_TEST_LEVEL : 1;    state.levelUp = null;
-    state.levelIntro = null;
-    state.bossIntro = null;
-    state.kongIntroSeenThisGame = false;
-    state.unlocks = {
-        butterfly: false,
-        pj: false,
-        snatchers: false,
-        kongEvent: false,
-        lantern: false,
-        tireSwing: false
+function hardResetForNewGame() {
+    const preserved = {
+        leaderboard: state.leaderboard,
+        leaderboardLoaded: state.leaderboardLoaded,
+        isMuted: state.isMuted,
+        showDebugConsole: state.showDebugConsole,
+        debugLogs: state.debugLogs || []
     };
 
-    state.hands = [];
-    state.bananas = [];
-    state.bananaTimestamps = [];
-    state.zookeeper = {
-        anim: "idle",
-        frame: 0,
-        time: 0,
-        didThrowSound: false
-    };
-    state.zookeeper2 = {
-        anim: "idle",
-        frame: 0,
-        time: 0,
-        timer: rand(2.5, 6),
-        action: "idle",
-        actionTimer: 0
-    };
-    state.heartThrowTimer = 2.5;
-    state.heartsThrown = 0;
-    state.maxActiveHearts = 1;
-    state.heartCooldown = 0;
-    state.lastHeartNodeId = null;
+    stopAllMusic(sounds);
+    cancelAudioTest?.();
+    cancelDeliveryAhh?.(state);
 
-    if (state.zookeeper) {
-        state.zookeeper.action = "normal";
-        state.zookeeper.actionTimer = 0;
+    if (state.deliveryAhhTimer) {
+        clearTimeout(state.deliveryAhhTimer);
+        state.deliveryAhhTimer = null;
     }
-    refillBananas();
-    state.pj = null;
-    state.butterfly = null;
-    state.nanaSnatchers = [];
-    state.pjRewardBunches = [];
-    resetActors();
-    applyLevelConfig();
-    // newRound();
-    resetScene();
-    debugLog(state, "[AUDIO] playSceneMusic startGame/main");
-    playSceneMusic({
-        sounds,
-        isBossScene: false
-    });
-    state.bananaTimestamps = [];
-    state.mainEnding = null;
-    state.mainSecretEntered = false;
-    state.mainMotherPose = "sit";
-    state.mainMotherTimer = 0;
-    state.pendingHeartThrow = null;
-    state.secretRewardsFound = {};
-    state.secretRewardPopups = [];
-    state.bananaTimestamps = [];
-    resetKongEvent(state);
-    state.pjRewardBunches = [];
-    state.dizzyTimer = 0;
+
+    const fresh = createInitialState();
+
+    for (const key of Object.keys(state)) {
+        delete state[key];
+    }
+
+    Object.assign(state, fresh, preserved);
+
+    clearQueuedDirection(inputState);
+    inputState.touchStart = null;
+    inputState.swipeHandled = false;
+    inputState.queuedDirection = null;
+    inputState.queuedDirectionName = null;
+    inputState.audioUnlockInProgress = false;
+
+    for (const key of Object.keys(keys)) {
+        keys[key] = false;
+    }
+
+    state.level = DEBUG ? DEBUG_TEST_LEVEL : 1;
+    state.cardBackground = spriteStore.gameStartCard;
+    state.loadScreenImage = getLevelCardImage(1);
+    state.lastTime = performance.now();
+
+    applyMuteState(sounds, state);
+
+    debugLog(state, "[FLOW] hard reset for new game");
 }
+
+function startGame() {
+    hardResetForNewGame();
+
+    state.mode = "playing";
+    state.scene = "main";
+
+    startMainScene();
+}
+
+// function startGame() {
+//     state.mode = "playing";
+//     state.paused = false;
+//     state.scene = "main";
+//     state.boss = null;
+//     state.cardBackground = backgroundImage;
+//     state.loadScreenImage = getLevelCardImage(1);
+//     state.score = 0;
+//     state.acceptanceScore = 0;
+//     state.lives = 3;
+//     state.hearts = [];
+//     state.fieldHearts = [];
+//     state.flyingHearts = [];
+//     state.mainSecretUnlocked = false;
+//     state.mainSecretEntered = false;
+//     state.mainMotherPose = "sit";
+//     state.mainMotherTimer = 0;
+//     state.particles = [];
+//     state.catchAnim = null;
+//     state.acceptance = 0;
+//     // state.level = 1;
+//     state.level = DEBUG ? DEBUG_TEST_LEVEL : 1;    state.levelUp = null;
+//     state.levelIntro = null;
+//     state.bossIntro = null;
+//     state.kongIntroSeenThisGame = false;
+//     state.unlocks = {
+//         butterfly: false,
+//         pj: false,
+//         snatchers: false,
+//         kongEvent: false,
+//         lantern: false,
+//         tireSwing: false
+//     };
+
+//     state.hands = [];
+//     state.bananas = [];
+//     state.bananaTimestamps = [];
+//     state.zookeeper = {
+//         anim: "idle",
+//         frame: 0,
+//         time: 0,
+//         didThrowSound: false
+//     };
+//     state.zookeeper2 = {
+//         anim: "idle",
+//         frame: 0,
+//         time: 0,
+//         timer: rand(2.5, 6),
+//         action: "idle",
+//         actionTimer: 0
+//     };
+//     state.heartThrowTimer = 2.5;
+//     state.heartsThrown = 0;
+//     state.maxActiveHearts = 1;
+//     state.heartCooldown = 0;
+//     state.lastHeartNodeId = null;
+
+//     if (state.zookeeper) {
+//         state.zookeeper.action = "normal";
+//         state.zookeeper.actionTimer = 0;
+//     }
+//     refillBananas();
+//     state.pj = null;
+//     state.butterfly = null;
+//     state.nanaSnatchers = [];
+//     state.pjRewardBunches = [];
+//     resetActors();
+//     applyLevelConfig();
+//     // newRound();
+//     resetScene();
+//     debugLog(state, "[AUDIO] playSceneMusic startGame/main");
+//     playSceneMusic({
+//         sounds,
+//         isBossScene: false
+//     });
+//     state.bananaTimestamps = [];
+//     state.mainEnding = null;
+//     state.mainSecretEntered = false;
+//     state.mainMotherPose = "sit";
+//     state.mainMotherTimer = 0;
+//     state.pendingHeartThrow = null;
+//     state.secretRewardsFound = {};
+//     state.secretRewardPopups = [];
+//     state.bananaTimestamps = [];
+//     resetKongEvent(state);
+//     state.pjRewardBunches = [];
+//     state.dizzyTimer = 0;
+// }
 
 function newRound() {
     clearQueuedDirectionCompat();
@@ -5727,9 +6091,7 @@ function canPJSwatEnemies() {
     if (!state.pj?.active) return false;
     if (state.pj.locked) return false;
 
-    // PJ is unlocked after Scene 1 and currently appears in Chill.
-    // Keep boss excluded for now unless we deliberately add PJ to CK later.
-    return state.scene === "main" || state.scene === "chill";
+    return state.scene === "main" || state.scene === "chill" || state.scene === "boss";
 }
 
 function spawnPJRewardBunch(x, y, minValue, maxValue, source = "pj") {
@@ -6109,10 +6471,15 @@ function dropMotherAndKnockPlayer(source) {
     if (enemyNodeId) avoidForMother.add(enemyNodeId);
     if (playerNodeId) avoidForMother.add(playerNodeId);
 
-    const motherNodeId =
-        choose(candidates.filter(id => !avoidForMother.has(id))) ||
-        originNodeId;
+    const safeMotherCandidates = candidates.filter(id =>
+        isValidMotherDropNodeId(id, avoidForMother)
+    );
 
+    const motherNodeId =
+        choose(safeMotherCandidates) ||
+        originNodeId ||
+        getSceneConfig().startNode;
+        
     mother.carried = false;
     mother.nodeId = motherNodeId;
     mother.groundPose = Math.floor(Math.random() * 4);
@@ -6133,9 +6500,68 @@ function dropMotherAndKnockPlayer(source) {
     playSfx(sounds.eOh, null, "motherDrop");
 }
 
+function drawMotherLocator(node, mother) {
+    if (!node || !mother || mother.carried) return;
+
+    const t = performance.now() * 0.004;
+    const pulse = 0.75 + Math.sin(t * 3) * 0.25;
+
+    const x = node.x + 40;
+    const y = node.y + 40;
+
+    ctx.save();
+
+    // Tall vertical beacon.
+    ctx.globalAlpha = 0.45 + pulse * 0.35;
+    ctx.strokeStyle = "rgba(255, 247, 180, 0.95)";
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.moveTo(x, y - 210);
+    ctx.lineTo(x, y - 50);
+    ctx.stroke();
+
+    // Small beacon cap.
+    ctx.fillStyle = "rgba(255, 247, 180, 0.92)";
+    ctx.beginPath();
+    ctx.arc(x, y - 220, 18 + pulse * 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+
+    // drawMessagePlate(
+    //     "MOTHER",
+    //     x,
+    //     y - 255,
+    //     0.95,
+    //     {
+    //         font: "bold 32px Arial",
+    //         textColor: "#fff7cc",
+    //         plateColor: "rgba(0,0,0,0.52)",
+    //         strokeColor: "rgba(0,0,0,0.75)"
+    //     }
+    // );
+}
+
+function isValidMotherDropNodeId(nodeId, avoidIds = new Set()) {
+    const node = getCurrentNodeMap()[nodeId];
+    if (!node) return false;
+    if (avoidIds.has(nodeId)) return false;
+    if (isLockedSecretNode(nodeId)) return false;
+
+    // Avoid portals/caves/edge wraps as Mother drop points.
+    if (node.tags?.includes?.("portal")) return false;
+
+    // Avoid dead isolated nodes.
+    if (!node.neighbors?.length) return false;
+
+    return true;
+}
+
 function updateMother(dt) {
     const mother = getActiveMother();
     if (!mother || !state.player) return false;
+
+    repairMotherNodeIfMissing();
 
     if (mother.pickupLock > 0) {
         mother.pickupLock = Math.max(0, mother.pickupLock - dt);
@@ -6200,6 +6626,30 @@ function getMotherWorldPosition(mother = getActiveMother()) {
     };
 }
 
+function repairMotherNodeIfMissing() {
+    const mother = getActiveMother();
+    if (!mother || mother.carried) return;
+    if (!mother.nodeId) return;
+
+    const nodeMap = getCurrentNodeMap();
+
+    if (nodeMap[mother.nodeId]) return;
+
+    const fallbackNodeId =
+        state.player?.currentNode ||
+        getSceneConfig().startNode;
+
+    if (fallbackNodeId && nodeMap[fallbackNodeId]) {
+        debugLog(state, "[MOTHER] repaired missing node", {
+            scene: state.scene,
+            badNodeId: mother.nodeId,
+            fallbackNodeId
+        });
+
+        mother.nodeId = fallbackNodeId;
+    }
+}
+
 function drawMother() {
     const mother = getActiveMother();
     if (!mother) return;
@@ -6211,6 +6661,7 @@ function drawMother() {
 
     const node = getCurrentNodeMap()[mother.nodeId];
     if (!node) return;
+    drawMotherLocator(node, mother);
 
     ctx.save();
     ctx.translate(node.x + 40, node.y + 40);
@@ -6534,7 +6985,8 @@ function updatePlayer(dt) {
 
 function startCatch(troop) {
     if (state.player?.invuln > 0) return;
-
+    state.sceneStats = state.sceneStats || {};
+    state.sceneStats.bullyTosses = (state.sceneStats.bullyTosses || 0) + 1;
     const respawn = getSceneRespawnTarget();
     if (!respawn) return;
 
@@ -6973,6 +7425,27 @@ function spawnBossCoconutFromBabyKong(baby) {
     });
 }
 
+function updateSceneCompanions(dt) {
+    if (state.butterfly) {
+        updateButterfly(
+            state.butterfly,
+            dt,
+            getCurrentNodeMap(),
+            choose
+        );
+    }
+
+    if (state.pj) {
+        updatePJ(
+            state.pj,
+            dt,
+            getCurrentNodeMap(),
+            state.butterfly,
+            choose
+        );
+    }
+}
+
 function updateBossMode(dt) {
     if (!state.boss) return;
     updateHands(dt);
@@ -6980,6 +7453,7 @@ function updateBossMode(dt) {
     updateSceneSpotlight(dt);
     updateSceneDelivery(dt);
     ensureBananasAvailable();
+    updateSceneCompanions(dt);
     updateZookeeper(dt);
     updateZookeeper2(dt);
     updateHeartThrowing(dt);
@@ -8015,6 +8489,20 @@ canvas.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     unlockAudioOnce();
 
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+
+    if (
+        state.mode === "openingCutscene" &&
+        pointInRect(x, y, INTRO_SKIP_BUTTON)
+    ) {
+        skipOpeningCutscene();
+        return;
+    }
+
     if (state.mode === "caveReveal") {
         showSceneWin();
         return;
@@ -8024,12 +8512,6 @@ canvas.addEventListener("pointerdown", (e) => {
         beginGame();
         return;
     }
-
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const x = (e.clientX - rect.left) * scaleX;
-    const y = (e.clientY - rect.top) * scaleY;
 
     if (pointInRect(x, y, muteButton)) {
         toggleMute();
@@ -8156,6 +8638,12 @@ if (e.key.toLowerCase() === "j") {
         showBossIntro(state.level ?? 1);
         e.preventDefault();
     }
+    if (state.mode === "openingCutscene" && (e.code === "Space" || e.key === "Escape")) {
+        skipOpeningCutscene();
+        e.preventDefault();
+        return;
+    }
+
     if (e.key === "ArrowLeft") {
         setQueuedDirectionCompat(-1, 0, "left");
         e.preventDefault();

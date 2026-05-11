@@ -77,6 +77,7 @@ export function createInitialState() {
     audioTestTimers: [],
     audioTestActive: false,
     audioUnlockInProgress: false,
+    pendingSceneMusic: null,
     butterfly: null,
     pj: null,
     enemyRelease: null,
@@ -98,8 +99,27 @@ export function createInitialState() {
       duration: 0,
       triggeredThisScene: 0,
       maxPerScene: 1,
-      nextHeartTrigger: 2
+      nextHeartTrigger: 2,
     },
+    acceptanceEarnedThisScene: 0,
+    sceneBonusLines: [],
+    sceneStats: {
+      bananasCollected: 0,
+
+      secretRewardBananas: 0,
+      secretRewardsCollected: 0,
+      secretRewardsTotal: 0,
+
+      pjRewardBananas: 0,
+      deliveryRewardBananas: 0,
+
+      bullyTosses: 0,
+
+      motherWasPresent: false,
+      motherPickedUp: false,
+      motherDropped: false
+    },
+    sceneEndBonusesAwarded: false,
     dizzyTimer: 0,
     dizzyDuration: 1.0,
     dizzySlowMultiplier: 0.15,

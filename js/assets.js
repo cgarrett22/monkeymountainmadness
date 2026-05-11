@@ -78,6 +78,9 @@ export function loadSprites() {
   spriteStore.bananaBonanzaCard = new Image();
   spriteStore.bananaBonanzaCard.src = "assets/banana-bonanza-card.webp";
 
+  spriteStore.bananaBonanzaCardMother = new Image();
+  spriteStore.bananaBonanzaCardMother.src = "assets/banana-bonanza-card-mother.webp";
+
   spriteStore.coconutKongCard = new Image();
   spriteStore.coconutKongCard.src = "assets/coconut-kong-card.webp";
 
@@ -361,22 +364,6 @@ export function applyMuteState(sounds, state) {
   }
 }
 
-export function stopAllMusic(sounds) {
-  for (const track of [sounds.music, sounds.bossMusic]) {
-    if (!track) continue;
-
-    try {
-      track.pause();
-
-      if (Number.isFinite(track.duration) || track.readyState > 0) {
-        track.currentTime = 0;
-      }
-    } catch (err) {
-      console.log("[AUDIO] stopAllMusic skipped reset", err);
-    }
-  }
-}
-
 export function playSceneMusic({ sounds, isBossScene }) {
   stopAllMusic(sounds);
 
@@ -384,15 +371,38 @@ export function playSceneMusic({ sounds, isBossScene }) {
   if (!track) return;
 
   try {
-    const p = track.play();
-
-    if (p && typeof p.catch === "function") {
-      p.catch(err => {
-        console.log("[AUDIO] scene music play blocked/failed", err);
-      });
+    if (typeof track.seek === "function") {
+      track.seek(0);
     }
+
+    const id = track.play();
+
+    if (id == null) {
+      console.log("[AUDIO] scene music play returned no id");
+    }
+
+    return id;
   } catch (err) {
     console.log("[AUDIO] scene music play threw", err);
+    return null;
+  }
+}
+
+export function stopAllMusic(sounds) {
+  for (const track of [sounds.music, sounds.bossMusic]) {
+    if (!track) continue;
+
+    try {
+      if (typeof track.stop === "function") {
+        track.stop();
+      }
+
+      if (typeof track.seek === "function") {
+        track.seek(0);
+      }
+    } catch (err) {
+      console.log("[AUDIO] stopAllMusic failed", err);
+    }
   }
 }
 

@@ -25,12 +25,17 @@ import {
 
 export const SCENE_CONFIGS = {
   main: {
-    nodes: bananaBonanzaNodes,
-    startNode: HOME_NODE,
-    secretRoom: bananaBonanzaSecretRoom,
-    portals: bananaBonanzaPortals,
-    enemyEntryNodeIds: bananaBonanzaEnemyEntryNodeIds
-  },
+  nodes: bananaBonanzaNodes,
+  startNode: HOME_NODE,
+  secretRoom: bananaBonanzaSecretRoom,
+  portals: bananaBonanzaPortals,
+  enemyEntryNodeIds: bananaBonanzaEnemyEntryNodeIds,
+  mother: {
+    enabledAfterAcquired: true,
+    startNode: "BB24", // tune if placement feels wrong
+    requiredForExit: true
+  }
+},
 
   boss: {
     nodes: bossNodes,
@@ -54,7 +59,7 @@ export const SCENE_CONFIGS = {
     mother: {
       enabledAfterAcquired: true,
       startNode: "CH13", // tune later if placement feels wrong
-      requiredForExit: false
+      requiredForExit: true 
     }
   }
 };
