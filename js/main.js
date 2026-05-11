@@ -2179,14 +2179,11 @@ function startBossMode() {
       animTime: 0,
       dropTimer: 0,
       dropCooldown: 2.4
-    },
-
-    mother: {
-      carried: false,
-      nodeId: bossConfig.motherStartNode
     }
   };
 
+  createSceneMother();
+  syncLegacyBossMother();
   state.secretReveal = null;
 
     // Kong intro is now handled by the one-time opening cutscene.
@@ -2602,6 +2599,9 @@ refillBananas();
     }
 
     resetPlayerTemporaryState(2.0);
+
+    createSceneMother();
+    syncLegacyBossMother();
     
     state.zookeeper = {
         anim: "idle",
@@ -2919,8 +2919,9 @@ function drawLevelIntroOverlay() {
         for (const coconut of (state.coconuts || [])) {
             drawBossCoconut(coconut);
         }
-        drawBossMother();
     }
+        
+    drawMother();
 
     //const focus = getSceneIntroFocus(li.nextScene);
     const focus = getSceneIntroFocus(li.nextScene);
@@ -5912,6 +5913,8 @@ function goToNextScene() {
     }
 
     if (state.scene === "main") {
+        state.motherAcquired = true;
+
         state.unlocks.butterfly = true;
         state.unlocks.pj = true;
         state.unlocks.kongEvent = true;
@@ -5976,57 +5979,79 @@ function getBossDangerAtPlayer() {
     return danger;
 }
 
-function updateBossMother(dt) {
-    const mother = state.boss?.mother;
-    if (!mother) return false;
+function updateMother(dt) {
+    const mother = getActiveMother();
+    if (!mother || !state.player) return false;
 
-    const danger = getBossDangerAtPlayer();
+    if (mother.pickupLock > 0) {
+        mother.pickupLock = Math.max(0, mother.pickupLock - dt);
+    }
 
-    // updateBossHeartCollection();
     pickupMotherIfSafe();
 
-    // speed penalty while carrying
-    if (state.scene === "boss") {
-        const targetSpeed = mother.carried ? 210 : 300;
-        state.player.speed += (targetSpeed - state.player.speed) * 0.2;
-    }
-    // if (
-    //     mother.carried &&
-    //     state.player.currentNode === bossConfig.goalNode &&
-    //     state.boss.heartsCollected >= state.boss.requiredHearts
-    // ) {
-    //     endBossModeSuccess();
-    // }
+    const targetSpeed = mother.carried ? 210 : 300;
+    state.player.speed += (targetSpeed - state.player.speed) * 0.2;
+
     return false;
 }
 
-function pickupMotherIfSafe() {
-    if (state.boss?.motherPickupLock > 0) return;
-    const mother = state.boss?.mother;
-    if (!mother || mother.carried || !state.player) return;
-    // if (!mother || mother.carried) return;
+// function getActiveMother() {
+//     return state.mother || state.boss?.mother || null;
+// }
 
+function isMotherEnabledForScene() {
+    const config = getSceneConfig();
+    return !!config.mother?.enabled || !!getActiveMother();
+}
+
+function pickupMotherIfSafe() {
+    const mother = getActiveMother();
+    if (!mother || mother.carried || !state.player) return;
+
+    if ((mother.pickupLock || 0) > 0) return;
     if (mother.nodeId == null) return;
 
-    const node = getCurrentNodeMap()[mother.nodeId];
-    if (!node) return;
+    const pos = getMotherWorldPosition(mother);
+    if (!pos) return;
 
-    const dist = Math.hypot(state.player.x - node.x, state.player.y - node.y);
-    const danger = getBossDangerAtPlayer();
+    const dist = Math.hypot(
+        state.player.x - pos.x,
+        state.player.y - pos.y
+    );
 
-    if (dist <= 36) {
+    // Bigger than 36 because Mother is a 156px visual sprite,
+    // and Chill Hill movement can slide past the exact node center.
+    if (dist <= 82) {
         mother.carried = true;
-        state.player?.setCarryingMother(true);
         mother.nodeId = null;
+        state.player?.setCarryingMother(true);
+
+        debugLog?.(state, "[MOTHER] picked up", {
+            scene: state.scene,
+            dist: Math.round(dist)
+        });
     }
 }
 
-function drawBossMother() {
-    if (!isBossScene() || !state.boss?.mother) return;
+function getMotherWorldPosition(mother = getActiveMother()) {
+    if (!mother?.nodeId) return null;
+
+    const node = getCurrentNodeMap()[mother.nodeId];
+    if (!node) return null;
+
+    return {
+        x: node.x + 36,
+        y: node.y + 36,
+        node
+    };
+}
+
+function drawMother() {
+    const mother = getActiveMother();
+    if (!mother) return;
 
     const img = spriteStore.mother;
 
-    const mother = state.boss.mother;
     if (mother.carried) return;
     if (!mother.nodeId) return;
 
@@ -6079,22 +6104,25 @@ function drawBossMother() {
 }
 
 function dropMother() {
-    const mother = state.boss?.mother;
+    const mother = getActiveMother();
     if (!mother || !mother.carried) return;
-    state.boss.motherPickupLock = 0.5;
+
+    mother.pickupLock = 0.5;
+
     let dropNodeId = null;
+    const nodeMap = getCurrentNodeMap();
 
     if (state.player) {
         dropNodeId = getNearestNodeId(
             state.player.x,
             state.player.y,
-            bossNodes,
+            nodeMap,
             120
         );
     }
 
     if (!dropNodeId) {
-        dropNodeId = state.player?.currentNode || bossConfig.motherStartNode;
+        dropNodeId = state.player?.currentNode || getSceneConfig().startNode;
     }
 
     mother.carried = false;
@@ -6134,12 +6162,67 @@ function dropMotherAndResetPlayer() {
 }
 
 function resetMotherToStart() {
-    const mother = state.boss?.mother;
-    if (!mother) return;
+    const mother = getActiveMother();
+    const config = getMotherConfig();
+    if (!mother || !config) return;
 
     mother.carried = false;
-    mother.nodeId = bossConfig.motherStartNode;
+    mother.nodeId = config.startNode || getSceneConfig().startNode;
+    mother.groundPose = 0;
+    mother.pickupLock = 0.5;
+
     state.player?.setCarryingMother(false);
+}
+
+function getMotherConfig() {
+    return getSceneConfig().mother || null;
+}
+
+function shouldSpawnMotherForScene() {
+    const config = getMotherConfig();
+    if (!config) return false;
+
+    if (config.enabledAfterAcquired) {
+        return !!state.motherAcquired;
+    }
+
+    return !!config.enabled;
+}
+
+function getActiveMother() {
+    return state.mother || state.boss?.mother || null;
+}
+
+function createSceneMother() {
+    const config = getMotherConfig();
+
+    if (!shouldSpawnMotherForScene()) {
+        state.mother = null;
+        state.player?.setCarryingMother(false);
+        return;
+    }
+
+    const nodeMap = getCurrentNodeMap();
+    const startNodeId =
+        config.startNode && nodeMap[config.startNode]
+            ? config.startNode
+            : getSceneConfig().startNode;
+
+    state.mother = {
+        carried: false,
+        nodeId: startNodeId,
+        groundPose: 0,
+        pickupLock: 0,
+        requiredForExit: !!config.requiredForExit
+    };
+
+    state.player?.setCarryingMother(false);
+}
+
+function syncLegacyBossMother() {
+    if (state.scene === "boss" && state.boss) {
+        state.boss.mother = state.mother;
+    }
 }
 
 function updateBossHeartCollection() {
@@ -6749,7 +6832,7 @@ updateKongEventCollisions(state, playSfx, sounds);
     updateTroops(dt);
     if (!state.boss) return;
 
-    updateBossMother(dt);
+    updateMother(dt);
     if (!state.boss || state.scene !== "boss") return;
 
     updateBabyKong(dt);
@@ -6899,7 +6982,9 @@ function updateChillMode(dt) {
     updateNanaSnatcherCollisions();
 
     if (!state.catchAnim) {
+        updateMother(dt);
         updatePlayer(dt);
+        updateMother(dt);
     }
 
     if (state.player) {
@@ -7061,7 +7146,7 @@ if (state.scene === "chill") {
             }
         }
     }
-
+    updateMother(dt);
     if (!state.catchAnim) {
         updatePlayer(dt);
     }
@@ -7655,8 +7740,10 @@ function draw() {
         for (const coconut of (state.coconuts || [])) {
             drawBossCoconut(coconut);
         }
-        drawBossMother();
     }
+
+    drawMother();
+
     // === debug
     if (DEBUG) {
         drawPathOverlay(ctx, getCurrentNodeMap());

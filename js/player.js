@@ -251,7 +251,11 @@ export class Player {
   }
 
   syncMotherSprite() {
-    const shouldCarry = !!this.deps.state.boss?.mother?.carried;
+    const shouldCarry = !!(
+      this.deps.state.mother?.carried ||
+      this.deps.state.boss?.mother?.carried
+    );
+
     if (this.carryingMother !== shouldCarry) {
       this.setCarryingMother(shouldCarry);
     }

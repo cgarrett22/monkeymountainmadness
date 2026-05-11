@@ -37,7 +37,12 @@ export const SCENE_CONFIGS = {
     startNode: bossConfig.startNode,
     secretRoom: coconutKongSecretRoom,
     portals: coconutKongPortals,
-    enemyEntryNodeIds: coconutKongEnemyEntryNodeIds
+    enemyEntryNodeIds: coconutKongEnemyEntryNodeIds,
+    mother: {
+      enabledAfterAcquired: true,
+      startNode: bossConfig.motherStartNode,
+      requiredForExit: true
+    }
   },
 
   chill: {
@@ -45,6 +50,11 @@ export const SCENE_CONFIGS = {
     startNode: chillConfig.startNode,
     secretRoom: chillSecretRoom,
     portals: chillPortals,
-    enemyEntryNodeIds: chillEnemyEntryNodeIds
+    enemyEntryNodeIds: chillEnemyEntryNodeIds,
+    mother: {
+      enabledAfterAcquired: true,
+      startNode: "CH13", // tune later if placement feels wrong
+      requiredForExit: false
+    }
   }
 };

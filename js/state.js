@@ -31,6 +31,8 @@ export function createInitialState() {
     scene: "main",
     cloudOffset: 0,
     boss: null,
+    mother: null,
+    motherAcquired: false,
     bossIntro: null,
     roundState: "waiting",
     cavePreview: null,
