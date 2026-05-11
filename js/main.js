@@ -5110,9 +5110,8 @@ function updateNanaSnatcherCollisions() {
 
     // PJ swats snatcher
     if (
-      state.scene === "main" &&
-      state.pj?.active &&
-      Math.hypot(state.pj.x - snatcher.x, state.pj.y - snatcher.y) < 42
+    canPJSwatEnemies() &&
+    Math.hypot(state.pj.x - troop.x, state.pj.y - troop.y) < 42
     ) {
       triggerPJSwat(state.pj);
       playSfx(sounds.grunt);
@@ -5136,7 +5135,8 @@ function updateNanaSnatcherCollisions() {
 
     // Punch collides with snatcher -> same catch logic as troops
     if (distance(state.player, snatcher) < 34) {
-      startCatch(snatcher);
+      //startCatch(snatcher);
+      handleEnemyBodyCollision(troop);
       break;
     }
   }
@@ -5723,6 +5723,15 @@ function updateBananas(dt) {
     }
 }
 
+function canPJSwatEnemies() {
+    if (!state.pj?.active) return false;
+    if (state.pj.locked) return false;
+
+    // PJ is unlocked after Scene 1 and currently appears in Chill.
+    // Keep boss excluded for now unless we deliberately add PJ to CK later.
+    return state.scene === "main" || state.scene === "chill";
+}
+
 function spawnPJRewardBunch(x, y, minValue, maxValue, source = "pj") {
     if (!state.pjRewardBunches) {
         state.pjRewardBunches = [];
@@ -5977,6 +5986,151 @@ function getBossDangerAtPlayer() {
     }
 
     return danger;
+}
+
+function getNearestSceneNodeId(x, y, maxDist = 160) {
+    return getNearestNodeId(x, y, getCurrentNodeMap(), maxDist);
+}
+
+function getNodeIdsWithinHops(startNodeId, maxHops = 3) {
+    const nodeMap = getCurrentNodeMap();
+    if (!startNodeId || !nodeMap[startNodeId]) return [];
+
+    const visited = new Set([startNodeId]);
+    const queue = [{ id: startNodeId, hops: 0 }];
+    const result = [];
+
+    while (queue.length) {
+        const item = queue.shift();
+        const node = nodeMap[item.id];
+        if (!node) continue;
+
+        if (item.hops > 0) {
+            result.push(item.id);
+        }
+
+        if (item.hops >= maxHops) continue;
+
+        for (const nextId of node.neighbors || []) {
+            if (visited.has(nextId)) continue;
+            if (!nodeMap[nextId]) continue;
+            if (isLockedSecretNode(nextId)) continue;
+
+            visited.add(nextId);
+            queue.push({ id: nextId, hops: item.hops + 1 });
+        }
+    }
+
+    return result;
+}
+
+function chooseNodeAwayFromSource(candidateIds, source, avoidIds = new Set()) {
+    const nodeMap = getCurrentNodeMap();
+    if (!candidateIds.length) return null;
+
+    const sx = source?.x ?? state.player?.x ?? 0;
+    const sy = source?.y ?? state.player?.y ?? 0;
+
+    let bestId = null;
+    let bestScore = -Infinity;
+
+    for (const id of candidateIds) {
+        if (avoidIds.has(id)) continue;
+
+        const node = nodeMap[id];
+        if (!node) continue;
+
+        const distFromSource = Math.hypot(node.x - sx, node.y - sy);
+        const distFromPlayer = state.player
+            ? Math.hypot(node.x - state.player.x, node.y - state.player.y)
+            : 0;
+
+        // Prefer nodes away from the enemy, but not absurdly far.
+        const score = distFromSource * 1.4 + distFromPlayer * 0.35;
+
+        if (score > bestScore) {
+            bestScore = score;
+            bestId = id;
+        }
+    }
+
+    return bestId;
+}
+
+function movePlayerToNodeWithInvuln(nodeId, invuln = 2.0) {
+    const node = getCurrentNodeMap()[nodeId];
+    if (!node || !state.player) return false;
+
+    clearQueuedDirectionCompat();
+    queuedDirection = null;
+    queuedDirectionName = null;
+
+    state.player.currentNode = nodeId;
+    state.player.previousNode = null;
+    state.player.targetNode = null;
+    state.player.x = node.x;
+    state.player.y = node.y;
+    state.player.dir = { x: 0, y: 0 };
+    state.player.invuln = invuln;
+    state.player.portalCooldown = 0.35;
+
+    resetPlayerTemporaryState(invuln);
+    startRespawnSpotlight();
+
+    return true;
+}
+
+function dropMotherAndKnockPlayer(source) {
+    const mother = getActiveMother();
+    const player = state.player;
+    if (!mother || !mother.carried || !player) return;
+
+    const originNodeId =
+        player.currentNode ||
+        getNearestSceneNodeId(player.x, player.y, 180) ||
+        getSceneConfig().startNode;
+
+    const enemyNodeId = source
+        ? getNearestSceneNodeId(source.x, source.y, 180)
+        : null;
+
+    const candidates = getNodeIdsWithinHops(originNodeId, 3);
+
+    const avoidForPlayer = new Set();
+    if (originNodeId) avoidForPlayer.add(originNodeId);
+    if (enemyNodeId) avoidForPlayer.add(enemyNodeId);
+
+    const playerNodeId =
+        chooseNodeAwayFromSource(candidates, source, avoidForPlayer) ||
+        player.previousNode ||
+        originNodeId;
+
+    const avoidForMother = new Set();
+    if (enemyNodeId) avoidForMother.add(enemyNodeId);
+    if (playerNodeId) avoidForMother.add(playerNodeId);
+
+    const motherNodeId =
+        choose(candidates.filter(id => !avoidForMother.has(id))) ||
+        originNodeId;
+
+    mother.carried = false;
+    mother.nodeId = motherNodeId;
+    mother.groundPose = Math.floor(Math.random() * 4);
+    mother.pickupLock = 0.75;
+
+    player.setCarryingMother(false);
+
+    movePlayerToNodeWithInvuln(playerNodeId, 2.0);
+
+    showFloatingText(
+        player.x,
+        player.y - 80,
+        "Mother dropped!",
+        "#fff7cc",
+        1.4
+    );
+
+    playSfx(sounds.eOh, null, "motherDrop");
 }
 
 function updateMother(dt) {
@@ -6470,11 +6624,10 @@ function updateTroops(dt) {
     if (troop.hidden) continue;
 
     if (
-      state.scene === "main" &&
-      state.pj?.active &&
-      Math.hypot(state.pj.x - troop.x, state.pj.y - troop.y) < 42
+    canPJSwatEnemies() &&
+    Math.hypot(state.pj.x - troop.x, state.pj.y - troop.y) < 42
     ) {
-      triggerPJSwat(state.pj);
+     triggerPJSwat(state.pj);
       playSfx(sounds.grunt);
       showFloatingText(troop.x, troop.y - 36, "Shoo!", "#fff", 0.9);
 
@@ -6486,10 +6639,23 @@ function updateTroops(dt) {
     }
 
     if (distance(state.player, troop) < 34) {
-      startCatch(troop);
-      break;
+        handleEnemyBodyCollision(troop);
+        break;
     }
   }
+}
+
+function handleEnemyBodyCollision(enemy) {
+    if (state.player?.invuln > 0) return;
+
+    const mother = getActiveMother();
+
+    if (mother?.carried) {
+        dropMotherAndKnockPlayer(enemy);
+        return;
+    }
+
+    startCatch(enemy);
 }
 
 function restartBossLevel() {
@@ -6557,7 +6723,8 @@ function updateBossCollisions() {
     for (const troop of state.troops) {
         if (Math.hypot(player.x - troop.x, player.y - troop.y) < 34) {
             if (mother.carried) {
-                dropMotherAndResetPlayer();
+                // dropMotherAndResetPlayer();
+                handleEnemyBodyCollision(troop);
             } else {
                 restartBossLevel();
             }
