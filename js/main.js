@@ -2405,9 +2405,18 @@ function startBossMode() {
   state.mainMotherTimer = 0;
   state.secretRewardsFound = {};
   state.secretRewardPopups = [];
-  refillBananas();
-  dequeueSceneMusic(false);
-  startSceneSpotlight();
+    refillBananas();
+
+    if (state.pendingSceneMusic) {
+        dequeueSceneMusic();
+    } else {
+        playSceneMusic({
+            sounds,
+            isBossScene: false
+        });
+    }
+
+    startSceneSpotlight();
 }
 
 
