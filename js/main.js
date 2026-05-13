@@ -258,9 +258,9 @@ function getIntroJabWalkFrame(t) {
 //     return getIntroFrame(t, OPENING_INTRO_TIMING.motherShunStart, 6, 4, false);
 // }
 
-function getIntroHeartFrame(t) {
-    return getIntroFrame(t, OPENING_INTRO_TIMING.heartAnimStart, 10, 8, true);
-}
+// function getIntroHeartFrame(t) {
+//     return getIntroFrame(t, OPENING_INTRO_TIMING.heartAnimStart, 10, 8, true);
+// }
 
 function getIntroLoopFrame(t) {
     return getIntroFrame(t, OPENING_INTRO_TIMING.introLoopStart, 6, 4, true);
@@ -280,9 +280,9 @@ function shouldDrawStaticBrokenHeart(t) {
     );
 }
 
-function shouldDrawIntroHeartAnim(t) {
-    return t >= OPENING_INTRO_TIMING.heartAnimStart;
-}
+// function shouldDrawIntroHeartAnim(t) {
+//     return t >= OPENING_INTRO_TIMING.heartAnimStart;
+// }
 
 function shouldDrawIntroLoop(t) {
     return t >= OPENING_INTRO_TIMING.introLoopStart;
@@ -769,23 +769,23 @@ function shouldUseBigSecretReveal() {
     return (state.level || 1) === 1;
 }
 
-function getSecretRevealOverlayImage() {
-    if (!shouldUseBigSecretReveal()) return null;
+// function getSecretRevealOverlayImage() {
+//     if (!shouldUseBigSecretReveal()) return null;
 
-    if (state.scene === "main") {
-        return spriteStore.secretRoom_bb_overlay || null;
-    }
+//     if (state.scene === "main") {
+//         return spriteStore.secretRoom_bb_overlay || null;
+//     }
 
-    if (state.scene === "boss") {
-        return spriteStore.secretRoom_ck_overlay || null;
-    }
+//     if (state.scene === "boss") {
+//         return spriteStore.secretRoom_ck_overlay || null;
+//     }
 
-    if (state.scene === "chill") {
-        return spriteStore.secretRoom_ch_overlay || null;
-    }
+//     if (state.scene === "chill") {
+//         return spriteStore.secretRoom_ch_overlay || null;
+//     }
 
-    return null;
-}
+//     return null;
+// }
 
 function drawSecretRewardSparkles() {
     const sceneRewards = SECRET_REWARDS[state.scene];
@@ -5650,95 +5650,6 @@ function startGame() {
 
     startMainScene();
 }
-
-// function startGame() {
-//     state.mode = "playing";
-//     state.paused = false;
-//     state.scene = "main";
-//     state.boss = null;
-//     state.cardBackground = backgroundImage;
-//     state.loadScreenImage = getLevelCardImage(1);
-//     state.score = 0;
-//     state.acceptanceScore = 0;
-//     state.lives = 3;
-//     state.hearts = [];
-//     state.fieldHearts = [];
-//     state.flyingHearts = [];
-//     state.mainSecretUnlocked = false;
-//     state.mainSecretEntered = false;
-//     state.mainMotherPose = "sit";
-//     state.mainMotherTimer = 0;
-//     state.particles = [];
-//     state.catchAnim = null;
-//     state.acceptance = 0;
-//     // state.level = 1;
-//     state.level = DEBUG ? DEBUG_TEST_LEVEL : 1;    state.levelUp = null;
-//     state.levelIntro = null;
-//     state.bossIntro = null;
-//     state.kongIntroSeenThisGame = false;
-//     state.unlocks = {
-//         butterfly: false,
-//         pj: false,
-//         snatchers: false,
-//         kongEvent: false,
-//         lantern: false,
-//         tireSwing: false
-//     };
-
-//     state.hands = [];
-//     state.bananas = [];
-//     state.bananaTimestamps = [];
-//     state.zookeeper = {
-//         anim: "idle",
-//         frame: 0,
-//         time: 0,
-//         didThrowSound: false
-//     };
-//     state.zookeeper2 = {
-//         anim: "idle",
-//         frame: 0,
-//         time: 0,
-//         timer: rand(2.5, 6),
-//         action: "idle",
-//         actionTimer: 0
-//     };
-//     state.heartThrowTimer = 2.5;
-//     state.heartsThrown = 0;
-//     state.maxActiveHearts = 1;
-//     state.heartCooldown = 0;
-//     state.lastHeartNodeId = null;
-
-//     if (state.zookeeper) {
-//         state.zookeeper.action = "normal";
-//         state.zookeeper.actionTimer = 0;
-//     }
-//     refillBananas();
-//     state.pj = null;
-//     state.butterfly = null;
-//     state.nanaSnatchers = [];
-//     state.pjRewardBunches = [];
-//     resetActors();
-//     applyLevelConfig();
-//     // newRound();
-//     resetScene();
-//     debugLog(state, "[AUDIO] playSceneMusic startGame/main");
-//     playSceneMusic({
-//         sounds,
-//         isBossScene: false
-//     });
-//     state.bananaTimestamps = [];
-//     state.mainEnding = null;
-//     state.mainSecretEntered = false;
-//     state.mainMotherPose = "sit";
-//     state.mainMotherTimer = 0;
-//     state.pendingHeartThrow = null;
-//     state.secretRewardsFound = {};
-//     state.secretRewardPopups = [];
-//     state.bananaTimestamps = [];
-//     resetKongEvent(state);
-//     state.pjRewardBunches = [];
-//     state.dizzyTimer = 0;
-// }
 
 function newRound() {
     clearQueuedDirectionCompat();

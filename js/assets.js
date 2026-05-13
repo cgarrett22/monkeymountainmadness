@@ -96,9 +96,6 @@ export function loadSprites() {
   spriteStore.gameOverCard = new Image();
   spriteStore.gameOverCard.src = "assets/game-over-card.webp";
 
-  spriteStore.youWinCard = new Image();
-  spriteStore.youWinCard.src = "assets/you-win-card.webp";
-
   spriteStore.gameStartCard = new Image();
   spriteStore.gameStartCard.src = "assets/game-start-card.webp";
 
@@ -180,12 +177,6 @@ export function loadSprites() {
   spriteStore.secretRoom_bb = new Image();
   spriteStore.secretRoom_bb.src = "sprites/secret-room-bb.webp";  
 
-  spriteStore.secretRoom_bb_overlay = new Image();
-  spriteStore.secretRoom_bb_overlay.src = "sprites/secret-room-overlay-bb.webp"; 
-
-  spriteStore.secretRoom_ck_overlay = new Image();
-  spriteStore.secretRoom_ck_overlay.src = "sprites/secret-room-overlay-ck.webp"; 
-
   spriteStore.secretRoom_ck = new Image();
   spriteStore.secretRoom_ck.src = "sprites/secret-room-ck.webp";  
 
@@ -211,9 +202,6 @@ export function loadSprites() {
 
   spriteStore.introJabWeeping = new Image();
   spriteStore.introJabWeeping.src = "sprites/intro/introJabWeeping.webp";  
-
-  spriteStore.introBrokenHeart = new Image();
-  spriteStore.introBrokenHeart.src = "sprites/intro/introBrokenHeart.webp";
 
   spriteStore.introHeart = new Image();
   spriteStore.introHeart.src = "sprites/intro/intro-heart.webp";
@@ -315,12 +303,6 @@ export function loadSounds(state) {
 
   sounds.gameOver = new Howl({
     src: ["assets/game-over.m4a"],
-    volume: 0.75,
-    preload: true
-  });
-
-  sounds.explosion = new Howl({
-    src: ["assets/explosion.m4a"],
     volume: 0.75,
     preload: true
   });
