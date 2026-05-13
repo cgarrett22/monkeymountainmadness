@@ -146,6 +146,13 @@ const muteButton = {
     ...MUTE_BUTTON
 };
 
+const pauseButton = {
+    x: 0,
+    y: 0,
+    w: 54,
+    h: 32
+};
+
 const MAX_ACTIVE_BANANAS = 3;
 
 const CLOUD_SCROLL_SPEED = 14;
@@ -1035,6 +1042,13 @@ function nodePos(id) {
 function toggleMute() {
     state.isMuted = !state.isMuted;
     applyMuteState(sounds, state);
+}
+
+function togglePause() {
+    if (state.mode !== "playing") return;
+    if (state.levelIntro || state.bossIntro || state.levelUp) return;
+
+    state.paused = !state.paused;
 }
 
 function getCurrentNodeMap() {
@@ -2392,7 +2406,7 @@ function startBossMode() {
   state.secretRewardsFound = {};
   state.secretRewardPopups = [];
   refillBananas();
-  dequeueSceneMusic(true);
+  dequeueSceneMusic(false);
   startSceneSpotlight();
 }
 
@@ -4352,7 +4366,7 @@ function drawHudOverlay() {
     ctx.fillStyle = "#c8ffd8";
 
     const leftX = pad;
-    const rightTextX = canvas.width - 110;
+    const rightTextX = canvas.width - 250;
 
     // LEFT: banana score + level
     ctx.textAlign = "left";
@@ -4388,29 +4402,46 @@ function drawHudOverlay() {
         ctx.restore();
     }
 
-    // Mute button box
-    muteButton.w = 54;
-    muteButton.h = 32;
-    muteButton.x = canvas.width - muteButton.w - 16;
-    muteButton.y = 11;
+// HUD buttons
+const buttonW = 64;
+const buttonH = 36;
+const buttonGap = 14;
+const buttonY = Math.round((h - buttonH) / 2);
 
+// Mute button on far right
+muteButton.w = buttonW;
+muteButton.h = buttonH;
+muteButton.x = canvas.width - muteButton.w - 18;
+muteButton.y = buttonY;
+
+// Pause button immediately left of mute
+pauseButton.w = buttonW;
+pauseButton.h = buttonH;
+pauseButton.x = muteButton.x - pauseButton.w - buttonGap;
+pauseButton.y = buttonY;
+
+function drawHudButton(rect, label) {
     ctx.fillStyle = "rgba(255,255,255,0.12)";
     ctx.strokeStyle = "rgba(255,255,255,0.25)";
     ctx.lineWidth = 1.5;
-    roundRect(ctx, muteButton.x, muteButton.y, muteButton.w, muteButton.h, 8);
+
+    roundRect(ctx, rect.x, rect.y, rect.w, rect.h, 8);
     ctx.fill();
     ctx.stroke();
 
-    ctx.font = "30px Arial";
+    ctx.font = "26px Arial";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#ffffff";
     ctx.fillText(
-        state.isMuted ? "🔇" : "🔊",
-        muteButton.x + muteButton.w / 2,
-        muteButton.y + muteButton.h / 2 + 1
+        label,
+        rect.x + rect.w / 2,
+        rect.y + rect.h / 2 + 1
     );
+}
 
+drawHudButton(pauseButton, state.paused ? "▶" : "⏸");
+drawHudButton(muteButton, state.isMuted ? "🔇" : "🔊");
     ctx.restore();
 }
 
@@ -7621,6 +7652,10 @@ function update(dt) {
         return;
     }
 
+    if (state.paused) {
+        return;
+    }
+
     if (state.mode === "sceneWin") {
         state.sceneWinTimer = (state.sceneWinTimer || 0) + dt;
         if (state.sceneWinTimer >= SCENE_WIN_DURATION) {
@@ -8394,6 +8429,7 @@ function drawBossCoconut(coconut) {
 // ======================================================
 // INPUT
 // ======================================================
+let suppressNextPointerUpJump = false;
 let threeFingerGestureArmed = false;
 
 canvas.addEventListener("pointerdown", (e) => {
@@ -8444,6 +8480,24 @@ canvas.addEventListener("pointerdown", (e) => {
         return;
     }
 
+    if (pointInRect(x, y, pauseButton)) {
+        suppressNextPointerUpJump = true;
+        touchStart = null;
+        swipeHandled = false;
+        togglePause();
+        e.preventDefault();
+        return;
+    }
+
+    if (pointInRect(x, y, muteButton)) {
+        suppressNextPointerUpJump = true;
+        touchStart = null;
+        swipeHandled = false;
+        toggleMute();
+        e.preventDefault();
+        return;
+    }
+
     // Do NOT jump on pointerdown.
     // Wait until pointerup so we can tell tap from swipe.
     touchStart = {
@@ -8461,6 +8515,13 @@ canvas.addEventListener("pointerdown", (e) => {
 });
 
 canvas.addEventListener("pointerup", (e) => {
+    if (suppressNextPointerUpJump) {
+        suppressNextPointerUpJump = false;
+        touchStart = null;
+        swipeHandled = false;
+        e.preventDefault();
+        return;
+    }
     if (!touchStart) {
         swipeHandled = false;
         return;

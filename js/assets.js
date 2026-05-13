@@ -346,11 +346,13 @@ export function applyMuteState(sounds, state) {
   }
 }
 
-export function playSceneMusic({ sounds, isBossScene }) {
+export function playSceneMusic({ sounds, isBossScene = false } = {}) {
   stopAllMusic(sounds);
 
-  const track = isBossScene ? sounds.bossMusic : sounds.music;
-  if (!track) return;
+  // CK intentionally uses the normal scene music now.
+  // Keep isBossScene in the signature so callers do not need to change.
+  const track = sounds.music;
+  if (!track) return null;
 
   try {
     if (typeof track.seek === "function") {
