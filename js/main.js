@@ -4375,7 +4375,7 @@ function drawHudOverlay() {
     ctx.fillStyle = "#c8ffd8";
 
     const leftX = pad;
-    const rightTextX = canvas.width - 250;
+    const rightTextX = canvas.width - 340;
 
     // LEFT: banana score + level
     ctx.textAlign = "left";
@@ -4395,7 +4395,7 @@ function drawHudOverlay() {
 
     // RIGHT: monkey-head lives
     ctx.textAlign = "right";
-    ctx.font = "28px Arial";
+    ctx.font = "36px Arial";
     ctx.fillText(`🐵 ${state.lives}`, rightTextX, h / 2);
 
     if (state.paused) {
@@ -4412,9 +4412,9 @@ function drawHudOverlay() {
     }
 
 // HUD buttons
-const buttonW = 64;
-const buttonH = 36;
-const buttonGap = 14;
+const buttonW = 96;
+const buttonH = 54;
+const buttonGap = 16;
 const buttonY = Math.round((h - buttonH) / 2);
 
 // Mute button on far right
