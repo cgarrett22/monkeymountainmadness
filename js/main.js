@@ -21,7 +21,9 @@ import {
     HIGH_FIVE_BONUS,
     SWIPE_THRESHOLD,
     HOME_NODE,
-    MUTE_BUTTON
+    MUTE_BUTTON,
+    ZONE_MAP_ZONES,
+    ZONE_MAP_CLICK_ORDER
 } from "./config.js";
 
 import {
@@ -387,8 +389,8 @@ const INTRO_LAYOUT = {
         cols: 8,
         rows: 1,
         frames: 8,
-        x: 410,
-        y: 660,
+        x: 493,
+        y: 636,
         drawW: 540,
         drawH: 625
     },
@@ -1832,7 +1834,7 @@ const INTRO_SKIP_BUTTON = {
 function finishOpeningCutscene() {
     stopAllMusic(sounds);
     state.openingCutscene = null;
-    showLevelIntro(state.level || 1, "main");
+    showZoneMap();
 }
 
 function skipOpeningCutscene() {
@@ -2773,7 +2775,7 @@ state.unlocks.kongEvent = true;
 resetKongEvent(state);
 
 state.butterfly = createButterfly("CH38", getCurrentNodeMap());
-state.pj = createPJ("CH53", getCurrentNodeMap());
+state.pj = createPJ("CH26", getCurrentNodeMap());
 
 refillBananas();
 
@@ -2982,7 +2984,7 @@ function updateLevelUp(dt) {
 }
 
 function handlePostLevelUp() {
-    showLevelIntro(state.level, "main");
+    showZoneMap();
 }
 
 function spawnBossRoamers() {
@@ -5407,6 +5409,132 @@ function getFirstExistingNodeId(...ids) {
     return getSceneConfig().startNode;
 }
 
+// zones
+function showZoneMap() {
+    stopAllMusic(sounds);
+
+    state.mode = "zoneMap";
+    state.levelIntro = null;
+    state.bossIntro = null;
+    state.levelUp = null;
+    state.openingCutscene = null;
+    state.pendingSceneMusic = null;
+    state.selectedZoneId = null;
+
+    debugLog(state, "[ZONE] show map");
+}
+
+function isZoneUnlocked(zoneId) {
+    const zone = ZONE_MAP_ZONES[zoneId];
+    if (!zone) return false;
+
+    // Static unlock from config.
+    if (zone.unlocked) return true;
+
+    // First milestone: after Mother is acquired, unlock Chill + Ticket.
+    if (state.motherAcquired) {
+        return zoneId === "chillHill" || zoneId === "ticketTime";
+    }
+
+    return false;
+}
+
+function getUnlockedZoneIds() {
+    return Object.keys(ZONE_MAP_ZONES).filter(isZoneUnlocked);
+}
+
+function drawZoneMap() {
+    ctx.save();
+
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const base = spriteStore.zoneMapBase;
+    if (base?.complete && base.naturalWidth > 0) {
+        ctx.drawImage(base, 0, 0, canvas.width, canvas.height);
+    }
+
+    for (const zoneId of getUnlockedZoneIds()) {
+        const zone = ZONE_MAP_ZONES[zoneId];
+        const img = spriteStore[zone.overlayKey];
+
+        if (img?.complete && img.naturalWidth > 0) {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        }
+    }
+
+    ctx.restore();
+}
+
+function getClickedZoneId(x, y) {
+    const order = Array.isArray(ZONE_MAP_CLICK_ORDER)
+        ? ZONE_MAP_CLICK_ORDER
+        : Object.keys(ZONE_MAP_ZONES);
+
+    for (const zoneId of order) {
+        const zone = ZONE_MAP_ZONES[zoneId];
+        if (!zone?.bounds) continue;
+
+        if (pointInRect(x, y, zone.bounds)) {
+            return zoneId;
+        }
+    }
+
+    return null;
+}
+
+function enterZone(zoneId) {
+    const zone = ZONE_MAP_ZONES[zoneId];
+    if (!zone) return;
+
+    if (!isZoneUnlocked(zoneId)) {
+        debugLog(state, "[ZONE] locked", { zoneId });
+        return;
+    }
+
+    debugLog(state, "[ZONE] enter", {
+        zoneId,
+        scene: zone.scene || null,
+        type: zone.type || "scene"
+    });
+
+    if (zone.type && zone.type !== "scene") {
+        // Placeholder for shop/ticket/cafe menus.
+        showFloatingText(
+            canvas.width / 2,
+            canvas.height * 0.78,
+            `${zone.label} coming soon!`,
+            "#fff7cc",
+            1.5
+        );
+        return;
+    }
+
+    if (zone.scene === "main") {
+        showLevelIntro(state.level || 1, "main");
+        return;
+    }
+
+    if (zone.scene === "chill") {
+        showLevelIntro(state.level || 1, "chill");
+        return;
+    }
+
+    if (zone.scene === "boss") {
+        showBossIntro(state.level || 1);
+        return;
+    }
+
+    showFloatingText(
+        canvas.width / 2,
+        canvas.height * 0.78,
+        `${zone.label} coming soon!`,
+        "#fff7cc",
+        1.5
+    );
+}
+// end zones
+
 function setupSceneCompanions() {
     const unlocked = !!state.unlocks?.pj;
 
@@ -5431,12 +5559,12 @@ function setupSceneCompanions() {
 
     if (state.scene === "chill") {
         state.butterfly = createButterfly(
-            getFirstExistingNodeId("CH38", "CH53", getSceneConfig().startNode),
+            getFirstExistingNodeId("CH38", "CH26", getSceneConfig().startNode),
             getCurrentNodeMap()
         );
 
         state.pj = createPJ(
-            getFirstExistingNodeId("CH53", "CH38", getSceneConfig().startNode),
+            getFirstExistingNodeId("CH26", "CH38", getSceneConfig().startNode),
             getCurrentNodeMap()
         );
         return;
@@ -5541,10 +5669,25 @@ function beginGame() {
         return;
     }
 
-    if (state.mode === "sceneWin") {
-        goToNextScene();
+    if (state.mode === "zoneMap") {
         return;
     }
+
+    // if (state.mode === "sceneWin") {
+    //     showZoneMap();
+    //     return;
+    // }
+
+
+if (state.mode === "sceneWin") {
+    if (state.scene === "main") {
+        state.motherAcquired = true;
+    }
+
+    showZoneMap();
+    e?.preventDefault?.();
+    return;
+}
 }
 
 const sharedDeps = {
@@ -6270,15 +6413,16 @@ function resetHeartObjectiveState() {
 }
 
 function goToNextScene() {
-    state.mode = "playing";
     state.sceneWinTimer = 0;
 
     if (DEBUG_LOOP_MAIN_SCENE) {
+        state.mode = "playing";
         startMainScene();
         return;
     }
 
     if (DEBUG_LOOP_KONG_SCENE) {
+        state.mode = "playing";
         showBossIntro(state.level);
         return;
     }
@@ -6286,16 +6430,18 @@ function goToNextScene() {
     if (state.scene === "main") {
         state.motherAcquired = true;
 
+        // These may eventually move later in the spoon-feed,
+        // but keep them here for now if current testing expects them.
         state.unlocks.butterfly = true;
         state.unlocks.pj = true;
         state.unlocks.kongEvent = true;
 
-        showLevelIntro(state.level, "chill");
+        showZoneMap();
         return;
     }
 
     if (state.scene === "chill") {
-        showBossIntro(state.level);
+        showZoneMap();
         return;
     }
 
@@ -6304,6 +6450,8 @@ function goToNextScene() {
         showLevelUp(state.level);
         return;
     }
+
+    showZoneMap();
 }
 
 function getSceneKey() {
@@ -7682,6 +7830,9 @@ function update(dt) {
         updateOpeningCutscene(dt);
         return;
     }
+    if (state.mode === "zoneMap") {
+        return;
+    }
     if (state.levelUp) {
         updateLevelUp(dt);
         return;
@@ -8308,6 +8459,13 @@ function draw() {
         return;
     }
 
+    if (state.mode === "zoneMap") {
+        drawZoneMap();
+        drawDebugConsole();
+        ctx.restore();
+        return;
+    }
+
     if (state.mode === "sceneEnding") {
         drawMainEndingOverlay();
         drawDebugConsole();
@@ -8513,6 +8671,16 @@ canvas.addEventListener("pointerdown", (e) => {
         return;
     }
 
+    if (state.mode === "zoneMap") {
+        const zoneId = getClickedZoneId(x, y);
+
+        if (zoneId) {
+            enterZone(zoneId);
+        }
+
+        return;
+    }
+
     if (pointInRect(x, y, muteButton)) {
         toggleMute();
         return;
@@ -8570,6 +8738,12 @@ canvas.addEventListener("pointerup", (e) => {
         !touchStart.moved &&
         dist < SWIPE_THRESHOLD;
 
+    if (state.mode === "zoneMap") {
+        touchStart = null;
+        swipeHandled = false;
+        return;
+    }    
+
     if (
         wasTap &&
         //state.scene === "boss" &&
@@ -8618,6 +8792,34 @@ if (e.key.toLowerCase() === "j") {
       state.showDebugConsole = !state.showDebugConsole;
       e.preventDefault();
   }
+
+  if (state.mode === "zoneMap") {
+    // Keep debug console available.
+    if (e.key === "`" || e.key === "~") {
+        state.showDebugConsole = !state.showDebugConsole;
+        e.preventDefault();
+        return;
+    }
+
+    // Optional: Enter/Space starts the first unlocked playable zone.
+    if (e.key === "Enter" || e.code === "Space" || e.key === " ") {
+        const firstPlayableZoneId = getUnlockedZoneIds().find(id => {
+            const zone = ZONE_MAP_ZONES[id];
+            return zone && (!zone.type || zone.type === "scene");
+        });
+
+        if (firstPlayableZoneId) {
+            enterZone(firstPlayableZoneId);
+        }
+
+        e.preventDefault();
+        return;
+    }
+
+    // Do not let arrows, J, C, N, K, X, etc. leak into gameplay/debug shortcuts.
+    e.preventDefault();
+    return;
+}
 
    if (state.mode === "caveReveal") {
         showSceneWin();
@@ -8672,7 +8874,8 @@ document.addEventListener("keyup", (e) => {
 canvas.addEventListener("pointermove", (e) => {
     if (!touchStart) return;
 
-    canvas.style.touchAction = "none";
+    e.preventDefault();
+    // canvas.style.touchAction = "none";
 
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;

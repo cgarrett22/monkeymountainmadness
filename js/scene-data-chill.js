@@ -1,72 +1,85 @@
-// scene-data-chill.js
-
 export const CHILL_BANANA_NODE_IDS = [
+  "CH1",
+  "CH5",
   "CH9",
-  "CH12",
+  "CH10",
   "CH13",
-  "CH26",
-  "CH27",
-  "CH33",
-  "CH38",
-  "CH49",
-  "CH50",
-  "CH53"
+  "CH15",
+  "CH17",
+  "CH25",
+  "CH37",
+  "CH40"
 ];
 
 export const chillConfig = {
-  startNode: "N71",
-  goalNode: "CH1"
+  startNode: "CH26",
+  goalNode: "CH38"
 };
 
 export const chillPortals = {
-  cave: {
-    CH23: "CH51",
-    CH51: "CH23",
-    CH22: "CH25",
-    CH25: "CH22",
-    CH5: "CH4",
-    CH4: "CH5"
-  },
+  // Best-guess edge wraps based on near-edge x positions and closest vertical pairing.
   wrap: {
-    CH37: "CH11",
-    CH11: "CH37",
-    CH56: "CH40",
-    CH40: "CH56"
+    CH3: "CH6",
+    CH6: "CH3",
+    CH39: "CH8",
+    CH8: "CH39"
+  },
+
+  // Best guess. There are four leftover non-secret cave candidates, not three.
+  cave: {
+    CH14: "CH30",
+    CH30: "CH32",
+    CH32: "CH29",
+    CH29: "CH14"
   }
 };
 
-export const chillEnemyEntryNodeIds = ["CH22", "CH51"];
-
+export const chillEnemyEntryNodeIds = [
+  "CH14",
+  "CH29",
+  "CH30",
+  "CH32"
+];
 
 export const chillSecretRewards = {
-  CH44: {
+  CH22: {
     type: "bananaBunch",
-    x: 1014,
-    y: 951,
+    x: 1000,
+    y: 950,
     min: 5,
     max: 10
   },
-  CH46: {
+  CH23: {
     type: "bananaBunch",
-    x: 669,
-    y: 1453,
+    x: 730,
+    y: 1506,
     min: 5,
     max: 10
   },
-    CH47: {
+  CH24: {
     type: "bananaBunch",
-    x: 185,
-    y: 1438,
+    x: 309,
+    y: 1540,
     min: 5,
     max: 10
   }
 };
+
+export const chillDeliveryRoute = [
+  "CH3",
+  "CH2",
+  "CH31",
+  "CH1",
+  "CH27",
+  "CH5",
+  "CH6"
+];
 
 export const chillSecretRoom = {
   visibleBeforeUnlock: true,
-  lockedNodeId: "CH1",
-  entryNodeId: "CH1",
-  destinationNodeId: "CH1",
+  lockedNodeId: "CH38",
+  entryNodeId: "CH38",
+  destinationNodeId: "CH38",
   unlockCondition: "heartsComplete",
   pulseAfterUnlock: true,
   completionType: "sceneEnd",

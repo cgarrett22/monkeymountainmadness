@@ -222,13 +222,56 @@ export function loadSprites() {
   spriteStore.introJabDirectional.src = "sprites/intro/introJabDirectional.webp";  
 
   spriteStore.introZookeepers = new Image();
-  spriteStore.introZookeepers.src = "sprites/intro/introZookeepers.webp";  
+  spriteStore.introZookeepers.src = "sprites/intro/introZookeepers.png";  
 
   spriteStore.introThoughtBubble = new Image();
   spriteStore.introThoughtBubble.src = "sprites/intro/introThoughtBubble.webp";  
 
   spriteStore.introMother = new Image();
   spriteStore.introMother.src = "sprites/intro/introMother.webp";  
+
+  // === zone map ===
+spriteStore.zoneMapBase = new Image();
+spriteStore.zoneMapBase.src = "assets/zones/zone-map-base.webp";
+
+spriteStore.zoneOverlayBB = new Image();
+spriteStore.zoneOverlayBB.src = "assets/zones/zone-overlay-bb.webp";
+
+spriteStore.zoneOverlayCH = new Image();
+spriteStore.zoneOverlayCH.src = "assets/zones/zone-overlay-ch.webp";
+
+spriteStore.zoneOverlayCK = new Image();
+spriteStore.zoneOverlayCK.src = "assets/zones/zone-overlay-ck.webp";
+
+spriteStore.zoneOverlayMonkeyForest = new Image();
+spriteStore.zoneOverlayMonkeyForest.src = "assets/zones/zone-overlay-mf.webp";
+
+spriteStore.zoneOverlayPandaCity = new Image();
+spriteStore.zoneOverlayPandaCity.src = "assets/zones/zone-overlay-pc.webp";
+
+spriteStore.zoneOverlayMadBirds = new Image();
+spriteStore.zoneOverlayMadBirds.src = "assets/zones/zone-overlay-mb.webp";
+
+spriteStore.zoneOverlaySomethingGishy = new Image();
+spriteStore.zoneOverlaySomethingGishy.src = "assets/zones/zone-overlay-sf.webp";
+
+spriteStore.zoneOverlayJungleFever = new Image();
+spriteStore.zoneOverlayJungleFever.src = "assets/zones/zone-overlay-jf.webp";
+
+spriteStore.zoneOverlayCatCountry = new Image();
+spriteStore.zoneOverlayCatCountry.src = "assets/zones/zone-overlay-cc.webp";
+
+spriteStore.zoneOverlaySavannaNana = new Image();
+spriteStore.zoneOverlaySavannaNana.src = "assets/zones/zone-overlay-sn.webp";
+
+spriteStore.zoneOverlayIchiCafe = new Image();
+spriteStore.zoneOverlayIchiCafe.src = "assets/zones/zone-overlay-ic.webp";
+
+spriteStore.zoneOverlayGiftShop = new Image();
+spriteStore.zoneOverlayGiftShop.src = "assets/zones/zone-overlay-gs.webp";
+
+spriteStore.zoneOverlayTicketTime = new Image();
+spriteStore.zoneOverlayTicketTime.src = "assets/zones/zone-overlay-tt.webp";
 
   return spriteStore;
 }
@@ -334,14 +377,6 @@ export function loadSounds(state) {
     html5: true
   });
 
-  sounds.bossMusic = new Howl({
-    src: ["assets/retro-arcade.mp3"],
-    volume: 0.75,
-    loop: true,
-    preload: true,
-    html5: true
-  });
-
   applyMuteState(sounds, state);
   return sounds;
 }
@@ -364,7 +399,7 @@ export function applyMuteState(sounds, state) {
   }
 }
 
-export function playSceneMusic({ sounds, isBossScene }) {
+export function playSceneMusic({ sounds, isBossScene = false }) {
   stopAllMusic(sounds);
 
   const track = isBossScene ? sounds.bossMusic : sounds.music;
