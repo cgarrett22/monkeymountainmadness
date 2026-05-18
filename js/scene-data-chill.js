@@ -19,18 +19,19 @@ export const chillConfig = {
 export const chillPortals = {
   // Best-guess edge wraps based on near-edge x positions and closest vertical pairing.
   wrap: {
-    CH3: "CH6",
-    CH6: "CH3",
-    CH39: "CH8",
-    CH8: "CH39"
+    CH3: "CH44",
+    CH44: "CH3",
+    CH14: "CH8",
+    CH8: "CH14",
+    CH39: "CH6",
+    CH6: "CH39"
   },
 
   // Best guess. There are four leftover non-secret cave candidates, not three.
   cave: {
-    CH14: "CH30",
     CH30: "CH32",
     CH32: "CH29",
-    CH29: "CH14"
+    CH29: "CH30"
   }
 };
 

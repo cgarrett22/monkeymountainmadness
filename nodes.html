@@ -924,19 +924,39 @@ canvas.addEventListener("pointerdown", e => {
 
   if (mode === "connect") {
     if (!hit) return;
+
     if (!selected) {
       selected = hit;
     } else if (selected !== hit) {
       const a = nodes[selected];
       const b = nodes[hit];
-      if (!a.neighbors.includes(hit)) a.neighbors.push(hit);
-      if (!b.neighbors.includes(selected)) b.neighbors.push(selected);
+
+      a.neighbors = a.neighbors || [];
+      b.neighbors = b.neighbors || [];
+
+      const alreadyLinked =
+        a.neighbors.includes(hit) ||
+        b.neighbors.includes(selected);
+
+      if (alreadyLinked) {
+        a.neighbors = a.neighbors.filter(id => id !== hit);
+        b.neighbors = b.neighbors.filter(id => id !== selected);
+      } else {
+        a.neighbors.push(hit);
+        b.neighbors.push(selected);
+      }
+
+      // clean duplicates, just in case
+      a.neighbors = [...new Set(a.neighbors)];
+      b.neighbors = [...new Set(b.neighbors)];
+
       selected = null;
       autoSave();
     }
+
     return;
   }
-
+  
   if (mode === "move") {
     if (hit) {
       dragging = hit;
