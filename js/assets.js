@@ -204,7 +204,7 @@ export function loadSprites() {
   // spriteStore.introBackground.src = "sprites/intro/introBackground.webp";  
 
   spriteStore.introBackgroundClose = new Image();
-  spriteStore.introBackgroundClose.src = "sprites/intro/introAltBG.png";  
+  spriteStore.introBackgroundClose.src = "sprites/intro/introAltBG.webp";  
 
   spriteStore.introJabBlinking = new Image();
   spriteStore.introJabBlinking.src = "sprites/intro/introJabBlinking.webp";  
@@ -222,7 +222,7 @@ export function loadSprites() {
   spriteStore.introJabDirectional.src = "sprites/intro/introJabDirectional.webp";  
 
   spriteStore.introZookeepers = new Image();
-  spriteStore.introZookeepers.src = "sprites/intro/introZookeepers.png";  
+  spriteStore.introZookeepers.src = "sprites/intro/introZookeepers.webp";  
 
   spriteStore.introThoughtBubble = new Image();
   spriteStore.introThoughtBubble.src = "sprites/intro/introThoughtBubble.webp";  
@@ -292,6 +292,24 @@ export function loadSounds(state) {
     rate: 1.12,
     preload: true
   });
+
+  // zones
+  sounds.conga = new Howl({
+    src: ["assets/zone-conga.m4a"],
+    volume: 0.70,
+    rate: 1,
+    loop: true,
+    preload: true
+  });
+
+  sounds.gong = new Howl({
+    src: ["assets/gong.m4a"],
+    volume: 0.75,
+    rate: 1.2,
+    preload: true
+  });
+
+// end zones
 
   sounds.score = new Howl({
     src: ["assets/score.m4a"],

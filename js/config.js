@@ -71,7 +71,7 @@ export const ZONE_MAP_ZONES = {
     scene: "boss",
     overlayKey: "zoneOverlayCK",
     unlocked: false,
-    bounds: { x: 280, y: 1192, w: 205, h: 62 }
+    bounds: { x: 136, y: 995, w: 340, h: 250 }
   },
   
   // top group

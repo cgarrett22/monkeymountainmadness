@@ -36,8 +36,8 @@ export const chillPortals = {
 };
 
 export const chillEnemyEntryNodeIds = [
-  "CH14",
-  "CH29",
+  // "CH14",
+  // "CH29",
   "CH30",
   "CH32"
 ];

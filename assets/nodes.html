@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Node Editor</title>
+<style>
+:root {
+  --panel-bg: rgba(0,0,0,0.84);
+  --panel-border: rgba(255,255,255,0.18);
+  --btn-bg: #333;
+  --btn-active: #0a7cff;
+  --text: #fff;
+  --muted: #b9c0cc;
+}
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #111;
+  color: var(--text);
+  font-family: Arial, sans-serif;
+}
+canvas {
+  display: block;
+  background: #222;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+button, input, select {
+  font-family: Arial, sans-serif;
+}
+button {
+  padding: 7px 8px;
+  font-size: 11px;
+  border-radius: 7px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: var(--btn-bg);
+  color: white;
+}
+button.active { background: var(--btn-active); }
+button.warn { background: #7b2d2d; }
+button.good { background: #206c3a; }
+button.small { padding: 4px 6px; font-size: 10px; }
+label {
+  font-size: 10px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+input[type="text"], select {
+  background: #111827;
+  color: #fff;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  padding: 5px 6px;
+  font-size: 11px;
+  min-width: 0;
+}
+#topPanel {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  z-index: 60;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: 145px 82px 145px 105px 125px 135px 1fr;
+  gap: 8px;
+  align-items: center;
+}
+#bgLoader {
+  color: white;
+  font-size: 10px;
+  max-width: 145px;
+}
+#toolbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0,0,0,0.92);
+  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 6px;
+  z-index: 50;
+}
+#outputWrap {
+  position: fixed;
+  top: 74px;
+  left: 8px;
+  right: 8px;
+  height: 58vh;
+  background: #000;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  z-index: 100;
+  display: none;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+#output {
+  width: 100%;
+  height: 100%;
+  background: #000;
+  color: #0f0;
+  font-size: 11px;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 38px 10px 10px 10px;
+  box-sizing: border-box;
+  touch-action: auto !important;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  white-space: pre;
+}
+#outputHeader {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  z-index: 110;
+}
+#outputHeader .left, #outputHeader .right {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+#status {
+  position: fixed;
+  left: 12px;
+  bottom: 62px;
+  z-index: 55;
+  background: rgba(0,0,0,0.7);
+  border-radius: 8px;
+  padding: 6px 9px;
+  font-size: 12px;
+  color: #e5e7eb;
+  pointer-events: none;
+}
+#legend {
+  position: fixed;
+  right: 10px;
+  bottom: 62px;
+  z-index: 55;
+  background: rgba(0,0,0,0.72);
+  border-radius: 8px;
+  padding: 7px 9px;
+  font-size: 11px;
+  color: #e5e7eb;
+  pointer-events: none;
+  max-width: 310px;
+  line-height: 1.3;
+}
+
+#toolToggleWrap {
+  position: fixed;
+  top: 14px;
+  left: 110px;
+  z-index: 220;
+  background: rgba(0,0,0,0.78);
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: white;
+  font: bold 12px Arial, sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#toolToggleWrap input {
+  margin: 0;
+}
+
+body.tools-hidden #topPanel,
+body.tools-hidden #status,
+body.tools-hidden #legend {
+  display: none;
+}
+
+body.tools-hidden #toolToggleWrap {
+  opacity: 0.82;
+}
+
+@media (max-width: 900px) {
+  #status {
+    left: 8px;
+    right: 8px;
+    bottom: 112px;
+    font-size: 11px;
+    text-align: center;
+  }
+}
+.pill {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 1px 6px;
+  margin: 1px 2px 1px 0;
+  background: rgba(255,255,255,0.12);
+}
+@media (max-width: 900px) {
+  #topPanel {
+    grid-template-columns: 1fr 68px 1fr 90px;
+    gap: 5px;
+    font-size: 10px;
+  }
+  #toolbar { grid-template-columns: repeat(5, 1fr); }
+  #legend { display: none; }
+}
+
+.toolbar-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.toolbar-split button {
+  min-width: 0;
+  padding-left: 0;
+  padding-right: 0;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#btn-tools-toggle.active {
+  background: var(--btn-active);
+}
+</style>
+</head>
+<body>
+
+<div id="topPanel">
+  <input type="file" id="bgLoader" accept="image/*" title="Load background image" />
+
+  <label>Prefix
+    <input id="prefixInput" type="text" value="CH" maxlength="8" />
+  </label>
+
+  <label>Export name
+    <input id="nameInput" type="text" value="chillNodes" />
+  </label>
+
+  <label>Scene
+    <input id="sceneInput" type="text" value="chill" />
+  </label>
+
+  <label>Banana const
+    <input id="bananaConstInput" type="text" value="CHILL_BANANA_NODE_IDS" />
+  </label>
+
+  <label>Edge pairing
+    <select id="edgePairMode">
+      <option value="sameY">same Y order</option>
+      <option value="reverseY">reverse Y order</option>
+    </select>
+  </label>
+
+  <label>Secret key
+    <input id="secretKeyInput" type="text" value="secretRoom_ch" />
+  </label>
+</div>
+
+<div id="outputWrap">
+  <div id="outputHeader">
+    <div class="left">
+      <button class="small good" onclick="copyOutput()">Copy</button>
+      <button class="small" onclick="downloadOutput()">Download</button>
+    </div>
+    <div class="right">
+      <button class="small" onclick="toggleOutput()">Close</button>
+    </div>
+  </div>
+  <textarea id="output" spellcheck="false"></textarea>
+</div>
+
+<canvas id="c"></canvas>
+
+<div id="status"></div>
+<div id="legend"></div>
+
+<div id="toolbar">
+  <button id="btn-none" onclick="setMode('none')">Pan</button>
+  <button id="btn-add" onclick="setMode('add')">Add</button>
+  <button id="btn-connect" onclick="setMode('connect')">Link</button>
+  <button id="btn-move" onclick="setMode('move')">Move</button>
+  <button id="btn-delete" onclick="setMode('delete')">Del</button>
+
+  <button id="btn-tag" onclick="handleTagButton()">Tag</button>
+  <button id="btn-grid" onclick="toggleGrid()">Grid</button>
+  <button id="btn-snap" onclick="toggleSnap()">Snap</button>
+  <div class="toolbar-split">
+    <button onclick="zoomIn()">+</button>
+    <button onclick="zoomOut()">−</button>
+  </div>
+  <button id="btn-tools-toggle" onclick="toggleToolsPanel()">Form</button>
+
+  <button onclick="nudgeLeft()">←</button>
+  <button onclick="nudgeUp()">↑</button>
+  <button onclick="nudgeDown()">↓</button>
+  <button onclick="nudgeRight()">→</button>
+  <button onclick="fitImage()">Fit</button>
+
+  <button onclick="resetView()">Reset View</button>
+  <button onclick="exportData()">Export</button>
+  <button onclick="importData()">Import</button>
+  <button onclick="validateAndReport()">Validate</button>
+  <button class="warn" onclick="clearAllConfirm()">Clear</button>
+</div>
+
+<script>
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+const output = document.getElementById("output");
+const wrap = document.getElementById("outputWrap");
+const statusEl = document.getElementById("status");
+const legendEl = document.getElementById("legend");
+
+let toolsVisible = true;
+
+function applyToolsVisibility() {
+  document.body.classList.toggle("tools-hidden", !toolsVisible);
+
+  const btn = document.getElementById("btn-tools-toggle");
+  if (btn) {
+    btn.classList.toggle("active", toolsVisible);
+    btn.textContent = toolsVisible ? "- Form" : "+ Form";
+  }
+
+  try {
+    localStorage.setItem("nodegen_tools_visible", toolsVisible ? "1" : "0");
+  } catch {}
+}
+
+function toggleToolsPanel() {
+  toolsVisible = !toolsVisible;
+  applyToolsVisibility();
+}
+
+const GAME_WIDTH = 1080;
+const GAME_HEIGHT = 1920;
+
+document.addEventListener("contextmenu", e => {
+  if (e.target.closest("#outputWrap") || e.target.closest("#topPanel")) return;
+  e.preventDefault();
+}, { passive: false });
+
+document.addEventListener("selectstart", e => {
+  if (e.target.closest("#outputWrap") || e.target.closest("#topPanel")) return;
+  e.preventDefault();
+}, { passive: false });
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
+// ---------- STATE ----------
+let nodes = {};
+let selected = null;
+let mode = "none";
+let grid = true;
+let snapToGrid = false;
+let importArmed = false;
+
+let viewScale = 1;
+let offsetX = 0;
+let offsetY = 0;
+let dragging = null;
+let dragStart = null;
+let idCounter = 1;
+let bgImage = null;
+let activeTag = "banana";
+
+const tagTypes = [
+  "none",
+  "banana",
+  "deliveryRoute",
+  "secretReward",
+  "edgePortal",
+  "cavePortal",
+  "startNode",
+  "goalNode",
+  "jumpTarget",
+  "stopHere"
+];
+
+const colors = {
+  banana: "#ffe066",
+  deliveryRoute: "#7dd3fc",
+  secretReward: "#f0abfc",
+  edgePortal: "#60a5fa",
+  cavePortal: "#fb923c",
+  startNode: "#22c55e",
+  goalNode: "#ef4444",
+  jumpTarget: "#a78bfa",
+  stopHere: "#ffffff"
+};
+
+// ---------- IMAGE ----------
+document.getElementById("bgLoader").addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const img = new Image();
+  img.onload = () => {
+    bgImage = img;
+    fitImage();
+  };
+  img.src = URL.createObjectURL(file);
+});
+
+// ---------- VIEW ----------
+function fitImage() {
+  viewScale = Math.min(canvas.width / GAME_WIDTH, canvas.height / GAME_HEIGHT);
+  offsetX = (canvas.width - GAME_WIDTH * viewScale) / 2;
+  offsetY = (canvas.height - GAME_HEIGHT * viewScale) / 2;
+}
+
+function resetView() {
+  fitImage();
+}
+
+function zoomAt(factor, screenX = canvas.width / 2, screenY = canvas.height / 2) {
+  const before = world(screenX, screenY);
+  viewScale = Math.max(0.08, Math.min(4, viewScale * factor));
+  const after = screen(before.x, before.y);
+  offsetX += screenX - after.x;
+  offsetY += screenY - after.y;
+}
+
+function zoomIn() { zoomAt(1.18); }
+function zoomOut() { zoomAt(1 / 1.18); }
+
+canvas.addEventListener("wheel", e => {
+  e.preventDefault();
+  zoomAt(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX, e.clientY);
+}, { passive: false });
+
+function world(x, y) {
+  return { x: (x - offsetX) / viewScale, y: (y - offsetY) / viewScale };
+}
+
+function screen(x, y) {
+  return { x: x * viewScale + offsetX, y: y * viewScale + offsetY };
+}
+
+// ---------- TOOL HELPERS ----------
+function getPrefix() {
+  return (document.getElementById("prefixInput").value || "N")
+    .trim()
+    .replace(/[^A-Za-z0-9_]/g, "") || "N";
+}
+
+function getExportName() {
+  return (document.getElementById("nameInput").value || "levelNodes")
+    .trim()
+    .replace(/[^A-Za-z0-9_$]/g, "") || "levelNodes";
+}
+
+function getSceneName() {
+  return (document.getElementById("sceneInput").value || "scene")
+    .trim()
+    .replace(/[^A-Za-z0-9_$]/g, "") || "scene";
+}
+
+function getBananaConstName() {
+  return (document.getElementById("bananaConstInput").value || `${getPrefix()}_BANANA_NODE_IDS`)
+    .trim()
+    .replace(/[^A-Za-z0-9_$]/g, "") || `${getPrefix()}_BANANA_NODE_IDS`;
+}
+
+function getSecretKey() {
+  return (document.getElementById("secretKeyInput").value || `secretRoom_${getSceneName()}`).trim();
+}
+
+function normalizeTag(tag) {
+  const map = {
+    ladderExit: "deliveryRoute",
+    ice: "secretReward",
+    portal: "cavePortal"
+  };
+  return map[tag] || tag;
+}
+
+function snap(v) { return Math.round(v / 25) * 25; }
+function applySnap(x, y) { return snapToGrid ? { x: snap(x), y: snap(y) } : { x, y }; }
+
+function setMode(m) {
+  mode = m;
+  selected = null;
+  updateButtons();
+}
+
+function handleTagButton() {
+  if (mode !== "tag") {
+    setMode("tag");
+    return;
+  }
+  const i = tagTypes.indexOf(activeTag);
+  activeTag = tagTypes[(i + 1) % tagTypes.length];
+  updateButtons();
+}
+
+function toggleGrid() { grid = !grid; updateButtons(); }
+function toggleSnap() { snapToGrid = !snapToGrid; updateButtons(); }
+
+function nudgeLeft() { nudgeNodes(-6, 0); }
+function nudgeRight() { nudgeNodes(6, 0); }
+function nudgeUp() { nudgeNodes(0, -6); }
+function nudgeDown() { nudgeNodes(0, 6); }
+
+function nudgeNodes(dx, dy) {
+  for (const id in nodes) {
+    nodes[id].x += dx;
+    nodes[id].y += dy;
+  }
+  autoSave();
+}
+
+function updateButtons() {
+  ["none", "add", "connect", "move", "delete", "tag"].forEach(m => {
+    const btn = document.getElementById("btn-" + m);
+    if (btn) btn.classList.toggle("active", mode === m);
+  });
+
+  document.getElementById("btn-grid").classList.toggle("active", grid);
+  document.getElementById("btn-snap").classList.toggle("active", snapToGrid);
+  const tagLabel = activeTag === "none" ? "clear" : activeTag;
+  document.getElementById("btn-tag").textContent = mode === "tag" ? `Tag: ${tagLabel}` : "Tag";
+}
+
+function setStatus(text) {
+  statusEl.textContent = text;
+}
+
+function nodeHas(id, tag) {
+  return (nodes[id]?.tags || []).includes(tag);
+}
+
+function setExclusiveTag(id, tag) {
+  for (const otherId in nodes) {
+    if (otherId !== id) {
+      nodes[otherId].tags = (nodes[otherId].tags || []).filter(t => t !== tag);
+    }
+  }
+  if (!nodes[id].tags.includes(tag)) nodes[id].tags.push(tag);
+}
+
+function toggleNodeTag(id, tag) {
+  if (!nodes[id]) return;
+
+  nodes[id].tags = [...new Set((nodes[id].tags || []).map(normalizeTag))];
+
+  if (tag === "none") {
+    nodes[id].tags = [];
+    return;
+  }
+
+  if (tag === "startNode" || tag === "goalNode") {
+    if (nodes[id].tags.includes(tag)) {
+      nodes[id].tags = nodes[id].tags.filter(t => t !== tag);
+    } else {
+      setExclusiveTag(id, tag);
+    }
+    return;
+  }
+
+  const has = nodes[id].tags.includes(tag);
+  nodes[id].tags = has
+    ? nodes[id].tags.filter(t => t !== tag)
+    : [...nodes[id].tags, tag];
+}
+
+function getNodeNumber(id) {
+  const m = String(id).match(/(\d+)$/);
+  return m ? Number(m[1]) : 0;
+}
+
+function nextId() {
+  const prefix = getPrefix();
+  while (nodes[`${prefix}${idCounter}`]) idCounter++;
+  return `${prefix}${idCounter++}`;
+}
+
+function convertId(id, prefix = getPrefix()) {
+  const s = String(id);
+  const m = s.match(/^([A-Za-z_]+)(\d+)$/);
+  if (!m) return s;
+  return `${prefix}${m[2]}`;
+}
+
+function convertedNodes() {
+  const prefix = getPrefix();
+  const idMap = {};
+
+  for (const oldId in nodes) {
+    idMap[oldId] = convertId(oldId, prefix);
+  }
+
+  const out = {};
+  for (const oldId in nodes) {
+    const n = nodes[oldId];
+    const newId = idMap[oldId];
+    const tags = [...new Set((n.tags || []).map(normalizeTag))];
+
+    out[newId] = {
+      ...n,
+      id: newId,
+      neighbors: [...new Set((n.neighbors || []).map(nb => idMap[nb] || convertId(nb, prefix)))],
+      tags
+    };
+  }
+
+  return out;
+}
+
+function findNodesWithTag(nodeMap, tag) {
+  return Object.values(nodeMap).filter(n => (n.tags || []).includes(tag));
+}
+
+function findSingleTag(nodeMap, tag) {
+  return findNodesWithTag(nodeMap, tag)[0]?.id || null;
+}
+
+function publicNodeTags(tags) {
+  return [...new Set((tags || []).map(normalizeTag))]
+    .filter(t => ![
+      "deliveryRoute",
+      "secretReward",
+      "edgePortal",
+      "cavePortal",
+      "startNode",
+      "goalNode",
+      "jumpTarget",
+      "stopHere"
+    ].includes(t));
+}
+
+function nodeExtraProps(n) {
+  const tags = n.tags || [];
+  const props = [];
+
+  if (tags.includes("edgePortal") || tags.includes("cavePortal")) {
+    props.push(`tags: ["portal"]`);
+  } else {
+    const publicTags = publicNodeTags(tags);
+    props.push(`tags: [${publicTags.map(t => `"${t}"`).join(", ")}]`);
+  }
+
+  if (tags.includes("jumpTarget")) props.push(`jumpTarget: true`);
+  if (tags.includes("stopHere")) props.push(`stopHere: true`);
+
+  return props;
+}
+
+function buildNodesText(nodeMap) {
+  const name = getExportName();
+  const ids = Object.keys(nodeMap).sort((a, b) => getNodeNumber(a) - getNodeNumber(b) || a.localeCompare(b));
+  const lines = [`export const ${name} = {`];
+
+  ids.forEach((id, i) => {
+    const n = nodeMap[id];
+    const nbs = [...new Set(n.neighbors || [])].map(nb => `"${nb}"`).join(", ");
+    const extras = nodeExtraProps(n);
+    lines.push(`  ${id}: { id: "${id}", x: ${Math.round(n.x)}, y: ${Math.round(n.y)}, neighbors: [${nbs}], ${extras.join(", ")} }${i < ids.length - 1 ? "," : ""}`);
+  });
+
+  lines.push("};");
+  return lines.join("\n");
+}
+
+// ---------- GENERATED SUPPORT ----------
+function sortedByYThenX(arr) {
+  return [...arr].sort((a, b) => a.y - b.y || a.x - b.x || a.id.localeCompare(b.id));
+}
+
+function sortedClockwise(arr) {
+  if (!arr.length) return [];
+  const cx = arr.reduce((s, n) => s + n.x, 0) / arr.length;
+  const cy = arr.reduce((s, n) => s + n.y, 0) / arr.length;
+
+  // screen coords: atan2 positive downward. This sorts clockwise-ish from top.
+  return [...arr].sort((a, b) => {
+    const aa = Math.atan2(a.y - cy, a.x - cx);
+    const bb = Math.atan2(b.y - cy, b.x - cx);
+    return aa - bb;
+  });
+}
+
+function buildPortalMapEntries(nodeMap) {
+  const edge = findNodesWithTag(nodeMap, "edgePortal");
+  const cave = findNodesWithTag(nodeMap, "cavePortal");
+  const secretGoal = findSingleTag(nodeMap, "goalNode");
+
+  const left = sortedByYThenX(edge.filter(n => n.x <= GAME_WIDTH / 2));
+  const right = sortedByYThenX(edge.filter(n => n.x > GAME_WIDTH / 2));
+  const reverse = document.getElementById("edgePairMode").value === "reverseY";
+  const rightPair = reverse ? [...right].reverse() : right;
+
+  const wrapPairs = [];
+  const len = Math.min(left.length, rightPair.length);
+  for (let i = 0; i < len; i++) {
+    wrapPairs.push([left[i].id, rightPair[i].id]);
+  }
+
+  const cavePairs = [];
+  const caveIds = cave.filter(n => n.id !== secretGoal);
+
+  if (caveIds.length === 3) {
+    const ordered = sortedClockwise(caveIds);
+    for (let i = 0; i < ordered.length; i++) {
+      cavePairs.push([ordered[i].id, ordered[(i + 1) % ordered.length].id]);
+    }
+  } else if (caveIds.length === 4) {
+    const ordered = sortedByYThenX(caveIds);
+    cavePairs.push([ordered[0].id, ordered[1].id]);
+    cavePairs.push([ordered[1].id, ordered[0].id]);
+    cavePairs.push([ordered[2].id, ordered[3].id]);
+    cavePairs.push([ordered[3].id, ordered[2].id]);
+  } else {
+    // fallback: pair sequentially bidirectionally
+    const ordered = sortedByYThenX(caveIds);
+    for (let i = 0; i + 1 < ordered.length; i += 2) {
+      cavePairs.push([ordered[i].id, ordered[i + 1].id]);
+      cavePairs.push([ordered[i + 1].id, ordered[i].id]);
+    }
+  }
+
+  return { wrapPairs, cavePairs, unmatchedEdge: edge.length - len * 2, caveCount: caveIds.length };
+}
+
+function objectMapText(pairs, indent = 4) {
+  const sp = " ".repeat(indent);
+  if (!pairs.length) return "";
+  return pairs.map(([from, to], i) => `${sp}${from}: "${to}"${i < pairs.length - 1 ? "," : ""}`).join("\n");
+}
+
+function buildDeliveryRoute(nodeMap) {
+  const routeNodes = findNodesWithTag(nodeMap, "deliveryRoute");
+  if (!routeNodes.length) return [];
+
+  const routeSet = new Set(routeNodes.map(n => n.id));
+  const deg = id => (nodeMap[id]?.neighbors || []).filter(nb => routeSet.has(nb)).length;
+
+  let start =
+    routeNodes.find(n => deg(n.id) === 1)?.id ||
+    sortedByYThenX(routeNodes)[0]?.id;
+
+  const route = [];
+  const visited = new Set();
+  let current = start;
+  let prev = null;
+
+  while (current && !visited.has(current)) {
+    route.push(current);
+    visited.add(current);
+
+    const options = (nodeMap[current]?.neighbors || [])
+      .filter(nb => routeSet.has(nb) && nb !== prev && !visited.has(nb));
+
+    prev = current;
+    current = options[0] || null;
+  }
+
+  const leftovers = sortedByYThenX(routeNodes)
+    .map(n => n.id)
+    .filter(id => !visited.has(id));
+
+  return [...route, ...leftovers];
+}
+
+function buildSupportText(nodeMap) {
+  const scene = getSceneName();
+  const bananaConst = getBananaConstName();
+  const startNode = findSingleTag(nodeMap, "startNode") || sortedByYThenX(Object.values(nodeMap)).at(-1)?.id || "TODO_START";
+  const goalNode = findSingleTag(nodeMap, "goalNode") || sortedByYThenX(findNodesWithTag(nodeMap, "cavePortal")).at(-1)?.id || "TODO_GOAL";
+  const rewardNodes = findNodesWithTag(nodeMap, "secretReward");
+  const bananas = Object.values(nodeMap)
+    .filter(n => (n.tags || []).includes("banana"))
+    .sort((a, b) => getNodeNumber(a.id) - getNodeNumber(b.id))
+    .map(n => n.id);
+
+  const { wrapPairs, cavePairs, unmatchedEdge, caveCount } = buildPortalMapEntries(nodeMap);
+  const deliveryRoute = buildDeliveryRoute(nodeMap);
+  const enemyEntryIds = [...new Set(cavePairs.map(([from]) => from))];
+
+  const lines = [];
+  lines.push("// ===== Generated scene support config - review/tune these guesses =====");
+
+  lines.push(`export const ${bananaConst} = [`);
+  bananas.forEach((id, i) => lines.push(`  "${id}"${i < bananas.length - 1 ? "," : ""}`));
+  lines.push("];\n");
+
+  lines.push(`export const ${scene}Config = {`);
+  lines.push(`  startNode: "${startNode}",`);
+  lines.push(`  goalNode: "${goalNode}"`);
+  lines.push("};\n");
+
+  lines.push(`export const ${scene}Portals = {`);
+  lines.push("  cave: {");
+  const caveText = objectMapText(cavePairs, 4);
+  if (caveText) lines.push(caveText);
+  lines.push("  },");
+  lines.push("  wrap: {");
+
+  const wrapBidirectional = [];
+  for (const [a, b] of wrapPairs) {
+    wrapBidirectional.push([a, b], [b, a]);
+  }
+  const wrapText = objectMapText(wrapBidirectional, 4);
+  if (wrapText) lines.push(wrapText);
+  lines.push("  }");
+  lines.push("};\n");
+
+  lines.push(`export const ${scene}EnemyEntryNodeIds = [${enemyEntryIds.map(id => `"${id}"`).join(", ")}];\n`);
+
+  lines.push(`export const ${scene}SecretRewards = {`);
+  rewardNodes.forEach((n, i) => {
+    lines.push(`  ${n.id}: {`);
+    lines.push(`    type: "bananaBunch",`);
+    lines.push(`    x: ${Math.round(n.x)},`);
+    lines.push(`    y: ${Math.round(n.y)},`);
+    lines.push(`    min: 5,`);
+    lines.push(`    max: 10`);
+    lines.push(`  }${i < rewardNodes.length - 1 ? "," : ""}`);
+  });
+  lines.push("};\n");
+
+  if (deliveryRoute.length) {
+    lines.push(`export const ${scene}DeliveryRoute = [`);
+    deliveryRoute.forEach((id, i) => lines.push(`  "${id}"${i < deliveryRoute.length - 1 ? "," : ""}`));
+    lines.push("];\n");
+  }
+
+  lines.push(`export const ${scene}SecretRoom = {`);
+  lines.push(`  visibleBeforeUnlock: true,`);
+  lines.push(`  lockedNodeId: "${goalNode}",`);
+  lines.push(`  entryNodeId: "${goalNode}",`);
+  lines.push(`  destinationNodeId: "${goalNode}",`);
+  lines.push(`  unlockCondition: "heartsComplete",`);
+  lines.push(`  pulseAfterUnlock: true,`);
+  lines.push(`  completionType: "sceneEnd",`);
+  lines.push(`  cutsceneBackgroundKey: "${getSecretKey()}",`);
+  lines.push(`  endingType: "${scene === "chill" ? "chillJab" : "sceneEnd"}"`);
+  lines.push("};\n");
+
+  if (deliveryRoute.length) {
+    lines.push("// For delivery-routes.js:");
+    lines.push(`${scene}: [`);
+    lines.push(`  [${deliveryRoute.map(id => `"${id}"`).join(", ")}]`);
+    lines.push("]");
+  }
+
+  const warnings = [];
+  if (unmatchedEdge !== 0) warnings.push(`// WARNING: edgePortal count is uneven/unmatched by side. Unmatched count: ${unmatchedEdge}`);
+  if (![0, 3, 4].includes(caveCount)) warnings.push(`// WARNING: cavePortal count is ${caveCount}. Expected 3 or 4 for best automatic mapping.`);
+  if (!findSingleTag(nodeMap, "startNode")) warnings.push("// WARNING: no startNode tag set. Start node was guessed.");
+  if (!findSingleTag(nodeMap, "goalNode")) warnings.push("// WARNING: no goalNode tag set. Goal/secret exit was guessed.");
+
+  return warnings.length ? `${warnings.join("\n")}\n\n${lines.join("\n")}` : lines.join("\n");
+}
+
+function buildExportText() {
+  const nodeMap = convertedNodes();
+  return `${buildNodesText(nodeMap)}\n\n${buildSupportText(nodeMap)}`;
+}
+
+function toggleOutput() {
+  wrap.style.display = (wrap.style.display === "none" || !wrap.style.display) ? "block" : "none";
+  if (wrap.style.display === "none") importArmed = false;
+}
+
+function exportData() {
+  wrap.style.display = "block";
+  output.readOnly = false;
+  const text = buildExportText();
+  output.value = text;
+  localStorage.setItem("nodegen_autosave_export", text);
+  output.focus();
+  output.select();
+  try { document.execCommand("copy"); } catch {}
+}
+
+async function copyOutput() {
+  try {
+    await navigator.clipboard.writeText(output.value);
+    setStatus("Copied export to clipboard");
+  } catch {
+    output.focus();
+    output.select();
+    document.execCommand("copy");
+    setStatus("Copy attempted");
+  }
+}
+
+function downloadOutput() {
+  const blob = new Blob([output.value || buildExportText()], { type: "text/javascript" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${getSceneName()}-nodes-export.js`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function autoSave() {
+  try {
+    localStorage.setItem("nodegen_autosave_nodes_v2", JSON.stringify({
+      nodes,
+      idCounter,
+      prefix: getPrefix(),
+      exportName: getExportName(),
+      scene: getSceneName()
+    }));
+  } catch (err) {
+    console.warn("Autosave failed", err);
+  }
+}
+
+function importData() {
+  wrap.style.display = "block";
+
+  if (!importArmed) {
+    importArmed = true;
+    output.readOnly = false;
+    output.value = "";
+    output.placeholder = "Paste nodes object/export, then tap Import again";
+    output.focus();
+    return;
+  }
+
+  try {
+    let text = output.value.trim();
+
+    const match = text.match(/(?:export\s+)?const\s+([A-Za-z_$][\w$]*)\s*=\s*(\{[\s\S]*?\n\});?/);
+    if (match) {
+      document.getElementById("nameInput").value = match[1];
+      text = match[2];
+    } else {
+      text = text
+        .replace(/export\s+const\s+\w+\s*=\s*/, "")
+        .replace(/const\s+\w+\s*=\s*/, "")
+        .replace(/;$/, "");
+    }
+
+    const parsed = eval("(" + text + ")");
+    const source = parsed.nodes || parsed;
+
+    nodes = {};
+    let maxNum = 0;
+
+    for (const id in source) {
+      const cleanTags = [...new Set((source[id].tags || []).map(normalizeTag))];
+
+      if (source[id].jumpTarget) cleanTags.push("jumpTarget");
+      if (source[id].stopHere) cleanTags.push("stopHere");
+
+      nodes[id] = {
+        id,
+        x: source[id].x,
+        y: source[id].y,
+        neighbors: [...(source[id].neighbors || [])],
+        tags: [...new Set(cleanTags)]
+      };
+
+      maxNum = Math.max(maxNum, getNodeNumber(id));
+    }
+
+    idCounter = maxNum + 1;
+    importArmed = false;
+    wrap.style.display = "none";
+    setStatus("Import success");
+    autoSave();
+  } catch (err) {
+    alert("Import Failed");
+    console.error(err);
+  }
+}
+
+// ---------- INTERACTION ----------
+canvas.addEventListener("pointerdown", e => {
+  const p = world(e.clientX, e.clientY);
+  const hit = Object.keys(nodes).find(id => Math.hypot(nodes[id].x - p.x, nodes[id].y - p.y) < 30);
+
+  if (mode === "none") {
+    dragging = "pan";
+    dragStart = { x: e.clientX, y: e.clientY, offsetX, offsetY };
+    return;
+  }
+
+  if (mode === "add") {
+    const pt = applySnap(p.x, p.y);
+    const id = nextId();
+    nodes[id] = { id, x: Math.round(pt.x), y: Math.round(pt.y), neighbors: [], tags: [] };
+    selected = id;
+    autoSave();
+    return;
+  }
+
+  if (mode === "connect") {
+    if (!hit) return;
+
+    if (!selected) {
+      selected = hit;
+    } else if (selected !== hit) {
+      const a = nodes[selected];
+      const b = nodes[hit];
+
+      a.neighbors = a.neighbors || [];
+      b.neighbors = b.neighbors || [];
+
+      const alreadyLinked =
+        a.neighbors.includes(hit) ||
+        b.neighbors.includes(selected);
+
+      if (alreadyLinked) {
+        a.neighbors = a.neighbors.filter(id => id !== hit);
+        b.neighbors = b.neighbors.filter(id => id !== selected);
+      } else {
+        a.neighbors.push(hit);
+        b.neighbors.push(selected);
+      }
+
+      // clean duplicates, just in case
+      a.neighbors = [...new Set(a.neighbors)];
+      b.neighbors = [...new Set(b.neighbors)];
+
+      selected = null;
+      autoSave();
+    }
+
+    return;
+  }
+  
+  if (mode === "move") {
+    if (hit) {
+      dragging = hit;
+      selected = hit;
+    }
+    return;
+  }
+
+  if (mode === "delete") {
+    if (hit) {
+      delete nodes[hit];
+      for (const id in nodes) {
+        nodes[id].neighbors = nodes[id].neighbors.filter(n => n !== hit);
+      }
+      selected = null;
+      autoSave();
+    }
+    return;
+  }
+
+  if (mode === "tag") {
+    if (hit) {
+      toggleNodeTag(hit, activeTag);
+      selected = hit;
+      autoSave();
+    }
+  }
+});
+
+canvas.addEventListener("pointermove", e => {
+  if (dragging === "pan" && dragStart) {
+    offsetX = dragStart.offsetX + (e.clientX - dragStart.x);
+    offsetY = dragStart.offsetY + (e.clientY - dragStart.y);
+    return;
+  }
+
+  if (dragging && nodes[dragging]) {
+    const p = world(e.clientX, e.clientY);
+    const pt = applySnap(p.x, p.y);
+    nodes[dragging].x = Math.round(pt.x);
+    nodes[dragging].y = Math.round(pt.y);
+    autoSave();
+  }
+});
+
+canvas.addEventListener("pointerup", () => {
+  dragging = null;
+  dragStart = null;
+});
+
+canvas.addEventListener("pointercancel", () => {
+  dragging = null;
+  dragStart = null;
+});
+
+window.addEventListener("keydown", e => {
+  const key = e.key.toLowerCase();
+
+  if (key === "t") {
+    handleTagButton();
+    e.preventDefault();
+  } else if (key === "a") {
+    setMode("add");
+  } else if (key === "m") {
+    setMode("move");
+  } else if (key === "l") {
+    setMode("connect");
+  } else if (key === "d") {
+    setMode("delete");
+  } else if (key === "p") {
+    setMode("none");
+  } else if (key === "+" || key === "=") {
+    zoomIn();
+  } else if (key === "-" || key === "_") {
+    zoomOut();
+  } else if (key === "e") {
+    exportData();
+  }
+});
+
+// ---------- VALIDATE ----------
+function validate() {
+  const nodeMap = convertedNodes();
+  const errors = [];
+  const warnings = [];
+
+  for (const id in nodeMap) {
+    const n = nodeMap[id];
+
+    for (const nb of n.neighbors || []) {
+      if (!nodeMap[nb]) {
+        errors.push(`${id} references missing node ${nb}`);
+      } else if (!(nodeMap[nb].neighbors || []).includes(id)) {
+        warnings.push(`${id} -> ${nb} is not bidirectional`);
+      }
+    }
+  }
+
+  const startCount = findNodesWithTag(nodeMap, "startNode").length;
+  const goalCount = findNodesWithTag(nodeMap, "goalNode").length;
+  const edgeCount = findNodesWithTag(nodeMap, "edgePortal").length;
+  const caveCount = findNodesWithTag(nodeMap, "cavePortal").filter(n => !(n.tags || []).includes("goalNode")).length;
+
+  if (startCount !== 1) warnings.push(`startNode count is ${startCount}; expected 1`);
+  if (goalCount !== 1) warnings.push(`goalNode count is ${goalCount}; expected 1`);
+  if (edgeCount % 2 !== 0) warnings.push(`edgePortal count is ${edgeCount}; expected even`);
+  if (![0, 3, 4].includes(caveCount)) warnings.push(`cavePortal count excluding goal is ${caveCount}; expected 3 or 4`);
+
+  return { errors, warnings };
+}
+
+function validateAndReport() {
+  const { errors, warnings } = validate();
+  const msg = [
+    `Errors: ${errors.length}`,
+    ...errors,
+    "",
+    `Warnings: ${warnings.length}`,
+    ...warnings
+  ].join("\n");
+
+  wrap.style.display = "block";
+  output.value = msg;
+}
+
+function clearAllConfirm() {
+  if (confirm("Clear all nodes?")) {
+    nodes = {};
+    idCounter = 1;
+    selected = null;
+    autoSave();
+  }
+}
+
+// ---------- DRAW ----------
+function drawGrid() {
+  if (!grid) return;
+
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,0.08)";
+  ctx.lineWidth = 1;
+
+  for (let x = 0; x <= GAME_WIDTH; x += 100) {
+    const a = screen(x, 0);
+    const b = screen(x, GAME_HEIGHT);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  }
+
+  for (let y = 0; y <= GAME_HEIGHT; y += 100) {
+    const a = screen(0, y);
+    const b = screen(GAME_WIDTH, y);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (bgImage) {
+    ctx.drawImage(bgImage, offsetX, offsetY, GAME_WIDTH * viewScale, GAME_HEIGHT * viewScale);
+  } else {
+    ctx.fillStyle = "#222";
+    ctx.fillRect(offsetX, offsetY, GAME_WIDTH * viewScale, GAME_HEIGHT * viewScale);
+  }
+
+  drawGrid();
+
+  const nodeMap = nodes;
+
+  // Links
+  ctx.save();
+  ctx.lineWidth = Math.max(2, 4 * viewScale);
+  const drawn = new Set();
+
+  for (const id in nodeMap) {
+    const n = nodeMap[id];
+    for (const nbId of n.neighbors || []) {
+      const nb = nodeMap[nbId];
+      if (!nb) continue;
+      const key = [id, nbId].sort().join("|");
+      if (drawn.has(key)) continue;
+      drawn.add(key);
+
+      const a = screen(n.x, n.y);
+      const b = screen(nb.x, nb.y);
+      ctx.strokeStyle = "rgba(3, 252, 32)";
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+
+  // Nodes
+  for (const id in nodeMap) {
+    const n = nodeMap[id];
+    const p = screen(n.x, n.y);
+    const tags = n.tags || [];
+
+    let fill = "#ffffff";
+    if (tags.includes("banana")) fill = colors.banana;
+    if (tags.includes("deliveryRoute")) fill = colors.deliveryRoute;
+    if (tags.includes("secretReward")) fill = colors.secretReward;
+    if (tags.includes("edgePortal")) fill = colors.edgePortal;
+    if (tags.includes("cavePortal")) fill = colors.cavePortal;
+    if (tags.includes("startNode")) fill = colors.startNode;
+    if (tags.includes("goalNode")) fill = colors.goalNode;
+    if (tags.includes("jumpTarget")) fill = colors.jumpTarget;
+
+    const radius = id === selected ? 12 : 8;
+
+    ctx.save();
+    ctx.fillStyle = fill;
+    ctx.strokeStyle = tags.includes("stopHere") ? "#000" : "rgba(0,0,0,0.85)";
+    ctx.lineWidth = tags.includes("stopHere") ? 4 : 2;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = "bold 13px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "black";
+    ctx.fillStyle = "white";
+    ctx.strokeText(id, p.x, p.y - 20);
+    ctx.fillText(id, p.x, p.y - 20);
+
+    if (tags.length) {
+      ctx.font = "10px Arial";
+      const label = tags.map(shortTag).join(" ");
+      ctx.strokeText(label, p.x, p.y + 19);
+      ctx.fillText(label, p.x, p.y + 19);
+    }
+    ctx.restore();
+  }
+
+  updateStatusAndLegend();
+  requestAnimationFrame(draw);
+}
+
+function shortTag(t) {
+  return ({
+    banana: "🍌",
+    deliveryRoute: "D",
+    secretReward: "🎁",
+    edgePortal: "E",
+    cavePortal: "C",
+    startNode: "S",
+    goalNode: "G",
+    jumpTarget: "J",
+    stopHere: "STOP"
+  })[t] || t;
+}
+
+function updateStatusAndLegend() {
+  const nodeMap = convertedNodes();
+  const { errors, warnings } = validate();
+  const tagCounts = {};
+  for (const n of Object.values(nodeMap)) {
+    for (const t of n.tags || []) tagCounts[t] = (tagCounts[t] || 0) + 1;
+  }
+
+  setStatus(
+    `Mode: ${mode}` +
+    (mode === "tag" ? ` / ${activeTag}` : "") +
+    ` | Nodes: ${Object.keys(nodes).length}` +
+    ` | Zoom: ${Math.round(viewScale * 100)}%` +
+    ` | ${errors.length} errors, ${warnings.length} warnings`
+  );
+
+  legendEl.innerHTML = tagTypes
+    .filter(t => t !== "none")
+    .map(t => `<span class="pill" style="border:1px solid ${colors[t] || "#999"}">${shortTag(t)} ${t}</span>`)
+    .join(" ");
+}
+
+fitImage();
+updateButtons();
+
+try {
+  const saved = JSON.parse(localStorage.getItem("nodegen_autosave_nodes_v2") || "null");
+  if (saved?.nodes) {
+    nodes = saved.nodes;
+    idCounter = saved.idCounter || (Object.keys(nodes).length + 1);
+    if (saved.prefix) document.getElementById("prefixInput").value = saved.prefix;
+    if (saved.exportName) document.getElementById("nameInput").value = saved.exportName;
+    if (saved.scene) document.getElementById("sceneInput").value = saved.scene;
+  }
+} catch {}
+
+try {
+  toolsVisible = localStorage.getItem("nodegen_tools_visible") !== "0";
+} catch {
+  toolsVisible = true;
+}
+
+applyToolsVisibility();
+
+draw();
+</script>
+</body>
+</html>

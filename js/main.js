@@ -1571,6 +1571,8 @@ function getBestNeighbor(currentNodeId, inputVec, inputName) {
     let bestScore = -Infinity;
 
     for (const neighborId of current.neighbors) {
+        if (isLockedSecretNode(neighborId)) continue;
+
         const neighbor = nodeMap[neighborId];
         if (!neighbor) continue;
 
@@ -5065,6 +5067,34 @@ function handlePortalTravel(actor) {
     if (actor === state.player && actor.portalCooldown > 0) return;
     if (state.cavePreview) return;
 
+    if (
+        actor === state.player &&   
+        isLockedSecretNode(actor.currentNode)
+    ) {
+        const nodeMap = getCurrentNodeMap();
+        const backId = actor.previousNode;
+        const back = backId ? nodeMap[backId] : null;
+
+        if (back) {
+            actor.currentNode = backId;
+            actor.x = back.x;
+            actor.y = back.y;
+        }
+
+        actor.targetNode = null;
+        actor.dir = { x: 0, y: 0 };
+
+        showFloatingText(
+            actor.x,
+            actor.y - 70,
+            "Need 3 hearts!",
+            "#fff7cc",
+            1.35
+        );
+
+        return;
+    }
+
     const portal = resolveScenePortal(actor.currentNode);
     if (!portal) return;
 
@@ -5410,6 +5440,28 @@ function getFirstExistingNodeId(...ids) {
 }
 
 // zones
+
+function startZoneMapMusic() {
+    if (!sounds?.conga) return;
+
+    try {
+        sounds.conga.stop();
+        sounds.conga.play();
+    } catch (err) {
+        console.log("[AUDIO] zone conga failed", err);
+    }
+}
+
+function stopZoneMapMusic() {
+    if (!sounds?.conga) return;
+
+    try {
+        sounds.conga.stop();
+    } catch (err) {
+        console.log("[AUDIO] stop zone conga failed", err);
+    }
+}
+
 function showZoneMap() {
     stopAllMusic(sounds);
 
@@ -5420,7 +5472,7 @@ function showZoneMap() {
     state.openingCutscene = null;
     state.pendingSceneMusic = null;
     state.selectedZoneId = null;
-
+    startZoneMapMusic();
     debugLog(state, "[ZONE] show map");
 }
 
@@ -5428,12 +5480,16 @@ function isZoneUnlocked(zoneId) {
     const zone = ZONE_MAP_ZONES[zoneId];
     if (!zone) return false;
 
-    // Static unlock from config.
     if (zone.unlocked) return true;
 
-    // First milestone: after Mother is acquired, unlock Chill + Ticket.
-    if (state.motherAcquired) {
-        return zoneId === "chillHill" || zoneId === "ticketTime";
+    if (state.motherAcquired || state.bananaBonanzaCompleted) {
+        if (zoneId === "chillHill") return true;
+        if (zoneId === "ticketTime") return true;
+    }
+
+    if (state.chillHillCompleted) {
+        if (zoneId === "coconutKong") return true;
+        if (zoneId === "giftShop") return true;
     }
 
     return false;
@@ -5491,6 +5547,9 @@ function enterZone(zoneId) {
         debugLog(state, "[ZONE] locked", { zoneId });
         return;
     }
+
+    stopZoneMapMusic();
+    playSfx(sounds.gong);
 
     debugLog(state, "[ZONE] enter", {
         zoneId,
@@ -6429,7 +6488,7 @@ function goToNextScene() {
 
     if (state.scene === "main") {
         state.motherAcquired = true;
-
+        state.bananaBonanzaCompleted = true;
         // These may eventually move later in the spoon-feed,
         // but keep them here for now if current testing expects them.
         state.unlocks.butterfly = true;
@@ -6441,6 +6500,7 @@ function goToNextScene() {
     }
 
     if (state.scene === "chill") {
+        state.chillHillCompleted = true;
         showZoneMap();
         return;
     }
