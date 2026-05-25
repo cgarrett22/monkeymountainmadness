@@ -4,6 +4,7 @@ export function createInitialState() {
   return {
     mode: "start",
     openingCutscene: null,
+    introLoopSoundId: null,
     cardBackground: null,
     loadScreenImage: null,
     levelIntro: null,

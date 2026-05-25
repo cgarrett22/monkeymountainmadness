@@ -9,6 +9,25 @@ export function createBackgroundImage() {
 export function loadSprites() {
   const spriteStore = {};
 
+  // game start 
+  // Start/title screen layered assets
+  spriteStore.titleBackground = new Image();
+  spriteStore.titleBackground.src = "assets/title-background.webp";
+
+  spriteStore.titleBack = new Image();
+  spriteStore.titleBack.src = "assets/title-back.svg";
+
+  spriteStore.titlePunch = new Image();
+  spriteStore.titlePunch.src = "assets/title-punch.webp";
+
+  spriteStore.titleFront = new Image();
+  spriteStore.titleFront.src = "assets/title-front.svg";
+
+  // Keep old single-card fallback for now
+  spriteStore.gameStartCard = new Image();
+  spriteStore.gameStartCard.src = "assets/game-start-card.webp";
+
+  // game sprites
   spriteStore.lilJabRun = new Image();
   spriteStore.lilJabRun.src = "sprites/jab-sprite.webp";
 
@@ -51,6 +70,18 @@ export function loadSprites() {
   spriteStore.zookeeper2_ch_idle = new Image();
   spriteStore.zookeeper2_ch_idle.src = "sprites/zookeeper2-ch-idle.webp";
 
+  spriteStore.utilityZookeeperBananaCrateWalk = new Image();
+  spriteStore.utilityZookeeperBananaCrateWalk.src = "sprites/utility-zookeeper-banana-walk.webp";
+
+  spriteStore.utilityZookeeperHeartCrateWalk = new Image();
+  spriteStore.utilityZookeeperHeartCrateWalk.src = "sprites/utility-zookeeper-heart-walk.webp";
+
+  spriteStore.utilityZookeeperBananaFaint = new Image();
+  spriteStore.utilityZookeeperBananaFaint.src = "sprites/utility-zookeeper-banana-faint.webp";
+
+  spriteStore.utilityZookeeperHeartFaint = new Image();
+  spriteStore.utilityZookeeperHeartFaint.src = "sprites/utility-zookeeper-heart-faint.webp";
+
   spriteStore.levelUpArt = new Image();
   spriteStore.levelUpArt.src = "assets/levelup-monkeys.webp";
 
@@ -75,20 +106,27 @@ export function loadSprites() {
   spriteStore.secretRewardPJ = new Image();
   spriteStore.secretRewardPJ.src = "sprites/secret-reward-pj.webp";
 
-  spriteStore.bananaBonanzaCard = new Image();
-  spriteStore.bananaBonanzaCard.src = "assets/banana-bonanza-card.webp";
+  spriteStore.secretRewardIC = new Image();
+  spriteStore.secretRewardIC.src = "sprites/secret-reward-pj.webp";
 
-  spriteStore.bananaBonanzaCardMother = new Image();
-  spriteStore.bananaBonanzaCardMother.src = "assets/banana-bonanza-card-mother.webp";
 
-  spriteStore.coconutKongCard = new Image();
-  spriteStore.coconutKongCard.src = "assets/coconut-kong-card.webp";
+  // spriteStore.bananaBonanzaCard = new Image();
+  // spriteStore.bananaBonanzaCard.src = "assets/banana-bonanza-card.webp";
 
-  spriteStore.chillHillCard = new Image();
-  spriteStore.chillHillCard.src = "assets/chill-hill-card.webp";
+  // spriteStore.bananaBonanzaCardMother = new Image();
+  // spriteStore.bananaBonanzaCardMother.src = "assets/banana-bonanza-card-mother.webp";
+
+  // spriteStore.coconutKongCard = new Image();
+  // spriteStore.coconutKongCard.src = "assets/coconut-kong-card.webp";
+
+  // spriteStore.chillHillCard = new Image();
+  // spriteStore.chillHillCard.src = "assets/chill-hill-card.webp";
 
   spriteStore.chillHillBackground = new Image();
   spriteStore.chillHillBackground.src = "assets/chill-hill.webp";
+
+  spriteStore.monkeyForestBackground = new Image();
+  spriteStore.monkeyForestBackground.src = "assets/monkey-forest.webp";
 
   spriteStore.sceneCompleteCard = new Image();
   spriteStore.sceneCompleteCard.src = "assets/scene-complete-card.webp";
@@ -180,12 +218,6 @@ export function loadSprites() {
   spriteStore.secretRoom_bb = new Image();
   spriteStore.secretRoom_bb.src = "sprites/secret-room-bb.webp";  
 
-  spriteStore.secretRoom_bb_overlay = new Image();
-  spriteStore.secretRoom_bb_overlay.src = "sprites/secret-room-overlay-bb.webp"; 
-
-  spriteStore.secretRoom_ck_overlay = new Image();
-  spriteStore.secretRoom_ck_overlay.src = "sprites/secret-room-overlay-ck.webp"; 
-
   spriteStore.secretRoom_ck = new Image();
   spriteStore.secretRoom_ck.src = "sprites/secret-room-ck.webp";  
 
@@ -197,6 +229,20 @@ export function loadSprites() {
 
   spriteStore.secretRoom_ch_jab = new Image();
   spriteStore.secretRoom_ch_jab.src = "sprites/jab-secret-room-ch.webp";  
+
+  spriteStore.ticketTimeBackground = new Image();
+  spriteStore.ticketTimeBackground.src = "assets/ticket-time.webp";
+
+  spriteStore.ticketTimeCard = new Image();
+  spriteStore.ticketTimeCard.src = "assets/ticket-time-card.webp";
+
+  spriteStore.ichiCafeBackground = new Image();
+  spriteStore.ichiCafeBackground.src = "assets/ichi-cafe.webp";
+
+  // scene cards
+  spriteStore.cardSafePlaceIcon = new Image();
+  spriteStore.cardSafePlaceIcon.src = "assets/card-safe-place.webp";
+
 
   // === intro sprites
 
@@ -228,7 +274,36 @@ export function loadSprites() {
   spriteStore.introThoughtBubble.src = "sprites/intro/introThoughtBubble.webp";  
 
   spriteStore.introMother = new Image();
-  spriteStore.introMother.src = "sprites/intro/introMother.webp";  
+  spriteStore.introMother.src = "sprites/intro/introMother.webp"; 
+  
+  // scene card watermarks
+  spriteStore.bananaBonanzaIcon = new Image();
+  spriteStore.bananaBonanzaIcon.src = "assets/bananaBonanzaIcon.svg";  
+
+  spriteStore.chillHillIcon = new Image();
+  spriteStore.chillHillIcon.src = "assets/chillHillIcon.svg";  
+
+  spriteStore.coconutKongIcon = new Image();
+  spriteStore.coconutKongIcon.src = "assets/coconutKongIcon.svg";  
+
+  spriteStore.monkeyForestIcon = new Image();
+  spriteStore.monkeyForestIcon.src = "assets/monkeyForestIcon.svg";  
+
+  spriteStore.ticketTimeIcon = new Image();
+  spriteStore.ticketTimeIcon.src = "assets/ticketTimeIcon.svg";  
+
+  spriteStore.ichiCafeIcon = new Image();
+  spriteStore.ichiCafeIcon.src = "assets/ichiCafeIcon.svg";  
+
+  // card instruction icons
+  spriteStore.cardSafePlaceIcon = new Image();
+  spriteStore.cardSafePlaceIcon.src = "assets/card-safe-place-icon.webp";
+
+  spriteStore.cardMotherIcon = new Image();
+  spriteStore.cardMotherIcon.src = "assets/card-mother-icon.webp";
+
+  spriteStore.cardHeartIcon = new Image();
+  spriteStore.cardHeartIcon.src = "assets/card-heart-icon.webp";
 
   // === zone map ===
 spriteStore.zoneMapBase = new Image();
@@ -243,37 +318,46 @@ spriteStore.zoneOverlayCH.src = "assets/zones/zone-overlay-ch.webp";
 spriteStore.zoneOverlayCK = new Image();
 spriteStore.zoneOverlayCK.src = "assets/zones/zone-overlay-ck.webp";
 
-spriteStore.zoneOverlayMonkeyForest = new Image();
-spriteStore.zoneOverlayMonkeyForest.src = "assets/zones/zone-overlay-mf.webp";
+spriteStore.zoneOverlayMF = new Image();
+spriteStore.zoneOverlayMF.src = "assets/zones/zone-overlay-mf.webp";
 
-spriteStore.zoneOverlayPandaCity = new Image();
-spriteStore.zoneOverlayPandaCity.src = "assets/zones/zone-overlay-pc.webp";
+spriteStore.zoneOverlayPC = new Image();
+spriteStore.zoneOverlayPC.src = "assets/zones/zone-overlay-pc.webp";
 
-spriteStore.zoneOverlayMadBirds = new Image();
-spriteStore.zoneOverlayMadBirds.src = "assets/zones/zone-overlay-mb.webp";
+spriteStore.zoneOverlayMB = new Image();
+spriteStore.zoneOverlayMB.src = "assets/zones/zone-overlay-mb.webp";
 
-spriteStore.zoneOverlaySomethingGishy = new Image();
-spriteStore.zoneOverlaySomethingGishy.src = "assets/zones/zone-overlay-sf.webp";
+spriteStore.zoneOverlaySG = new Image();
+spriteStore.zoneOverlaySG.src = "assets/zones/zone-overlay-sf.webp";
 
-spriteStore.zoneOverlayJungleFever = new Image();
-spriteStore.zoneOverlayJungleFever.src = "assets/zones/zone-overlay-jf.webp";
+spriteStore.zoneOverlayJF = new Image();
+spriteStore.zoneOverlayJF.src = "assets/zones/zone-overlay-jf.webp";
 
-spriteStore.zoneOverlayCatCountry = new Image();
-spriteStore.zoneOverlayCatCountry.src = "assets/zones/zone-overlay-cc.webp";
+spriteStore.zoneOverlayCC = new Image();
+spriteStore.zoneOverlayCC.src = "assets/zones/zone-overlay-cc.webp";
 
-spriteStore.zoneOverlaySavannaNana = new Image();
-spriteStore.zoneOverlaySavannaNana.src = "assets/zones/zone-overlay-sn.webp";
+spriteStore.zoneOverlaySN = new Image();
+spriteStore.zoneOverlaySN.src = "assets/zones/zone-overlay-sn.webp";
 
-spriteStore.zoneOverlayIchiCafe = new Image();
-spriteStore.zoneOverlayIchiCafe.src = "assets/zones/zone-overlay-ic.webp";
+spriteStore.zoneOverlayIC = new Image();
+spriteStore.zoneOverlayIC.src = "assets/zones/zone-overlay-ic.webp";
 
-spriteStore.zoneOverlayGiftShop = new Image();
-spriteStore.zoneOverlayGiftShop.src = "assets/zones/zone-overlay-gs.webp";
+spriteStore.zoneOverlayGS = new Image();
+spriteStore.zoneOverlayGS.src = "assets/zones/zone-overlay-gs.webp";
 
-spriteStore.zoneOverlayTicketTime = new Image();
-spriteStore.zoneOverlayTicketTime.src = "assets/zones/zone-overlay-tt.webp";
+spriteStore.zoneOverlayTT = new Image();
+spriteStore.zoneOverlayTT.src = "assets/zones/zone-overlay-tt.webp";
 
   return spriteStore;
+}
+  
+function loadImageWithWarning(spriteStore, key, src) {
+  const img = new Image();
+  img.onload = () => console.log(`[ASSET OK] ${key}: ${src}`);
+  img.onerror = () => console.warn(`[ASSET MISSING] ${key}: ${src}`);
+  img.src = src;
+  spriteStore[key] = img;
+  return img;
 }
 
 export function loadSounds(state) {
@@ -282,7 +366,7 @@ export function loadSounds(state) {
   // Short SFX via Howler
   sounds.hiMommy = new Howl({
     src: ["assets/introHiMommy.m4a"],
-    volume: 1.75,
+    volume: 1.0,
     preload: true
   });
 
@@ -296,7 +380,7 @@ export function loadSounds(state) {
   // zones
   sounds.conga = new Howl({
     src: ["assets/zone-conga.m4a"],
-    volume: 0.70,
+    volume: 0.80,
     rate: 1,
     loop: true,
     preload: true
@@ -304,8 +388,8 @@ export function loadSounds(state) {
 
   sounds.gong = new Howl({
     src: ["assets/gong.m4a"],
-    volume: 0.75,
-    rate: 1.2,
+    volume: 0.65,
+    rate: 1.5,
     preload: true
   });
 
@@ -417,11 +501,14 @@ export function applyMuteState(sounds, state) {
   }
 }
 
-export function playSceneMusic({ sounds, isBossScene = false }) {
+export function playSceneMusic({ sounds }) {
   stopAllMusic(sounds);
 
-  const track = isBossScene ? sounds.bossMusic : sounds.music;
-  if (!track) return;
+  const track = sounds.music;
+  if (!track) {
+    console.log("[AUDIO] scene music missing: sounds.music");
+    return null;
+  }
 
   try {
     if (typeof track.seek === "function") {
@@ -442,7 +529,9 @@ export function playSceneMusic({ sounds, isBossScene = false }) {
 }
 
 export function stopAllMusic(sounds) {
-  for (const track of [sounds.music, sounds.bossMusic]) {
+  const tracks = [sounds.music];
+
+  for (const track of tracks) {
     if (!track) continue;
 
     try {

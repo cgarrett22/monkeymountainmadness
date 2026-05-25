@@ -13,6 +13,7 @@ import {
     DEBUG_LOOP_MAIN_SCENE,
     DEBUG_LOOP_KONG_SCENE,
     NODE_DEBUG,
+    setNodeDebug,
     HAT_TRICK_WINDOW,
     HAT_TRICK_COUNT,
     HAT_TRICK_BONUS,
@@ -62,7 +63,7 @@ import {
   chillSecretRewards
 } from "./scene-data-chill.js";
 
-import { SCENE_CONFIGS } from "./scene-config.js";
+import { SCENE_CONFIGS, SCENE_CARD_CONFIGS } from "./scene-config.js";
 
 import {
   randInt,
@@ -123,6 +124,16 @@ import {
   cancelDeliveryAhh
 } from "./delivery-event.js";
 
+import {
+  monkeyForestSecretRewards
+} from "./scene-data-monkey-forest.js";
+
+import {
+  ticketTimeSecretRewards
+} from "./scene-data-ticket-time.js";
+
+import { ICHI_CAFE_BANANA_NODE_IDS, ichiCafeSecretRewards, ichiCafeCardMeta } from "./scene-data-ichi-cafe.js";
+
 
 
 const canvas = document.getElementById("game");
@@ -151,6 +162,15 @@ const muteButton = {
 const MAX_ACTIVE_BANANAS = 3;
 
 const CLOUD_SCROLL_SPEED = 14;
+
+const SCENE_CARD_CONTINUE_BUTTON = {
+    x: CANVAS_WIDTH / 2 - 190,
+    y: CANVAS_HEIGHT - 170,
+    w: 380,
+    h: 78
+};
+
+const SCENE_CARD_MIN_READ_TIME = 0.45;
 
 const BOSS_BALLOON_RELEASE_NODE_ID = "CK38";
 const BOSS_BALLOON_RELEASE_DELAY = 9.0; // seconds; tune to 8.0 or 10.0 if preferred
@@ -201,30 +221,25 @@ const SCENE_START_SPOTLIGHT = {
 
 const DEBUG_SHOW_OPENING_EVERY_TIME = true;
 
-// const OPENING_INTRO_TIMING = {
-//     jabWalkStart: 0.00,
-//     jabWalkDuration: 2.10,
+const URL_PARAMS = new URLSearchParams(window.location.search);
 
-//     jabBlinkStart: 2.10,
-//     jabBlinkDuration: 1.25,
+const RUNTIME_DEBUG =
+    URL_PARAMS.get("debug") === "true" ||
+    URL_PARAMS.get("debug") === "1";
 
-//     hiMommyStart: 2.35,
-//     hiMommyDuration: 1.20,
+const RUNTIME_NODE_DEBUG =
+    URL_PARAMS.get("nodes") === "true" ||
+    URL_PARAMS.get("nodes") === "1" ||
+    URL_PARAMS.get("nodeDebug") === "true" ||
+    URL_PARAMS.get("nodeDebug") === "1";
 
-//     brokenHeartStart: 2.22,
+if (RUNTIME_NODE_DEBUG) {
+    setNodeDebug(true);
+}
 
-//     motherShunStart: 3.35,
-//     motherShunDuration: 1.35,
-
-//     jabWeepStart: 4.45,
-//     heartAnimStart: 4.45,
-//     introLoopStart: 4.45,
-
-//     zookeeperStart: 5.35,
-//     zookeeperDuration: 2.10,
-
-//     totalDuration: 8.10
-// };
+function isDebugEnabled() {
+    return DEBUG || RUNTIME_DEBUG;
+}
 
 function easeInOutQuad(t) {
     t = clamp(t, 0, 1);
@@ -482,25 +497,73 @@ function logIntroSpriteInfoOnce() {
     }
 }
 
-// keep compatibility with the rest of the existing file for now
-function drawStartCard(ctx) {
-  const img = state.cardBackground;
+// function imageReady(img) {
+//     return !!(img && img.complete && img.naturalWidth > 0);
+// }
 
-  if (!img || !img.complete || img.naturalWidth <= 0) {
-    ctx.fillStyle = "#111";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+function drawStartTitleScreen(ctx) {
+    const bg = spriteStore.titleBackground;
+    const back = spriteStore.titleBack;
+    const punch = spriteStore.titlePunch;
+    const front = spriteStore.titleFront;
 
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 42px Arial";
+    const hasLayeredTitle =
+        imageReady(bg) &&
+        imageReady(back) &&
+        imageReady(punch) &&
+        imageReady(front);
+
+    if (!hasLayeredTitle) {
+        return false;
+    }
+
+    // Full-size background and title layers.
+    ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(back, 0, 0, canvas.width, canvas.height);
+
+    // Punch is trimmed; draw at explicit intended position.
+    ctx.drawImage(punch, 533, 204);
+
+    ctx.drawImage(front, 0, 0, canvas.width, canvas.height);
+
+    // Press prompt
+    ctx.save();
     ctx.textAlign = "center";
-    ctx.fillText("Start card missing or still loading", canvas.width / 2, 220);
+    ctx.textBaseline = "middle";
+    ctx.font = "bold 52px Arial";
+    ctx.lineWidth = 7;
+    ctx.strokeStyle = "rgba(0,0,0,0.55)";
+    ctx.fillStyle = "#ffffff";
+    ctx.strokeText("Press space bar or tap to begin", canvas.width / 2, 1660);
+    ctx.fillText("Press space bar or tap to begin", canvas.width / 2, 1660);
+    ctx.restore();
 
+    return true;
+}
+
+function drawStartCard(ctx) {
+    if (drawStartTitleScreen(ctx)) {
+        drawLeaderboardPanel();
+        return;
+    }
+
+    const img = state.cardBackground || spriteStore.gameStartCard;
+
+    if (!imageReady(img)) {
+        ctx.fillStyle = "#111";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 42px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("Start card missing or still loading", canvas.width / 2, 220);
+
+        drawLeaderboardPanel();
+        return;
+    }
+
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     drawLeaderboardPanel();
-    return;
-  }
-
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-  drawLeaderboardPanel();
 }
 
 function drawLeaderboardPanel() {
@@ -583,7 +646,10 @@ Object.defineProperties(window, {
 const SECRET_REWARDS = {
   main: bananaBonanzaSecretRewards,
   boss: coconutKongSecretRewards,
-  chill: chillSecretRewards
+  chill: chillSecretRewards,
+  monkeyForest: monkeyForestSecretRewards,
+  ticketTime: ticketTimeSecretRewards,
+  ichiCafe: ichiCafeSecretRewards,
 };
 
 function getSceneConfig() {
@@ -990,37 +1056,400 @@ function getLevelCardImage(level) {
     return spriteStore.bananaBonanzaCard;
 }
 
-function getSceneCard(scene, level = state.level || 1) {
-    if (scene === "main") {
-        const useMotherCard =
-            !!state.motherAcquired ||
-            level > 1;
+// card helpers
+function drawSceneCardContinueButton() {
+    const b = SCENE_CARD_CONTINUE_BUTTON;
 
-        if (useMotherCard) {
-            return (
-                spriteStore.bananaBonanzaCardMother ||
-                spriteStore.bananaBonanzaCard ||
-                getLevelCardImage(level)
-            );
+    ctx.save();
+
+    ctx.fillStyle = "rgba(0,0,0,0.34)";
+    ctx.strokeStyle = "rgba(255,255,255,0.72)";
+    ctx.lineWidth = 3;
+
+    roundRect(ctx, b.x, b.y, b.w, b.h, 22);
+    ctx.fill();
+    ctx.stroke();
+
+    drawShadowText("CONTINUE", b.x + b.w / 2, b.y + b.h / 2, {
+        font: "bold 34px Arial",
+        align: "center",
+        baseline: "middle",
+        fill: "#ffffff",
+        shadowBlur: 8,
+        lineWidth: 2
+    });
+
+    ctx.font = "22px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(255,255,255,0.82)";
+    ctx.fillText("Tap / Space", b.x + b.w / 2, b.y + b.h + 34);
+
+    ctx.restore();
+}
+
+function drawShadowText(text, x, y, opts = {}) {
+    const {
+        font = "bold 44px Arial",
+        align = "left",
+        baseline = "middle",
+        fill = "#ffffff",
+        shadow = "rgba(0,0,0,0.38)",
+        shadowBlur = 8,
+        shadowOffsetX = 2,
+        shadowOffsetY = 3,
+        stroke = "rgba(0,0,0,0.22)",
+        lineWidth = 3
+    } = opts;
+
+    ctx.save();
+    ctx.font = font;
+    ctx.textAlign = align;
+    ctx.textBaseline = baseline;
+
+    ctx.shadowColor = shadow;
+    ctx.shadowBlur = shadowBlur;
+    ctx.shadowOffsetX = shadowOffsetX;
+    ctx.shadowOffsetY = shadowOffsetY;
+
+    if (stroke && lineWidth > 0) {
+        ctx.lineWidth = lineWidth;
+        ctx.strokeStyle = stroke;
+        ctx.strokeText(text, x, y);
+    }
+
+    ctx.fillStyle = fill;
+    ctx.fillText(text, x, y);
+
+    ctx.restore();
+}
+
+function imageReady(img) {
+    return !!(img && img.complete && img.naturalWidth > 0);
+}
+
+function getSceneCardConfig(sceneKey) {
+    return SCENE_CARD_CONFIGS[sceneKey] || SCENE_CARD_CONFIGS.main;
+}
+
+function getCardImage(imageKey) {
+    if (!imageKey) return null;
+    if (imageKey === "mainBackground") return backgroundImage;
+    return spriteStore[imageKey] || null;
+}
+
+function drawWrappedCardText(text, x, y, maxWidth, lineHeight, opts = {}) {
+    const words = String(text || "").split(/\s+/);
+    let line = "";
+    let lineY = y;
+
+    const drawLine = value => {
+        drawShadowText(value, x, lineY, {
+            font: opts.font || "34px Arial",
+            align: opts.align || "left",
+            baseline: "top",
+            fill: opts.fill || "#ffffff",
+            shadowBlur: opts.shadowBlur ?? 6,
+            lineWidth: opts.lineWidth ?? 2,
+            stroke: opts.stroke || "rgba(0,0,0,0.18)"
+        });
+    };
+
+    for (const word of words) {
+        const test = line ? `${line} ${word}` : word;
+
+        ctx.save();
+        ctx.font = opts.font || "34px Arial";
+        const tooWide = ctx.measureText(test).width > maxWidth && line;
+        ctx.restore();
+
+        if (tooWide) {
+            drawLine(line);
+            line = word;
+            lineY += lineHeight;
+        } else {
+            line = test;
         }
-
-        return spriteStore.bananaBonanzaCard || getLevelCardImage(level);
     }
 
-    if (scene === "boss") {
-        return spriteStore.coconutKongCard || getLevelCardImage(level);
+    if (line) {
+        drawLine(line);
     }
 
-    if (scene === "chill") {
-        return (
-            spriteStore.chillHillCard ||
-            spriteStore.chillHillBackground ||
-            getLevelCardImage(level)
+    return lineY + lineHeight;
+}
+
+function drawSceneCardWatermark(imageKey, alpha = 0.15, maxSize = 850) {
+    const img = getCardImage(imageKey);
+    if (!img) return;
+
+    const iw = img.naturalWidth || img.width;
+    const ih = img.naturalHeight || img.height;
+    if (!iw || !ih) return;
+
+    const scale = Math.min(maxSize / iw, maxSize / ih, 1);
+    const w = iw * scale;
+    const h = ih * scale;
+
+    const x = (canvas.width - w) / 2;
+    const y = ((canvas.height / 2) - h) / 2;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(img, x, y, w, h);
+    ctx.restore();
+}
+
+function drawCardImageContain(img, cx, cy, maxW, maxH, opts = {}) {
+    if (!imageReady(img)) return false;
+
+    let sourceX = 0;
+    let sourceY = 0;
+    let sourceW = img.naturalWidth;
+    let sourceH = img.naturalHeight;
+
+    if (opts.sheet) {
+        const cols = opts.sheet.cols || 1;
+        const rows = opts.sheet.rows || 1;
+        const frame = opts.sheet.frame || 0;
+
+        sourceW = img.naturalWidth / cols;
+        sourceH = img.naturalHeight / rows;
+        sourceX = (frame % cols) * sourceW;
+        sourceY = Math.floor(frame / cols) * sourceH;
+    }
+
+    const scale = Math.min(maxW / sourceW, maxH / sourceH);
+    const drawW = sourceW * scale;
+    const drawH = sourceH * scale;
+
+    ctx.drawImage(
+        img,
+        sourceX,
+        sourceY,
+        sourceW,
+        sourceH,
+        cx - drawW / 2,
+        cy - drawH / 2,
+        drawW,
+        drawH
+    );
+
+    return true;
+}
+
+function drawSceneCardIcon(iconKey, x, y) {
+    if (iconKey === "heart") {
+        if (drawCardImageContain(spriteStore.cardHeartIcon, x, y, 90, 90)) return;
+
+        ctx.save();
+        ctx.font = "70px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("❤️", x, y);
+        ctx.restore();
+        return;
+    }
+
+    if (iconKey === "mother") {
+        if (drawCardImageContain(spriteStore.cardMotherIcon, x, y, 96, 96)) return;
+        drawCardImageContain(spriteStore.mother, x, y, 96, 96);
+        return;
+    }
+
+    if (iconKey === "safePlace") {
+        if (drawCardImageContain(spriteStore.cardSafePlaceIcon, x, y, 96, 96)) return;
+
+        ctx.save();
+        ctx.font = "64px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("⬚", x, y);
+        ctx.restore();
+        return;
+    }
+
+    const img = getCardImage(iconKey);
+    if (img) {
+        drawCardImageContain(img, x, y, 96, 96);
+    }
+}
+
+function getCardObjectivesForScene(sceneKey, cfg) {
+    const objectives = [...(cfg.objectives || [])];
+
+    if (
+        sceneKey === "main" &&
+        (state.level || 1) > 1 &&
+        !objectives.some(o => o.iconKey === "mother")
+    ) {
+        objectives.splice(1, 0, {
+            text: "KEEP MOTHER SAFE",
+            iconKey: "mother"
+        });
+    }
+
+    return objectives;
+}
+
+function drawDynamicSceneCard(sceneKey, level = state.level || 1) {
+    const cfg = getSceneCardConfig(sceneKey);
+    const zoneColor = cfg.zoneColor || "#7c3aed";
+    const textColor = cfg.textColor || "#ffffff";
+
+    const bg = getCardImage(cfg.backgroundKey);
+
+    ctx.save();
+
+    // Backdrop.
+    ctx.fillStyle = zoneColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (imageReady(bg)) {
+        ctx.save();
+        ctx.globalAlpha = 0.50;
+        ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+        ctx.restore();
+    }
+
+    // Solid upper color.
+    ctx.fillStyle = zoneColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height * 0.50);
+
+    // Lower gradient from zone color to transparent.
+    const grad = ctx.createLinearGradient(0, canvas.height * 0.45, 0, canvas.height);
+    grad.addColorStop(0, zoneColor);
+    grad.addColorStop(0.58, `${zoneColor}cc`);
+    grad.addColorStop(1, `${zoneColor}00`);
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, canvas.height * 0.45, canvas.width, canvas.height * 0.55);
+
+    // Watermark
+    drawSceneCardWatermark(
+        cfg.watermarkImageKey || cfg.fallbackImageKey,
+        cfg.watermarkAlpha ?? 0.15,
+        cfg.watermarkMaxSize ?? 850
+    );
+
+    // Scene title.
+    drawShadowText(
+        cfg.title || String(sceneKey || "").toUpperCase(),
+        canvas.width / 2,
+        180,
+        {
+            font: "bold 62px Arial",
+            align: "center",
+            baseline: "middle",
+            fill: textColor,
+            shadowBlur: 9,
+            lineWidth: 3
+        }
+    );
+
+    // Objectives.
+    const objectives = cfg.objectives || [];
+    const objectiveX = 120;
+    const objectiveIconX = 880;
+    let objectiveY = 455;
+
+    for (const obj of objectives) {
+        drawShadowText(
+            obj.text,
+            objectiveX,
+            objectiveY,
+            {
+                font: "bold 44px Arial",
+                align: "left",
+                baseline: "middle",
+                fill: textColor,
+                shadowBlur: 7,
+                lineWidth: 3
+            }
+        );
+
+        drawSceneCardIcon(obj.iconKey, objectiveIconX, objectiveY);
+        objectiveY += 118;
+    }
+
+    // Intro or fallback.
+    const intro = cfg.introduction;
+
+    if (intro?.title || intro?.text) {
+        drawShadowText(
+            intro.title || "Get Ready",
+            145,
+            955,
+            {
+                font: "bold 40px Arial",
+                align: "left",
+                baseline: "top",
+                fill: textColor,
+                shadowBlur: 7,
+                lineWidth: 2
+            }
+        );
+
+        drawWrappedCardText(
+            intro.text || "",
+            145,
+            1018,
+            790,
+            44,
+            {
+                font: "34px Arial",
+                fill: textColor
+            }
+        );
+
+        const img = getCardImage(intro.imageKey);
+
+        if (!drawCardImageContain(
+            img,
+            canvas.width / 2,
+            1360,
+            intro.maxW || 460,
+            intro.maxH || 460,
+            { sheet: intro.sheet }
+        )) {
+            debugLog(state, "[CARD] missing intro image", {
+                sceneKey,
+                imageKey: intro.imageKey
+            });
+        }
+    } else {
+        const fallback = getCardImage(cfg.fallbackImageKey || "cardSafePlaceIcon");
+
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = textColor;
+        ctx.font = "bold 44px Arial";
+        ctx.fillText("GET READY", canvas.width / 2, 1010);
+
+        drawCardImageContain(
+            fallback,
+            canvas.width / 2,
+            1320,
+            460,
+            460
         );
     }
 
-    return getLevelCardImage(level);
+    // Optional level line, small and unobtrusive.
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "bold 28px Arial";
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.fillText(`LEVEL ${level}`, canvas.width / 2, 70);
+    drawSceneCardContinueButton();
+    ctx.restore();
 }
+
+function hasDynamicSceneCard(sceneKey) {
+    return !!getSceneCardConfig(sceneKey);
+}
+
+// end card helpers
 
 function getGameOverCardImage() {
     return spriteStore.gameOverCard || null;
@@ -1044,7 +1473,7 @@ function getCurrentNodeMap() {
 }
 
 function checkChillHillDebugWin() {
-    if (!DEBUG) return;
+    if (!isDebugEnabled) return;
     if (state.scene !== "chill") return;
     if (!state.player) return;
     if (state.mode !== "playing") return;
@@ -1060,6 +1489,9 @@ function checkChillHillDebugWin() {
 function getCurrentBackgroundImage() {
     if (state.scene === "boss") return spriteStore.ckBackground;
     if (state.scene === "chill") return spriteStore.chillHillBackground || backgroundImage;
+    if (state.scene === "monkeyForest") return spriteStore.monkeyForestBackground || backgroundImage;
+    if (state.scene === "ticketTime") return spriteStore.ticketTimeBackground || backgroundImage;
+    if (state.scene === "ichiCafe") return spriteStore.ichiCafeBackground || backgroundImage;
     return backgroundImage;
 }
 
@@ -1120,7 +1552,7 @@ function showBossIntro(level) {
     state.levelIntro = null;
     state.levelUp = null;
 
-    state.loadScreenImage = getSceneCard("boss", level);
+    state.loadScreenImage = null;
 
     state.bossIntro = {
         level,
@@ -1129,14 +1561,13 @@ function showBossIntro(level) {
     };
 }
 
-
 function showLevelIntro(level, nextScene = "main") {
     state.mode = "playing";
     state.sceneWinTimer = 0;
     state.bossIntro = null;
     state.levelUp = null;
 
-    state.loadScreenImage = getSceneCard(nextScene, level);
+    state.loadScreenImage = null;
 
     state.levelIntro = {
         level,
@@ -1222,6 +1653,40 @@ function drawBossKongIntro() {
     }
 }
 
+function advanceSceneIntroCard() {
+    const li = state.levelIntro;
+    if (!li || li.phase !== "card") return false;
+
+    // Prevent accidental double tap / same tap that opened the card.
+    if ((li.time || 0) < SCENE_CARD_MIN_READ_TIME) {
+        return true;
+    }
+
+    li.phase = "overlay";
+    li.time = 0;
+
+    if (!li.prepared) {
+        if (li.nextScene === "main") {
+            startMainScene();
+        } else if (li.nextScene === "chill") {
+            startChillHill();
+        } else if (li.nextScene === "monkeyForest") {
+            startMonkeyForest();
+            //startGenericScene("monkeyForest");
+        } else if (li.nextScene === "ticketTime") {
+            startChillHill();
+        } else if (li.nextScene === "ichiCafe") {
+            startGenericScene("ichiCafe");
+        } else {
+            startGenericScene(li.nextScene);
+        }
+
+        li.prepared = true;
+    }
+
+    return true;
+}
+
 function updateLevelIntro(dt) {
     if (!state.levelIntro) return;
 
@@ -1229,28 +1694,35 @@ function updateLevelIntro(dt) {
     li.time += dt;
 
     if (li.phase === "card") {
-        if (li.time >= SCENE_INTRO_TIMING.cardDuration) {
-            li.phase = "overlay";
-            li.time = 0;
-
-            if (!li.prepared) {
-                if (li.nextScene === "main") {
-                    startMainScene();
-                } else if (li.nextScene === "chill") {
-                    startChillHill();
-                }
-                li.prepared = true;
-            }
-        }
+        // Manual continue only. The card is paused for reading.
         return;
     }
+    // if (li.phase === "card") {
+    //     if (li.time >= SCENE_INTRO_TIMING.cardDuration) {
+    //         li.phase = "overlay";
+    //         li.time = 0;
 
-    if (li.phase === "overlay") {
-        if (li.time >= SCENE_INTRO_TIMING.overlayDuration) {
-            state.levelIntro = null;
-            playPendingSceneMusic();
-        }
-    }
+    //         if (!li.prepared) {
+    //             if (li.nextScene === "main") {
+    //                 startMainScene();
+    //             } else if (li.nextScene === "chill") {
+    //                 startChillHill();
+    //             } else if (li.nextScene === "monkeyForest") {
+    //                 startMonkeyForest();
+    //             } else if (li.nextScene === "ticketTime") {
+    //                 startChillHill();
+    //             } else if (li.nextScene === "ichiCafe") {
+    //                 startGenericScene("ichiCafe");
+    //             } else {
+    //                 startGenericScene(li.nextScene);
+    //             }
+
+    //             li.prepared = true;
+    //         }
+    //     }
+
+    //     return;
+    // }
 
     if (li.phase === "overlay") {
         if (li.time >= SCENE_INTRO_TIMING.overlayDuration) {
@@ -1280,7 +1752,7 @@ function getSceneIntroFocus(nextScene = "main") {
 }
 
 function drawBabyKongPathDebug() {
-    if (!DEBUG) return;
+    if (!isDebugEnabled) return;
     if (state.scene !== "boss") return;
     if (!Array.isArray(babyKongPath) || babyKongPath.length < 1) return;
 
@@ -1344,7 +1816,7 @@ function drawBabyKongPathDebug() {
 }
 
 function drawJumpDebugPanel() {
-    if (!DEBUG) return;
+    if (!isDebugEnabled) return;
     if (state.scene !== "boss") return;
 
     const player = state.player;
@@ -1826,6 +2298,7 @@ function markOpeningCutsceneSeen() {
     // no-op: intro is always available; player may skip instead
 }
 
+
 const INTRO_SKIP_BUTTON = {
     x: CANVAS_WIDTH - 235,
     y: 38,
@@ -1833,10 +2306,28 @@ const INTRO_SKIP_BUTTON = {
     h: 62
 };
 
+function stopIntroAudio() {
+    try {
+        if (sounds.introLoop) {
+            if (state.introLoopSoundId != null && typeof sounds.introLoop.stop === "function") {
+                sounds.introLoop.stop(state.introLoopSoundId);
+            } else if (typeof sounds.introLoop.stop === "function") {
+                sounds.introLoop.stop();
+            }
+        }
+    } catch (err) {
+        debugLog(state, "[AUDIO] stopIntroAudio failed", err?.message || String(err));
+    }
+
+    state.introLoopSoundId = null;
+}
+
 function finishOpeningCutscene() {
+    stopIntroAudio();
     stopAllMusic(sounds);
+
     state.openingCutscene = null;
-    showZoneMap();
+    showLevelIntro(state.level || 1, "main");
 }
 
 function skipOpeningCutscene() {
@@ -1891,27 +2382,8 @@ function startOpeningCutscene() {
     stopAllMusic(sounds);
 }
 
-// function queueSceneMusic(isBossScene = false) {
-//     state.pendingSceneMusic = {
-//         isBossScene
-//     };
-// }
-
-function playPendingSceneMusic() {
-    if (!state.pendingSceneMusic) return;
-
-    playSceneMusic({
-        sounds,
-        isBossScene: !!state.pendingSceneMusic.isBossScene
-    });
-
-    state.pendingSceneMusic = null;
-}
-
-function queueSceneMusic(isBossScene = false) {
-    state.pendingSceneMusic = {
-        isBossScene: !!isBossScene
-    };
+function queueSceneMusic() {
+    state.pendingSceneMusic = true;
 
     // Keep silence during cards/overlays.
     stopAllMusic(sounds);
@@ -1920,13 +2392,9 @@ function queueSceneMusic(isBossScene = false) {
 function dequeueSceneMusic() {
     if (!state.pendingSceneMusic) return;
 
-    const pending = state.pendingSceneMusic;
     state.pendingSceneMusic = null;
 
-    playSceneMusic({
-        sounds,
-        isBossScene: !!pending.isBossScene
-    });
+    playSceneMusic({ sounds });
 }
 
 function shouldDrawIntroThoughtBubble(t) {
@@ -2108,7 +2576,11 @@ function updateOpeningCutscene(dt) {
 
     if (!cut.playedIntroLoop && t >= INTRO_TIMING.introLoopAt) {
         cut.playedIntroLoop = true;
-        playSfx(sounds.introLoop, null, "introLoop");
+        try {
+            state.introLoopSoundId = sounds.introLoop?.play?.() ?? null;
+        } catch (err) {
+            debugLog(state, "[AUDIO] introLoop play failed", err?.message || String(err));
+        }
     }
 
     if (t >= INTRO_TIMING.totalDuration) {
@@ -2164,7 +2636,7 @@ function startMainScene() {
     resetActors();
     applyLevelConfig();
     resetScene();
-    queueSceneMusic(false);
+    queueSceneMusic();
     state.butterfly = null;
     state.pj = null;
     state.bananaTimestamps = [];
@@ -2396,7 +2868,7 @@ function startBossMode() {
   state.secretRewardsFound = {};
   state.secretRewardPopups = [];
   refillBananas();
-  dequeueSceneMusic(true);
+  dequeueSceneMusic();
   startSceneSpotlight();
 }
 
@@ -2766,20 +3238,20 @@ function startChillHill() {
     state.lastHeartNodeId = null;
     state.secretReveal = null;
     state.deliveryEvent = null;
-state.deliveryCrate = null;
-state.deliveryTimer = 6;
-state.delayedPopups = [];
+    state.deliveryCrate = null;
+    state.deliveryTimer = 6;
+    state.delayedPopups = [];
 
-state.unlocks.butterfly = true;
-state.unlocks.pj = true;
-state.unlocks.kongEvent = true;
+    state.unlocks.butterfly = true;
+    state.unlocks.pj = true;
+    state.unlocks.kongEvent = true;
 
-resetKongEvent(state);
+    resetKongEvent(state);
 
-state.butterfly = createButterfly("CH38", getCurrentNodeMap());
-state.pj = createPJ("CH26", getCurrentNodeMap());
+    state.butterfly = createButterfly("CH38", getCurrentNodeMap());
+    state.pj = createPJ("CH26", getCurrentNodeMap());
 
-refillBananas();
+    refillBananas();
 
     if (!state.player) {
         state.player = new Player(chillConfig.startNode, sharedDeps);
@@ -2811,7 +3283,7 @@ refillBananas();
     state.troops = [];
     applyLevelConfig();
     state.player.hasBanana = false;
-    queueSceneMusic(false);
+    queueSceneMusic();
     state.bananaTimestamps = [];
     state.mainEnding = null;
     state.mainSecretEntered = false;
@@ -2833,6 +3305,282 @@ function canCompleteChillHill() {
     state.player.currentNode === chillConfig.goalNode &&
     (state.acceptance || 0) >= 3
   );
+}
+
+function startMonkeyForest() {
+    state.scene = "monkeyForest";
+    resetSceneScoringStats();
+    state.mode = "playing";
+    state.boss = null;
+    state.catchAnim = null;
+
+    resetHeartObjectiveState();
+
+    state.hearts = [];
+    state.fieldHearts = [];
+    state.flyingHearts = [];
+    state.particles = [];
+    state.hands = [];
+    state.bananas = [];
+
+    state.sceneWinAwarded = false;
+    state.bananasCollectedThisScene = 0;
+
+    state.heartThrowTimer = 2.5;
+    state.heartsThrown = 0;
+    state.maxActiveHearts = 1;
+    state.heartCooldown = 0;
+    state.lastHeartNodeId = null;
+
+    state.secretReveal = null;
+    state.deliveryEvent = null;
+    state.deliveryCrate = null;
+    state.deliveryTimer = 8; // disable Delivery Dude for first TT test
+    state.delayedPopups = [];
+
+    resetKongEvent(state);
+
+    // Start with no PJ/B in Ticket Time unless you intentionally want them.
+    state.butterfly = null;
+    state.pj = null;
+
+    refillBananas();
+
+    const config = getSceneConfig();
+    const startNode = config.startNode;
+
+    if (!state.player) {
+        state.player = new Player(startNode, sharedDeps);
+    } else {
+        state.player.reset(startNode);
+    }
+
+    resetPlayerTemporaryState(2.0);
+
+    createSceneMother();
+    syncLegacyBossMother();
+
+    state.zookeeper = {
+        anim: "idle",
+        frame: 0,
+        time: 0,
+        didThrowSound: false
+    };
+
+    state.zookeeper2 = {
+        anim: "idle",
+        frame: 0,
+        time: 0,
+        timer: rand(2.5, 6),
+        action: "idle",
+        actionTimer: 0
+    };
+
+    state.troops = [];
+    applyLevelConfig();
+
+    state.player.hasBanana = false;
+
+    queueSceneMusic();
+
+    state.bananaTimestamps = [];
+    state.mainEnding = null;
+    state.mainSecretEntered = false;
+    state.mainMotherPose = "sit";
+    state.mainMotherTimer = 0;
+    state.pendingHeartThrow = null;
+    state.secretRewardsFound = {};
+    state.secretRewardPopups = [];
+
+    startSceneSpotlight();
+}
+
+function startTicketTime() {
+    state.scene = "ticketTime";
+    resetSceneScoringStats();
+    state.mode = "playing";
+    state.boss = null;
+    state.catchAnim = null;
+
+    resetHeartObjectiveState();
+
+    state.hearts = [];
+    state.fieldHearts = [];
+    state.flyingHearts = [];
+    state.particles = [];
+    state.hands = [];
+    state.bananas = [];
+
+    state.sceneWinAwarded = false;
+    state.bananasCollectedThisScene = 0;
+
+    state.heartThrowTimer = 2.5;
+    state.heartsThrown = 0;
+    state.maxActiveHearts = 1;
+    state.heartCooldown = 0;
+    state.lastHeartNodeId = null;
+
+    state.secretReveal = null;
+    state.deliveryEvent = null;
+    state.deliveryCrate = null;
+    state.deliveryTimer = 999; // disable Delivery Dude for first TT test
+    state.delayedPopups = [];
+
+    resetKongEvent(state);
+
+    // Start with no PJ/B in Ticket Time unless you intentionally want them.
+    state.butterfly = null;
+    state.pj = null;
+
+    refillBananas();
+
+    const config = getSceneConfig();
+    const startNode = config.startNode;
+
+    if (!state.player) {
+        state.player = new Player(startNode, sharedDeps);
+    } else {
+        state.player.reset(startNode);
+    }
+
+    resetPlayerTemporaryState(2.0);
+
+    createSceneMother();
+    syncLegacyBossMother();
+
+    state.zookeeper = {
+        anim: "idle",
+        frame: 0,
+        time: 0,
+        didThrowSound: false
+    };
+
+    state.zookeeper2 = {
+        anim: "idle",
+        frame: 0,
+        time: 0,
+        timer: rand(2.5, 6),
+        action: "idle",
+        actionTimer: 0
+    };
+
+    state.troops = [];
+    applyLevelConfig();
+
+    state.player.hasBanana = false;
+
+    queueSceneMusic();
+
+    state.bananaTimestamps = [];
+    state.mainEnding = null;
+    state.mainSecretEntered = false;
+    state.mainMotherPose = "sit";
+    state.mainMotherTimer = 0;
+    state.pendingHeartThrow = null;
+    state.secretRewardsFound = {};
+    state.secretRewardPopups = [];
+
+    startSceneSpotlight();
+}
+
+function startGenericScene(sceneKey) {
+    const config = SCENE_CONFIGS[sceneKey];
+
+    if (!config) {
+        debugLog(state, "[SCENE] missing generic scene config", { sceneKey });
+        return;
+    }
+
+    state.scene = sceneKey;
+    resetSceneScoringStats();
+    state.mode = "playing";
+    state.boss = null;
+    state.catchAnim = null;
+
+    resetHeartObjectiveState();
+
+    state.hearts = [];
+    state.fieldHearts = [];
+    state.flyingHearts = [];
+    state.particles = [];
+    state.hands = [];
+    state.bananas = [];
+
+    state.sceneWinAwarded = false;
+    state.bananasCollectedThisScene = 0;
+
+    state.heartThrowTimer = 2.5;
+    state.heartsThrown = 0;
+    state.maxActiveHearts = 1;
+    state.heartCooldown = 0;
+    state.lastHeartNodeId = null;
+
+    state.secretReveal = null;
+    state.deliveryEvent = null;
+    state.deliveryCrate = null;
+    state.deliveryTimer = 999;
+    state.delayedPopups = [];
+
+    state.butterfly = null;
+    state.pj = null;
+    state.troops = [];
+    state.nanaSnatchers = [];
+    state.coconuts = [];
+
+    resetKongEvent(state);
+
+    refillBananas();
+
+    const startNodeId = config.startNode;
+
+    if (!state.player) {
+        state.player = new Player(startNodeId, sharedDeps);
+    } else {
+        state.player.reset(startNodeId);
+    }
+
+    resetPlayerTemporaryState(2.0);
+
+    createSceneMother();
+    syncLegacyBossMother();
+
+    state.zookeeper = {
+        anim: "idle",
+        frame: 0,
+        time: 0,
+        didThrowSound: false
+    };
+
+    state.zookeeper2 = {
+        anim: "idle",
+        frame: 0,
+        time: 0,
+        timer: rand(2.5, 6),
+        action: "idle",
+        actionTimer: 0
+    };
+
+    applyLevelConfig();
+
+    state.player.hasBanana = false;
+
+    queueSceneMusic();
+
+    state.bananaTimestamps = [];
+    state.mainEnding = null;
+    state.mainSecretEntered = false;
+    state.mainMotherPose = "sit";
+    state.mainMotherTimer = 0;
+    state.pendingHeartThrow = null;
+    state.secretRewardsFound = {};
+    state.secretRewardPopups = [];
+
+    startSceneSpotlight();
+
+    debugLog(state, "[SCENE] generic scene started", {
+        sceneKey,
+        startNodeId
+    });
 }
 
 function runAudioTest() {
@@ -3004,6 +3752,48 @@ function spawnBossRoamers() {
     });
 }
 
+// function drawBossIntroOverlay() {
+//     if (!state.bossIntro) return;
+
+//     const bi = state.bossIntro;
+//     const t = Math.min(bi.time / bi.duration, 1);
+
+//     const fadeIn = Math.min(t / 0.2, 1);
+//     const fadeOut = bi.time > bi.duration - 0.3 ?
+//         Math.max((bi.duration - bi.time) / 0.3, 0) :
+//         1;
+//     const alpha = fadeIn * fadeOut;
+
+//     ctx.save();
+//     ctx.globalAlpha = alpha;
+
+//     const bg = state.loadScreenImage || getLevelCardImage(bi.level);
+//     if (bg && bg.complete && bg.naturalWidth > 0) {
+//         ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+//     } else {
+//         ctx.fillStyle = "#000";
+//         ctx.fillRect(0, 0, canvas.width, canvas.height);
+//     }
+
+//     // ctx.fillStyle = "rgba(0,0,0,0.45)";
+//     // ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+//     // ctx.textAlign = "center";
+//     // ctx.textBaseline = "middle";
+
+//     // ctx.fillStyle = "#ffffff";
+//     // ctx.font = "bold 64px Arial";
+//     // ctx.strokeText("Rescue Mother", canvas.width / 2, 420);
+//     // ctx.fillText("Rescue Mother", canvas.width / 2, 420);
+
+//     // ctx.font = "36px Arial";
+//     // ctx.fillStyle = "#f3f4f6";
+//     // ctx.fillText("Carry Mother to the cave.", canvas.width / 2, 600);
+//     // ctx.fillText("Collect 3 hearts before escaping.", canvas.width / 2, 660);
+
+//     ctx.restore();
+// }
+
 function drawBossIntroOverlay() {
     if (!state.bossIntro) return;
 
@@ -3011,38 +3801,13 @@ function drawBossIntroOverlay() {
     const t = Math.min(bi.time / bi.duration, 1);
 
     const fadeIn = Math.min(t / 0.2, 1);
-    const fadeOut = bi.time > bi.duration - 0.3 ?
-        Math.max((bi.duration - bi.time) / 0.3, 0) :
-        1;
-    const alpha = fadeIn * fadeOut;
+    const fadeOut = bi.time > bi.duration - 0.3
+        ? Math.max((bi.duration - bi.time) / 0.3, 0)
+        : 1;
 
     ctx.save();
-    ctx.globalAlpha = alpha;
-
-    const bg = state.loadScreenImage || getLevelCardImage(bi.level);
-    if (bg && bg.complete && bg.naturalWidth > 0) {
-        ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
-    } else {
-        ctx.fillStyle = "#000";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-
-    // ctx.fillStyle = "rgba(0,0,0,0.45)";
-    // ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // ctx.textAlign = "center";
-    // ctx.textBaseline = "middle";
-
-    // ctx.fillStyle = "#ffffff";
-    // ctx.font = "bold 64px Arial";
-    // ctx.strokeText("Rescue Mother", canvas.width / 2, 420);
-    // ctx.fillText("Rescue Mother", canvas.width / 2, 420);
-
-    // ctx.font = "36px Arial";
-    // ctx.fillStyle = "#f3f4f6";
-    // ctx.fillText("Carry Mother to the cave.", canvas.width / 2, 600);
-    // ctx.fillText("Collect 3 hearts before escaping.", canvas.width / 2, 660);
-
+    ctx.globalAlpha = fadeIn * fadeOut;
+    drawDynamicSceneCard("boss", bi.level || state.level || 1);
     ctx.restore();
 }
 
@@ -3050,31 +3815,11 @@ function drawLevelIntroOverlay() {
     if (!state.levelIntro) return;
 
     const li = state.levelIntro;
-    const card = state.loadScreenImage || getSceneCard(li.nextScene, li.level);
-
-    // PHASE 1: show scene card only
     if (li.phase === "card") {
-        ctx.fillStyle = "#000";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        if (card && card.complete && card.naturalWidth > 0) {
-            ctx.drawImage(card, 0, 0, canvas.width, canvas.height);
-            ctx.save();
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.font = "bold 48px Arial";
-            ctx.lineWidth = 6;
-            ctx.strokeStyle = "rgba(0,0,0,0.45)";
-            ctx.fillStyle = "#fff";
-            ctx.strokeText(`Level ${li.level || state.level || 1}`, canvas.width / 2, 110);
-            ctx.fillText(`Level ${li.level || state.level || 1}`, canvas.width / 2, 110);
-            ctx.restore();
-        }
-
+        drawDynamicSceneCard(li.nextScene, li.level || state.level || 1);
         return;
     }
-
-    // Phase 2: real scene underneath
+        // Phase 2: real scene underneath
     if (state.scene === "boss") {
         drawCloudLayer();
         drawCoconutKongBosses();
@@ -4504,33 +5249,26 @@ function showSceneWin() {
 
     const completionBonus = 100;
 
-    // prevent double-add if function fires twice
     if (!state.sceneWinAwarded) {
-        if (!state.sceneWinAwarded) {
-    state.score += completionBonus;
-    state.sceneWinBonus = completionBonus;
+        state.score += completionBonus;
+        state.sceneWinBonus = completionBonus;
 
-    addAcceptanceScore(
-        100 + ((state.level || 1) * 25),
-        "scene clear",
-        {
-            itemize: true,
-            icon: "❤️",
-            label: "Scene cleared"
-        }
-    );
+        addAcceptanceScore(
+            100 + ((state.level || 1) * 25),
+            "scene clear",
+            {
+                itemize: true,
+                icon: "❤️",
+                label: "Scene cleared"
+            }
+        );
 
-    awardEndOfSceneAcceptanceBonuses();
+        awardEndOfSceneAcceptanceBonuses();
 
-    state.sceneWinAwarded = true;
-}
-    state.score += completionBonus;
-    state.sceneWinBonus = completionBonus;
-    state.sceneWinAwarded = true;
-    addAcceptanceScore(100 + ((state.level || 1) * 25), "scene clear");
-}
+        state.sceneWinAwarded = true;
+    }
 
-state.loadScreenImage =
+    state.loadScreenImage =
         spriteStore.sceneCompleteCard ||
         spriteStore.sceneWinCard ||
         spriteStore.levelUpCard;
@@ -4917,7 +5655,7 @@ function showHeartProgressPopup(count) {
 }
 
 function drawNodeLabels() {
-    if (!DEBUG) return;
+    if (!isDebugEnabled) return;
 
     const nodeMap = getCurrentNodeMap();
 
@@ -4939,7 +5677,7 @@ function drawNodeLabels() {
 }
 
 function drawNodeHighlights() {
-    if (!DEBUG || !state.player) return;
+    if (!isDebugEnabled || !state.player) return;
 
     const nodeMap = getCurrentNodeMap();
 
@@ -5482,14 +6220,32 @@ function isZoneUnlocked(zoneId) {
 
     if (zone.unlocked) return true;
 
-    if (state.motherAcquired || state.bananaBonanzaCompleted) {
+    const completedBB =
+        !!state.motherAcquired ||
+        !!state.bananaBonanzaCompleted;
+
+    const completedCH =
+        !!state.chillHillCompleted;
+
+    const completedCK =
+        !!state.coconutKongCompleted;
+
+    // Free/early unlocks
+    if (completedBB || completedCH) {
         if (zoneId === "chillHill") return true;
-        if (zoneId === "ticketTime") return true;
     }
 
-    if (state.chillHillCompleted) {
+    // After Chill Hill
+    if (completedCH) {
         if (zoneId === "coconutKong") return true;
-        if (zoneId === "giftShop") return true;
+        //if (zoneId === "giftShop") return true;
+    }
+
+    // After Coconut Kong
+    if (completedCK) {
+        if (zoneId === "monkeyForest") return true;
+        // if (zoneId === "ticketTime") return true;
+        // if (zoneId === "ichiCafe") return true;
     }
 
     return false;
@@ -5497,6 +6253,47 @@ function isZoneUnlocked(zoneId) {
 
 function getUnlockedZoneIds() {
     return Object.keys(ZONE_MAP_ZONES).filter(isZoneUnlocked);
+}
+
+function isZoneCompleted(zoneId) {
+    if (zoneId === "bananaBonanza") return !!state.bananaBonanzaCompleted;
+    if (zoneId === "chillHill") return !!state.chillHillCompleted;
+    if (zoneId === "coconutKong") return !!state.coconutKongCompleted;
+    if (zoneId === "monkeyForest") return !!state.monkeyForestCompleted;
+    if (zoneId === "ticketTime") return !!state.ticketTimeCompleted;
+    if (zoneId === "ichiCafe") return !!state.ichiCafeCompleted;
+    return false;
+}
+
+function drawZoneCompletedBadge(zone) {
+    if (!zone?.bounds) return;
+
+    const b = zone.bounds;
+    const x = b.x + b.w - 20;
+    const y = b.y + 24;
+    const r = 28;
+
+    ctx.save();
+
+    ctx.fillStyle = "rgba(34,197,94,0.96)";
+    ctx.strokeStyle = "rgba(255,255,255,0.96)";
+    ctx.lineWidth = 5;
+
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = "bold 36px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = "rgba(0,0,0,0.45)";
+    ctx.fillStyle = "#ffffff";
+    ctx.strokeText("✓", x, y + 1);
+    ctx.fillText("✓", x, y + 1);
+
+    ctx.restore();
 }
 
 function drawZoneMap() {
@@ -5517,6 +6314,23 @@ function drawZoneMap() {
         if (img?.complete && img.naturalWidth > 0) {
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         }
+    }
+
+    debugLog(state, "[ZONE FLAGS]", {
+        bananaBonanzaCompleted: !!state.bananaBonanzaCompleted,
+        chillHillCompleted: !!state.chillHillCompleted,
+        coconutKongCompleted: !!state.coconutKongCompleted,
+        ticketTimeCompleted: !!state.ticketTimeCompleted,
+        ticketTimeUnlocked: isZoneUnlocked("ticketTime"),
+        ichiCafeUnlocked: isZoneUnlocked("ichiCafe"),
+        ichiCafeCompleted: !!state.ichiCafeCompleted
+    });
+
+    for (const zoneId of Object.keys(ZONE_MAP_ZONES)) {
+        if (!isZoneUnlocked(zoneId)) continue;
+        if (!isZoneCompleted(zoneId)) continue;
+
+        drawZoneCompletedBadge(ZONE_MAP_ZONES[zoneId]);
     }
 
     ctx.restore();
@@ -5581,6 +6395,21 @@ function enterZone(zoneId) {
 
     if (zone.scene === "boss") {
         showBossIntro(state.level || 1);
+        return;
+    }
+
+    if (zone.scene === "monkeyForest") {
+        showLevelIntro(state.level || 1, "monkeyForest");
+        return;
+    }
+
+    if (zone.scene === "ticketTime") {
+        showLevelIntro(state.level || 1, "ticketTime");
+        return;
+    }
+
+    if (zone.scene === "ichiCafe") {
+        showLevelIntro(state.level || 1, "ichiCafe");
         return;
     }
 
@@ -5732,21 +6561,10 @@ function beginGame() {
         return;
     }
 
-    // if (state.mode === "sceneWin") {
-    //     showZoneMap();
-    //     return;
-    // }
-
-
-if (state.mode === "sceneWin") {
-    if (state.scene === "main") {
-        state.motherAcquired = true;
+    if (state.mode === "sceneWin") {
+        showZoneMap();
+        return;
     }
-
-    showZoneMap();
-    e?.preventDefault?.();
-    return;
-}
 }
 
 const sharedDeps = {
@@ -5852,95 +6670,6 @@ function startGame() {
 
     startMainScene();
 }
-
-// function startGame() {
-//     state.mode = "playing";
-//     state.paused = false;
-//     state.scene = "main";
-//     state.boss = null;
-//     state.cardBackground = backgroundImage;
-//     state.loadScreenImage = getLevelCardImage(1);
-//     state.score = 0;
-//     state.acceptanceScore = 0;
-//     state.lives = 3;
-//     state.hearts = [];
-//     state.fieldHearts = [];
-//     state.flyingHearts = [];
-//     state.mainSecretUnlocked = false;
-//     state.mainSecretEntered = false;
-//     state.mainMotherPose = "sit";
-//     state.mainMotherTimer = 0;
-//     state.particles = [];
-//     state.catchAnim = null;
-//     state.acceptance = 0;
-//     // state.level = 1;
-//     state.level = DEBUG ? DEBUG_TEST_LEVEL : 1;    state.levelUp = null;
-//     state.levelIntro = null;
-//     state.bossIntro = null;
-//     state.kongIntroSeenThisGame = false;
-//     state.unlocks = {
-//         butterfly: false,
-//         pj: false,
-//         snatchers: false,
-//         kongEvent: false,
-//         lantern: false,
-//         tireSwing: false
-//     };
-
-//     state.hands = [];
-//     state.bananas = [];
-//     state.bananaTimestamps = [];
-//     state.zookeeper = {
-//         anim: "idle",
-//         frame: 0,
-//         time: 0,
-//         didThrowSound: false
-//     };
-//     state.zookeeper2 = {
-//         anim: "idle",
-//         frame: 0,
-//         time: 0,
-//         timer: rand(2.5, 6),
-//         action: "idle",
-//         actionTimer: 0
-//     };
-//     state.heartThrowTimer = 2.5;
-//     state.heartsThrown = 0;
-//     state.maxActiveHearts = 1;
-//     state.heartCooldown = 0;
-//     state.lastHeartNodeId = null;
-
-//     if (state.zookeeper) {
-//         state.zookeeper.action = "normal";
-//         state.zookeeper.actionTimer = 0;
-//     }
-//     refillBananas();
-//     state.pj = null;
-//     state.butterfly = null;
-//     state.nanaSnatchers = [];
-//     state.pjRewardBunches = [];
-//     resetActors();
-//     applyLevelConfig();
-//     // newRound();
-//     resetScene();
-//     debugLog(state, "[AUDIO] playSceneMusic startGame/main");
-//     playSceneMusic({
-//         sounds,
-//         isBossScene: false
-//     });
-//     state.bananaTimestamps = [];
-//     state.mainEnding = null;
-//     state.mainSecretEntered = false;
-//     state.mainMotherPose = "sit";
-//     state.mainMotherTimer = 0;
-//     state.pendingHeartThrow = null;
-//     state.secretRewardsFound = {};
-//     state.secretRewardPopups = [];
-//     state.bananaTimestamps = [];
-//     resetKongEvent(state);
-//     state.pjRewardBunches = [];
-//     state.dizzyTimer = 0;
-// }
 
 function newRound() {
     clearQueuedDirectionCompat();
@@ -6489,11 +7218,6 @@ function goToNextScene() {
     if (state.scene === "main") {
         state.motherAcquired = true;
         state.bananaBonanzaCompleted = true;
-        // These may eventually move later in the spoon-feed,
-        // but keep them here for now if current testing expects them.
-        state.unlocks.butterfly = true;
-        state.unlocks.pj = true;
-        state.unlocks.kongEvent = true;
 
         showZoneMap();
         return;
@@ -6501,13 +7225,37 @@ function goToNextScene() {
 
     if (state.scene === "chill") {
         state.chillHillCompleted = true;
+
         showZoneMap();
         return;
     }
 
     if (state.scene === "boss") {
+        state.coconutKongCompleted = true;
         state.level += 1;
-        showLevelUp(state.level);
+
+        showZoneMap();
+        return;
+    }
+
+    if (state.scene === "monkeyForest") {
+        state.monkeyForestCompleted = true;
+
+        showZoneMap();
+        return;
+    }
+
+    if (state.scene === "ticketTime") {
+        state.ticketTimeCompleted = true;
+
+        showZoneMap();
+        return;
+    }
+
+    if (state.scene === "ichiCafe") {
+        state.ichiCafeCompleted = true;
+
+        showZoneMap();
         return;
     }
 
@@ -6777,8 +7525,8 @@ function updateMother(dt) {
 
     pickupMotherIfSafe();
 
-    const targetSpeed = mother.carried ? 210 : 300;
-    state.player.speed += (targetSpeed - state.player.speed) * 0.2;
+    // const targetSpeed = mother.carried ? 210 : 300;
+    // state.player.speed += (targetSpeed - state.player.speed) * 0.2;
 
     return false;
 }
@@ -7382,11 +8130,9 @@ function updateBossCollisions() {
 
     for (const troop of state.troops) {
         if (Math.hypot(player.x - troop.x, player.y - troop.y) < 34) {
-            if (mother.carried) {
-                // dropMotherAndResetPlayer();
+            if (Math.hypot(player.x - troop.x, player.y - troop.y) < 34) {
                 handleEnemyBodyCollision(troop);
-            } else {
-                restartBossLevel();
+                return;
             }
             return;
         }
@@ -7734,10 +8480,6 @@ function updateCatch(dt) {
         if (sounds.music) {
           sounds.music.pause();
           sounds.music.currentTime = 0;
-        }
-        if (sounds.bossMusic) {
-          sounds.bossMusic.pause();
-          sounds.bossMusic.currentTime = 0;
         }
 
         playSfx(sounds.gameOver, null, "gameOver");
@@ -8102,6 +8844,30 @@ function drawBabyKong(baby) {
     ctx.restore();
 }
 
+function drawJumpPrompt() {
+    if (!state.player) return;
+    if (state.levelIntro || state.bossIntro) return;
+
+    const node = getCurrentNodeMap()[state.player.currentNode];
+    if (!node?.jumpTo) return;
+    if (state.player.targetNode) return;
+
+    const t = performance.now() * 0.004;
+    const bob = Math.sin(t * 4) * 6;
+
+    drawMessagePlate(
+        "JUMP!",
+        state.player.x,
+        state.player.y - 135 + bob,
+        0.95,
+        {
+            font: "bold 28px Arial",
+            textColor: "#ffffff",
+            plateColor: "rgba(0,0,0,0.45)"
+        }
+    );
+}
+
 function drawMainEndingOverlay() {
     const ending = state.mainEnding;
     if (!ending) return;
@@ -8383,116 +9149,6 @@ function drawActors() {
     drawParticles();
 }
 
-// function updateBossSecretReveal(dt) {
-//     const reveal = state.boss?.secretReveal;
-//     if (!reveal) return;
-
-//     if (!reveal.exploding) return;
-
-//     reveal.timer += dt;
-
-//     const fps = 20;
-//     const totalFrames = 32;
-//     reveal.frame = Math.min(totalFrames - 1, Math.floor(reveal.timer * fps));
-
-//     if (reveal.timer >= reveal.duration) {
-//         reveal.exploding = false;
-//         reveal.exposed = true;
-//         reveal.frame = totalFrames - 1;
-//     }
-// }
-
-// function drawBossSecretRevealLayer() {
-//     const reveal = state.boss?.secretReveal;
-//     if (!reveal?.unlocked) return;
-
-//     // Once unlocked, show the overlay on the gameplay map.
-//     const overlay = spriteStore.secretRoom_ck_overlay;
-//     if (overlay?.complete && overlay.naturalWidth > 0) {
-//         ctx.drawImage(overlay, 0, 0, canvas.width, canvas.height);
-//     }
-
-//     // While exploding, draw the explosion sprite animation.
-//     if (reveal.exploding) {
-//         drawExplosionSprite(786, 1569, reveal.frame);
-//     }
-// }
-
-// function drawBossSecretRevealOverlay() {
-//     if (state.scene !== "boss") return;
-
-//     const reveal = state.boss?.secretReveal;
-//     if (!reveal) return;
-
-//     // Once unlocked, draw the static overlay over the map to expose the hole area.
-//     if (reveal.unlocked) {
-//         const overlay = spriteStore.secretRoom_ck_overlay;
-//         if (overlay?.complete && overlay.naturalWidth > 0) {
-//             ctx.drawImage(overlay, 0, 0, canvas.width, canvas.height);
-//         }
-//     }
-
-//     // While exploding, draw explosion sprite on top.
-//     if (reveal.exploding) {
-//         const img = spriteStore.explosion;
-//         if (!img || !img.complete || img.naturalWidth <= 0) return;
-
-//         const cols = 8;
-//         const rows = 4;
-//         const totalFrames = 32;
-//         const frame = Math.min(totalFrames - 1, reveal.frame || 0);
-
-//         const frameW = img.naturalWidth / cols;
-//         const frameH = img.naturalHeight / rows;
-
-//         const sx = (frame % cols) * frameW;
-//         const sy = Math.floor(frame / cols) * frameH;
-
-//         const drawW = 320;
-//         const drawH = 320;
-
-//         const cx = 786;
-//         const cy = 1569;
-
-//         ctx.drawImage(
-//             img,
-//             sx, sy, frameW, frameH,
-//             cx - drawW / 2,
-//             cy - drawH / 2,
-//             drawW,
-//             drawH
-//         );
-//     }
-// }
-
-// function drawExplosionSprite(x, y, frameIndex) {
-//     const img = spriteStore.explosion;
-//     if (!img || !img.complete || img.naturalWidth <= 0) return;
-
-//     const cols = 8;
-//     const rows = 4;
-//     const totalFrames = 32;
-
-//     const frame = Math.max(0, Math.min(totalFrames - 1, frameIndex));
-//     const fw = img.naturalWidth / cols;
-//     const fh = img.naturalHeight / rows;
-
-//     const sx = (frame % cols) * fw;
-//     const sy = Math.floor(frame / cols) * fh;
-
-//     const scale = 1.5;
-//     const drawW = fw * scale;
-//     const drawH = fh * scale;
-
-//     ctx.drawImage(
-//         img,
-//         sx, sy, fw, fh,
-//         Math.round(x - drawW / 2),
-//         Math.round(y - drawH / 2),
-//         drawW,
-//         drawH
-//     );
-// }
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -8604,7 +9260,7 @@ function draw() {
     drawMother();
 
     // === debug
-    if (DEBUG) {
+    if (isDebugEnabled()) {
         drawPathOverlay(ctx, getCurrentNodeMap());
         drawNodeDebugOverlay(getCurrentNodeMap());
         drawNodeLabels();
@@ -8630,6 +9286,7 @@ function draw() {
     }
     drawSceneSpotlight();
     drawLanternMask();
+    drawJumpPrompt();
     drawHudOverlay();
     drawCavePreview();
     drawDebugConsole();
@@ -8703,6 +9360,15 @@ function drawBossCoconut(coconut) {
 // ======================================================
 let threeFingerGestureArmed = false;
 
+function getCanvasPointer(e) {
+    const rect = canvas.getBoundingClientRect();
+
+    return {
+        x: (e.clientX - rect.left) * (canvas.width / rect.width),
+        y: (e.clientY - rect.top) * (canvas.height / rect.height)
+    };
+}
+
 canvas.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     unlockAudioOnce();
@@ -8718,6 +9384,25 @@ canvas.addEventListener("pointerdown", (e) => {
         pointInRect(x, y, INTRO_SKIP_BUTTON)
     ) {
         skipOpeningCutscene();
+        return;
+    }
+
+    if (state.levelIntro?.phase === "card") {
+        const p = getCanvasPointer(e);
+
+        if (
+            pointInRect(
+                p.x,
+                p.y,
+                SCENE_CARD_CONTINUE_BUTTON
+            )
+        ) {
+            advanceSceneIntroCard();
+            return;
+        }
+
+        // Optional: allow tapping anywhere on the card.
+        advanceSceneIntroCard();
         return;
     }
 
@@ -8835,6 +9520,15 @@ if (e.key === "x") {
     debugShowSceneCompleteScreen();
     return;
 }
+
+if (state.levelIntro?.phase === "card") {
+    if (e.code === "Space" || e.key === "Enter") {
+        e.preventDefault();
+        advanceSceneIntroCard();
+        return;
+    }
+}
+
 if (e.key.toLowerCase() === "j") {
     tryPlayerJump();
     e.preventDefault();

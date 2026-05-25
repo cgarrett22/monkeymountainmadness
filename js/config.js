@@ -149,21 +149,23 @@ export const ZONE_MAP_ZONES = {
   ticketTime: {
     id: "ticketTime",
     label: "Ticket Time",
-    type: "tickets",
+    type: "scene",
+    scene: "ticketTime",
     overlayKey: "zoneOverlayTT",
     unlocked: false,
     bounds: { x: 527, y: 1525, w: 250, h: 235 }
   },
 
-  ichiscrachiCafe: {
-    id: "ichiscrachiCafe",
-    label: "Ichiscrachi Café",
-    type: "utility",
+ichiCafe: {
+    id: "ichiCafe",
+    label: "Ichi Cafe",
+    type: "scene",
+    scene: "ichiCafe",
     overlayKey: "zoneOverlayIC",
     unlocked: false,
     bounds: { x: 270, y: 1485, w: 250, h: 265 }
   }
-};
+  };
 
 export const ZONE_MAP_CLICK_ORDER = [
   "coconutKong",
@@ -177,6 +179,6 @@ export const ZONE_MAP_CLICK_ORDER = [
   "catCountry",
   "savannaNana",
   "giftShop",
-  "ichiscrachiCafe",
+  "ichiCafe",
   "ticketTime"
 ];

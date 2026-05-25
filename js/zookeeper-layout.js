@@ -29,14 +29,14 @@ export const ZOOKEEPER_LAYOUT = {
     },
     ch: {
         z1: {
-            x: 10,
-            y: 324,
+            x: 330,
+            y: 10,
             w: 204,
             h: 204
         },
         z2: {
-            x: 825,
-            y: 455,
+            x: 645,
+            y: 10,
             w: 214,
             h: 214
         }

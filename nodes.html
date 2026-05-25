@@ -1,1264 +1,1531 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>Monkey Mountain Node Editor</title>
-<style>
-:root {
-  --panel-bg: rgba(0,0,0,0.84);
-  --panel-border: rgba(255,255,255,0.18);
-  --btn-bg: #333;
-  --btn-active: #0a7cff;
-  --text: #fff;
-  --muted: #b9c0cc;
-}
-html, body {
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  background: #111;
-  color: var(--text);
-  font-family: Arial, sans-serif;
-}
-canvas {
-  display: block;
-  background: #222;
-  touch-action: none;
-  user-select: none;
-  -webkit-user-select: none;
-}
-button, input, select {
-  font-family: Arial, sans-serif;
-}
-button {
-  padding: 7px 8px;
-  font-size: 11px;
-  border-radius: 7px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: var(--btn-bg);
-  color: white;
-}
-button.active { background: var(--btn-active); }
-button.warn { background: #7b2d2d; }
-button.good { background: #206c3a; }
-button.small { padding: 4px 6px; font-size: 10px; }
-label {
-  font-size: 10px;
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-input[type="text"], select {
-  background: #111827;
-  color: #fff;
-  border: 1px solid #374151;
-  border-radius: 6px;
-  padding: 5px 6px;
-  font-size: 11px;
-  min-width: 0;
-}
-#topPanel {
-  position: fixed;
-  top: 8px;
-  left: 8px;
-  right: 8px;
-  z-index: 60;
-  background: var(--panel-bg);
-  border: 1px solid var(--panel-border);
-  border-radius: 10px;
-  padding: 8px;
-  display: grid;
-  grid-template-columns: 145px 82px 145px 105px 125px 135px 1fr;
-  gap: 8px;
-  align-items: center;
-}
-#bgLoader {
-  color: white;
-  font-size: 10px;
-  max-width: 145px;
-}
-#toolbar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: rgba(0,0,0,0.92);
-  padding: 8px;
-  display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  gap: 6px;
-  z-index: 50;
-}
-#outputWrap {
-  position: fixed;
-  top: 74px;
-  left: 8px;
-  right: 8px;
-  height: 58vh;
-  background: #000;
-  border: 1px solid var(--panel-border);
-  border-radius: 8px;
-  z-index: 100;
-  display: none;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-}
-#output {
-  width: 100%;
-  height: 100%;
-  background: #000;
-  color: #0f0;
-  font-size: 11px;
-  border: 1px solid #333;
-  border-radius: 8px;
-  padding: 38px 10px 10px 10px;
-  box-sizing: border-box;
-  touch-action: auto !important;
-  user-select: text !important;
-  -webkit-user-select: text !important;
-  white-space: pre;
-}
-#outputHeader {
-  position: absolute;
-  top: 6px;
-  left: 8px;
-  right: 8px;
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  z-index: 110;
-}
-#outputHeader .left, #outputHeader .right {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-#status {
-  position: fixed;
-  left: 12px;
-  bottom: 62px;
-  z-index: 55;
-  background: rgba(0,0,0,0.7);
-  border-radius: 8px;
-  padding: 6px 9px;
-  font-size: 12px;
-  color: #e5e7eb;
-  pointer-events: none;
-}
-#legend {
-  position: fixed;
-  right: 10px;
-  bottom: 62px;
-  z-index: 55;
-  background: rgba(0,0,0,0.72);
-  border-radius: 8px;
-  padding: 7px 9px;
-  font-size: 11px;
-  color: #e5e7eb;
-  pointer-events: none;
-  max-width: 310px;
-  line-height: 1.3;
-}
-.pill {
-  display: inline-block;
-  border-radius: 999px;
-  padding: 1px 6px;
-  margin: 1px 2px 1px 0;
-  background: rgba(255,255,255,0.12);
-}
-@media (max-width: 900px) {
-  #topPanel {
-    grid-template-columns: 1fr 68px 1fr 90px;
-    gap: 5px;
-    font-size: 10px;
-  }
-  #toolbar { grid-template-columns: repeat(5, 1fr); }
-  #legend { display: none; }
-}
-</style>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+	<title>Monkey Mountain Node Editor</title>
+	<style>
+	:root {
+		--panel-bg: rgba(0, 0, 0, .84);
+		--panel-border: rgba(255, 255, 255, .18);
+		--btn-bg: #333;
+		--btn-active: #0a7cff;
+		--text: #fff;
+		--muted: #b9c0cc
+	}
+
+	html,
+	body {
+		margin: 0;
+		padding: 0;
+		overflow: hidden;
+		background: #111;
+		color: var(--text);
+		font-family: Arial, sans-serif
+	}
+
+	canvas {
+		display: block;
+		background: #222;
+		touch-action: none;
+		user-select: none;
+		-webkit-user-select: none
+	}
+
+	button,
+	input,
+	select {
+		font-family: Arial, sans-serif
+	}
+
+	button {
+		padding: 7px 8px;
+		font-size: 11px;
+		border-radius: 7px;
+		border: 1px solid rgba(255, 255, 255, .12);
+		background: var(--btn-bg);
+		color: white
+	}
+
+	button.active {
+		background: var(--btn-active)
+	}
+
+	button.warn {
+		background: #7b2d2d
+	}
+
+	button.good {
+		background: #206c3a
+	}
+
+	button.small {
+		padding: 4px 6px;
+		font-size: 10px
+	}
+
+	label {
+		font-size: 10px;
+		color: var(--muted);
+		display: flex;
+		align-items: center;
+		gap: 4px
+	}
+
+	input[type=text],
+	input[type=color],
+	select {
+		background: #111827;
+		color: #fff;
+		border: 1px solid #374151;
+		border-radius: 6px;
+		padding: 5px 6px;
+		font-size: 11px;
+		min-width: 0
+	}
+
+	input[type=color] {
+		width: 42px;
+		height: 28px;
+		padding: 2px
+	}
+
+	#topPanel {
+		position: fixed;
+		top: 8px;
+		left: 8px;
+		right: 8px;
+		z-index: 60;
+		background: var(--panel-bg);
+		border: 1px solid var(--panel-border);
+		border-radius: 10px;
+		padding: 8px;
+		display: grid;
+		grid-template-columns: 145px 150px 116px 110px 88px 88px 1fr 92px 125px;
+		gap: 8px;
+		align-items: center
+	}
+
+	#bgLoader {
+		color: white;
+		font-size: 10px;
+		max-width: 145px
+	}
+
+	#sceneNameInput.invalid {
+		border-color: #ef4444;
+		box-shadow: 0 0 0 1px rgba(239, 68, 68, .45)
+	}
+
+	#sceneNameInput.warn {
+		border-color: #f59e0b;
+		box-shadow: 0 0 0 1px rgba(245, 158, 11, .35)
+	}
+
+	#toolbar {
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		background: rgba(0, 0, 0, .92);
+		padding: 8px;
+		display: grid;
+		grid-template-columns: repeat(10, 1fr);
+		gap: 6px;
+		z-index: 50
+	}
+
+	.toolbar-split {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 4px
+	}
+
+	.toolbar-split button {
+		min-width: 0;
+		padding-left: 0;
+		padding-right: 0;
+		font-size: 14px;
+		font-weight: bold
+	}
+
+	body.tools-hidden #topPanel,
+	body.tools-hidden #status,
+	body.tools-hidden #legend {
+		display: none
+	}
+
+	#outputWrap {
+		position: fixed;
+		top: 74px;
+		left: 8px;
+		right: 8px;
+		height: 58vh;
+		background: #000;
+		border: 1px solid var(--panel-border);
+		border-radius: 8px;
+		z-index: 100;
+		display: none;
+		box-shadow: 0 4px 15px rgba(0, 0, 0, .5)
+	}
+
+	#output {
+		width: 100%;
+		height: 100%;
+		background: #000;
+		color: #0f0;
+		font-size: 11px;
+		border: 1px solid #333;
+		border-radius: 8px;
+		padding: 38px 10px 10px 10px;
+		box-sizing: border-box;
+		touch-action: auto !important;
+		user-select: text !important;
+		-webkit-user-select: text !important;
+		white-space: pre
+	}
+
+	#outputHeader {
+		position: absolute;
+		top: 6px;
+		left: 8px;
+		right: 8px;
+		display: flex;
+		justify-content: space-between;
+		gap: 8px;
+		z-index: 110
+	}
+
+	#outputHeader .left,
+	#outputHeader .right {
+		display: flex;
+		gap: 6px;
+		align-items: center
+	}
+
+	#status {
+		position: fixed;
+		left: 12px;
+		bottom: 62px;
+		z-index: 55;
+		background: rgba(0, 0, 0, .7);
+		border-radius: 8px;
+		padding: 6px 9px;
+		font-size: 12px;
+		color: #e5e7eb;
+		pointer-events: none
+	}
+
+	#legend {
+		position: fixed;
+		right: 10px;
+		bottom: 62px;
+		z-index: 55;
+		background: rgba(0, 0, 0, .72);
+		border-radius: 8px;
+		padding: 7px 9px;
+		font-size: 11px;
+		color: #e5e7eb;
+		pointer-events: none;
+		max-width: 310px;
+		line-height: 1.3
+	}
+
+	.pill {
+		display: inline-block;
+		border-radius: 999px;
+		padding: 1px 6px;
+		margin: 1px 2px 1px 0;
+		background: rgba(255, 255, 255, .12)
+	}
+
+	@media(max-width:900px) {
+		#topPanel {
+			grid-template-columns: 1fr 1fr 1fr;
+			gap: 5px;
+			font-size: 10px
+		}
+
+		#toolbar {
+			grid-template-columns: repeat(5, 1fr)
+		}
+
+		#legend {
+			display: none
+		}
+
+		#status {
+			left: 8px;
+			right: 8px;
+			bottom: 112px;
+			font-size: 11px;
+			text-align: center
+		}
+	}
+	</style>
 </head>
+
 <body>
-
-<div id="topPanel">
-  <input type="file" id="bgLoader" accept="image/*" title="Load background image" />
-
-  <label>Prefix
-    <input id="prefixInput" type="text" value="CH" maxlength="8" />
-  </label>
-
-  <label>Export name
-    <input id="nameInput" type="text" value="chillNodes" />
-  </label>
-
-  <label>Scene
-    <input id="sceneInput" type="text" value="chill" />
-  </label>
-
-  <label>Banana const
-    <input id="bananaConstInput" type="text" value="CHILL_BANANA_NODE_IDS" />
-  </label>
-
-  <label>Edge pairing
-    <select id="edgePairMode">
-      <option value="sameY">same Y order</option>
-      <option value="reverseY">reverse Y order</option>
-    </select>
-  </label>
-
-  <label>Secret key
-    <input id="secretKeyInput" type="text" value="secretRoom_ch" />
-  </label>
-</div>
-
-<div id="outputWrap">
-  <div id="outputHeader">
-    <div class="left">
-      <button class="small good" onclick="copyOutput()">Copy</button>
-      <button class="small" onclick="downloadOutput()">Download</button>
-    </div>
-    <div class="right">
-      <button class="small" onclick="toggleOutput()">Close</button>
-    </div>
-  </div>
-  <textarea id="output" spellcheck="false"></textarea>
-</div>
-
-<canvas id="c"></canvas>
-
-<div id="status"></div>
-<div id="legend"></div>
-
-<div id="toolbar">
-  <button id="btn-none" onclick="setMode('none')">Pan</button>
-  <button id="btn-add" onclick="setMode('add')">Add</button>
-  <button id="btn-connect" onclick="setMode('connect')">Link</button>
-  <button id="btn-move" onclick="setMode('move')">Move</button>
-  <button id="btn-delete" onclick="setMode('delete')">Del</button>
-  <button id="btn-tag" onclick="handleTagButton()">Tag</button>
-  <button id="btn-grid" onclick="toggleGrid()">Grid</button>
-  <button id="btn-snap" onclick="toggleSnap()">Snap</button>
-  <button onclick="zoomIn()">Zoom +</button>
-  <button onclick="zoomOut()">Zoom -</button>
-
-  <button onclick="nudgeLeft()">←</button>
-  <button onclick="nudgeUp()">↑</button>
-  <button onclick="nudgeDown()">↓</button>
-  <button onclick="nudgeRight()">→</button>
-  <button onclick="fitImage()">Fit</button>
-  <button onclick="resetView()">Reset View</button>
-  <button onclick="exportData()">Export</button>
-  <button onclick="importData()">Import</button>
-  <button onclick="validateAndReport()">Validate</button>
-  <button class="warn" onclick="clearAllConfirm()">Clear</button>
-</div>
-
-<script>
-const canvas = document.getElementById("c");
-const ctx = canvas.getContext("2d");
-const output = document.getElementById("output");
-const wrap = document.getElementById("outputWrap");
-const statusEl = document.getElementById("status");
-const legendEl = document.getElementById("legend");
-
-const GAME_WIDTH = 1080;
-const GAME_HEIGHT = 1920;
-
-document.addEventListener("contextmenu", e => {
-  if (e.target.closest("#outputWrap") || e.target.closest("#topPanel")) return;
-  e.preventDefault();
-}, { passive: false });
-
-document.addEventListener("selectstart", e => {
-  if (e.target.closest("#outputWrap") || e.target.closest("#topPanel")) return;
-  e.preventDefault();
-}, { passive: false });
-
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-window.addEventListener("resize", resizeCanvas);
-resizeCanvas();
-
-// ---------- STATE ----------
-let nodes = {};
-let selected = null;
-let mode = "none";
-let grid = true;
-let snapToGrid = false;
-let importArmed = false;
-
-let viewScale = 1;
-let offsetX = 0;
-let offsetY = 0;
-let dragging = null;
-let dragStart = null;
-let idCounter = 1;
-let bgImage = null;
-let activeTag = "banana";
-
-const tagTypes = [
-  "none",
-  "banana",
-  "deliveryRoute",
-  "secretReward",
-  "edgePortal",
-  "cavePortal",
-  "startNode",
-  "goalNode",
-  "jumpTarget",
-  "stopHere"
-];
-
-const colors = {
-  banana: "#ffe066",
-  deliveryRoute: "#7dd3fc",
-  secretReward: "#f0abfc",
-  edgePortal: "#60a5fa",
-  cavePortal: "#fb923c",
-  startNode: "#22c55e",
-  goalNode: "#ef4444",
-  jumpTarget: "#a78bfa",
-  stopHere: "#ffffff"
-};
-
-// ---------- IMAGE ----------
-document.getElementById("bgLoader").addEventListener("change", e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const img = new Image();
-  img.onload = () => {
-    bgImage = img;
-    fitImage();
-  };
-  img.src = URL.createObjectURL(file);
-});
-
-// ---------- VIEW ----------
-function fitImage() {
-  viewScale = Math.min(canvas.width / GAME_WIDTH, canvas.height / GAME_HEIGHT);
-  offsetX = (canvas.width - GAME_WIDTH * viewScale) / 2;
-  offsetY = (canvas.height - GAME_HEIGHT * viewScale) / 2;
-}
-
-function resetView() {
-  fitImage();
-}
-
-function zoomAt(factor, screenX = canvas.width / 2, screenY = canvas.height / 2) {
-  const before = world(screenX, screenY);
-  viewScale = Math.max(0.08, Math.min(4, viewScale * factor));
-  const after = screen(before.x, before.y);
-  offsetX += screenX - after.x;
-  offsetY += screenY - after.y;
-}
-
-function zoomIn() { zoomAt(1.18); }
-function zoomOut() { zoomAt(1 / 1.18); }
-
-canvas.addEventListener("wheel", e => {
-  e.preventDefault();
-  zoomAt(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX, e.clientY);
-}, { passive: false });
-
-function world(x, y) {
-  return { x: (x - offsetX) / viewScale, y: (y - offsetY) / viewScale };
-}
-
-function screen(x, y) {
-  return { x: x * viewScale + offsetX, y: y * viewScale + offsetY };
-}
-
-// ---------- TOOL HELPERS ----------
-function getPrefix() {
-  return (document.getElementById("prefixInput").value || "N")
-    .trim()
-    .replace(/[^A-Za-z0-9_]/g, "") || "N";
-}
-
-function getExportName() {
-  return (document.getElementById("nameInput").value || "levelNodes")
-    .trim()
-    .replace(/[^A-Za-z0-9_$]/g, "") || "levelNodes";
-}
-
-function getSceneName() {
-  return (document.getElementById("sceneInput").value || "scene")
-    .trim()
-    .replace(/[^A-Za-z0-9_$]/g, "") || "scene";
-}
-
-function getBananaConstName() {
-  return (document.getElementById("bananaConstInput").value || `${getPrefix()}_BANANA_NODE_IDS`)
-    .trim()
-    .replace(/[^A-Za-z0-9_$]/g, "") || `${getPrefix()}_BANANA_NODE_IDS`;
-}
-
-function getSecretKey() {
-  return (document.getElementById("secretKeyInput").value || `secretRoom_${getSceneName()}`).trim();
-}
-
-function normalizeTag(tag) {
-  const map = {
-    ladderExit: "deliveryRoute",
-    ice: "secretReward",
-    portal: "cavePortal"
-  };
-  return map[tag] || tag;
-}
-
-function snap(v) { return Math.round(v / 25) * 25; }
-function applySnap(x, y) { return snapToGrid ? { x: snap(x), y: snap(y) } : { x, y }; }
-
-function setMode(m) {
-  mode = m;
-  selected = null;
-  updateButtons();
-}
-
-function handleTagButton() {
-  if (mode !== "tag") {
-    setMode("tag");
-    return;
-  }
-  const i = tagTypes.indexOf(activeTag);
-  activeTag = tagTypes[(i + 1) % tagTypes.length];
-  updateButtons();
-}
-
-function toggleGrid() { grid = !grid; updateButtons(); }
-function toggleSnap() { snapToGrid = !snapToGrid; updateButtons(); }
-
-function nudgeLeft() { nudgeNodes(-6, 0); }
-function nudgeRight() { nudgeNodes(6, 0); }
-function nudgeUp() { nudgeNodes(0, -6); }
-function nudgeDown() { nudgeNodes(0, 6); }
-
-function nudgeNodes(dx, dy) {
-  for (const id in nodes) {
-    nodes[id].x += dx;
-    nodes[id].y += dy;
-  }
-  autoSave();
-}
-
-function updateButtons() {
-  ["none", "add", "connect", "move", "delete", "tag"].forEach(m => {
-    const btn = document.getElementById("btn-" + m);
-    if (btn) btn.classList.toggle("active", mode === m);
-  });
-
-  document.getElementById("btn-grid").classList.toggle("active", grid);
-  document.getElementById("btn-snap").classList.toggle("active", snapToGrid);
-  const tagLabel = activeTag === "none" ? "clear" : activeTag;
-  document.getElementById("btn-tag").textContent = mode === "tag" ? `Tag: ${tagLabel}` : "Tag";
-}
-
-function setStatus(text) {
-  statusEl.textContent = text;
-}
-
-function nodeHas(id, tag) {
-  return (nodes[id]?.tags || []).includes(tag);
-}
-
-function setExclusiveTag(id, tag) {
-  for (const otherId in nodes) {
-    if (otherId !== id) {
-      nodes[otherId].tags = (nodes[otherId].tags || []).filter(t => t !== tag);
-    }
-  }
-  if (!nodes[id].tags.includes(tag)) nodes[id].tags.push(tag);
-}
-
-function toggleNodeTag(id, tag) {
-  if (!nodes[id]) return;
-
-  nodes[id].tags = [...new Set((nodes[id].tags || []).map(normalizeTag))];
-
-  if (tag === "none") {
-    nodes[id].tags = [];
-    return;
-  }
-
-  if (tag === "startNode" || tag === "goalNode") {
-    if (nodes[id].tags.includes(tag)) {
-      nodes[id].tags = nodes[id].tags.filter(t => t !== tag);
-    } else {
-      setExclusiveTag(id, tag);
-    }
-    return;
-  }
-
-  const has = nodes[id].tags.includes(tag);
-  nodes[id].tags = has
-    ? nodes[id].tags.filter(t => t !== tag)
-    : [...nodes[id].tags, tag];
-}
-
-function getNodeNumber(id) {
-  const m = String(id).match(/(\d+)$/);
-  return m ? Number(m[1]) : 0;
-}
-
-function nextId() {
-  const prefix = getPrefix();
-  while (nodes[`${prefix}${idCounter}`]) idCounter++;
-  return `${prefix}${idCounter++}`;
-}
-
-function convertId(id, prefix = getPrefix()) {
-  const s = String(id);
-  const m = s.match(/^([A-Za-z_]+)(\d+)$/);
-  if (!m) return s;
-  return `${prefix}${m[2]}`;
-}
-
-function convertedNodes() {
-  const prefix = getPrefix();
-  const idMap = {};
-
-  for (const oldId in nodes) {
-    idMap[oldId] = convertId(oldId, prefix);
-  }
-
-  const out = {};
-  for (const oldId in nodes) {
-    const n = nodes[oldId];
-    const newId = idMap[oldId];
-    const tags = [...new Set((n.tags || []).map(normalizeTag))];
-
-    out[newId] = {
-      ...n,
-      id: newId,
-      neighbors: [...new Set((n.neighbors || []).map(nb => idMap[nb] || convertId(nb, prefix)))],
-      tags
-    };
-  }
-
-  return out;
-}
-
-function findNodesWithTag(nodeMap, tag) {
-  return Object.values(nodeMap).filter(n => (n.tags || []).includes(tag));
-}
-
-function findSingleTag(nodeMap, tag) {
-  return findNodesWithTag(nodeMap, tag)[0]?.id || null;
-}
-
-function publicNodeTags(tags) {
-  return [...new Set((tags || []).map(normalizeTag))]
-    .filter(t => ![
-      "deliveryRoute",
-      "secretReward",
-      "edgePortal",
-      "cavePortal",
-      "startNode",
-      "goalNode",
-      "jumpTarget",
-      "stopHere"
-    ].includes(t));
-}
-
-function nodeExtraProps(n) {
-  const tags = n.tags || [];
-  const props = [];
-
-  if (tags.includes("edgePortal") || tags.includes("cavePortal")) {
-    props.push(`tags: ["portal"]`);
-  } else {
-    const publicTags = publicNodeTags(tags);
-    props.push(`tags: [${publicTags.map(t => `"${t}"`).join(", ")}]`);
-  }
-
-  if (tags.includes("jumpTarget")) props.push(`jumpTarget: true`);
-  if (tags.includes("stopHere")) props.push(`stopHere: true`);
-
-  return props;
-}
-
-function buildNodesText(nodeMap) {
-  const name = getExportName();
-  const ids = Object.keys(nodeMap).sort((a, b) => getNodeNumber(a) - getNodeNumber(b) || a.localeCompare(b));
-  const lines = [`export const ${name} = {`];
-
-  ids.forEach((id, i) => {
-    const n = nodeMap[id];
-    const nbs = [...new Set(n.neighbors || [])].map(nb => `"${nb}"`).join(", ");
-    const extras = nodeExtraProps(n);
-    lines.push(`  ${id}: { id: "${id}", x: ${Math.round(n.x)}, y: ${Math.round(n.y)}, neighbors: [${nbs}], ${extras.join(", ")} }${i < ids.length - 1 ? "," : ""}`);
-  });
-
-  lines.push("};");
-  return lines.join("\n");
-}
-
-// ---------- GENERATED SUPPORT ----------
-function sortedByYThenX(arr) {
-  return [...arr].sort((a, b) => a.y - b.y || a.x - b.x || a.id.localeCompare(b.id));
-}
-
-function sortedClockwise(arr) {
-  if (!arr.length) return [];
-  const cx = arr.reduce((s, n) => s + n.x, 0) / arr.length;
-  const cy = arr.reduce((s, n) => s + n.y, 0) / arr.length;
-
-  // screen coords: atan2 positive downward. This sorts clockwise-ish from top.
-  return [...arr].sort((a, b) => {
-    const aa = Math.atan2(a.y - cy, a.x - cx);
-    const bb = Math.atan2(b.y - cy, b.x - cx);
-    return aa - bb;
-  });
-}
-
-function buildPortalMapEntries(nodeMap) {
-  const edge = findNodesWithTag(nodeMap, "edgePortal");
-  const cave = findNodesWithTag(nodeMap, "cavePortal");
-  const secretGoal = findSingleTag(nodeMap, "goalNode");
-
-  const left = sortedByYThenX(edge.filter(n => n.x <= GAME_WIDTH / 2));
-  const right = sortedByYThenX(edge.filter(n => n.x > GAME_WIDTH / 2));
-  const reverse = document.getElementById("edgePairMode").value === "reverseY";
-  const rightPair = reverse ? [...right].reverse() : right;
-
-  const wrapPairs = [];
-  const len = Math.min(left.length, rightPair.length);
-  for (let i = 0; i < len; i++) {
-    wrapPairs.push([left[i].id, rightPair[i].id]);
-  }
-
-  const cavePairs = [];
-  const caveIds = cave.filter(n => n.id !== secretGoal);
-
-  if (caveIds.length === 3) {
-    const ordered = sortedClockwise(caveIds);
-    for (let i = 0; i < ordered.length; i++) {
-      cavePairs.push([ordered[i].id, ordered[(i + 1) % ordered.length].id]);
-    }
-  } else if (caveIds.length === 4) {
-    const ordered = sortedByYThenX(caveIds);
-    cavePairs.push([ordered[0].id, ordered[1].id]);
-    cavePairs.push([ordered[1].id, ordered[0].id]);
-    cavePairs.push([ordered[2].id, ordered[3].id]);
-    cavePairs.push([ordered[3].id, ordered[2].id]);
-  } else {
-    // fallback: pair sequentially bidirectionally
-    const ordered = sortedByYThenX(caveIds);
-    for (let i = 0; i + 1 < ordered.length; i += 2) {
-      cavePairs.push([ordered[i].id, ordered[i + 1].id]);
-      cavePairs.push([ordered[i + 1].id, ordered[i].id]);
-    }
-  }
-
-  return { wrapPairs, cavePairs, unmatchedEdge: edge.length - len * 2, caveCount: caveIds.length };
-}
-
-function objectMapText(pairs, indent = 4) {
-  const sp = " ".repeat(indent);
-  if (!pairs.length) return "";
-  return pairs.map(([from, to], i) => `${sp}${from}: "${to}"${i < pairs.length - 1 ? "," : ""}`).join("\n");
-}
-
-function buildDeliveryRoute(nodeMap) {
-  const routeNodes = findNodesWithTag(nodeMap, "deliveryRoute");
-  if (!routeNodes.length) return [];
-
-  const routeSet = new Set(routeNodes.map(n => n.id));
-  const deg = id => (nodeMap[id]?.neighbors || []).filter(nb => routeSet.has(nb)).length;
-
-  let start =
-    routeNodes.find(n => deg(n.id) === 1)?.id ||
-    sortedByYThenX(routeNodes)[0]?.id;
-
-  const route = [];
-  const visited = new Set();
-  let current = start;
-  let prev = null;
-
-  while (current && !visited.has(current)) {
-    route.push(current);
-    visited.add(current);
-
-    const options = (nodeMap[current]?.neighbors || [])
-      .filter(nb => routeSet.has(nb) && nb !== prev && !visited.has(nb));
-
-    prev = current;
-    current = options[0] || null;
-  }
-
-  const leftovers = sortedByYThenX(routeNodes)
-    .map(n => n.id)
-    .filter(id => !visited.has(id));
-
-  return [...route, ...leftovers];
-}
-
-function buildSupportText(nodeMap) {
-  const scene = getSceneName();
-  const bananaConst = getBananaConstName();
-  const startNode = findSingleTag(nodeMap, "startNode") || sortedByYThenX(Object.values(nodeMap)).at(-1)?.id || "TODO_START";
-  const goalNode = findSingleTag(nodeMap, "goalNode") || sortedByYThenX(findNodesWithTag(nodeMap, "cavePortal")).at(-1)?.id || "TODO_GOAL";
-  const rewardNodes = findNodesWithTag(nodeMap, "secretReward");
-  const bananas = Object.values(nodeMap)
-    .filter(n => (n.tags || []).includes("banana"))
-    .sort((a, b) => getNodeNumber(a.id) - getNodeNumber(b.id))
-    .map(n => n.id);
-
-  const { wrapPairs, cavePairs, unmatchedEdge, caveCount } = buildPortalMapEntries(nodeMap);
-  const deliveryRoute = buildDeliveryRoute(nodeMap);
-  const enemyEntryIds = [...new Set(cavePairs.map(([from]) => from))];
-
-  const lines = [];
-  lines.push("// ===== Generated scene support config - review/tune these guesses =====");
-
-  lines.push(`export const ${bananaConst} = [`);
-  bananas.forEach((id, i) => lines.push(`  "${id}"${i < bananas.length - 1 ? "," : ""}`));
-  lines.push("];\n");
-
-  lines.push(`export const ${scene}Config = {`);
-  lines.push(`  startNode: "${startNode}",`);
-  lines.push(`  goalNode: "${goalNode}"`);
-  lines.push("};\n");
-
-  lines.push(`export const ${scene}Portals = {`);
-  lines.push("  cave: {");
-  const caveText = objectMapText(cavePairs, 4);
-  if (caveText) lines.push(caveText);
-  lines.push("  },");
-  lines.push("  wrap: {");
-
-  const wrapBidirectional = [];
-  for (const [a, b] of wrapPairs) {
-    wrapBidirectional.push([a, b], [b, a]);
-  }
-  const wrapText = objectMapText(wrapBidirectional, 4);
-  if (wrapText) lines.push(wrapText);
-  lines.push("  }");
-  lines.push("};\n");
-
-  lines.push(`export const ${scene}EnemyEntryNodeIds = [${enemyEntryIds.map(id => `"${id}"`).join(", ")}];\n`);
-
-  lines.push(`export const ${scene}SecretRewards = {`);
-  rewardNodes.forEach((n, i) => {
-    lines.push(`  ${n.id}: {`);
-    lines.push(`    type: "bananaBunch",`);
-    lines.push(`    x: ${Math.round(n.x)},`);
-    lines.push(`    y: ${Math.round(n.y)},`);
-    lines.push(`    min: 5,`);
-    lines.push(`    max: 10`);
-    lines.push(`  }${i < rewardNodes.length - 1 ? "," : ""}`);
-  });
-  lines.push("};\n");
-
-  if (deliveryRoute.length) {
-    lines.push(`export const ${scene}DeliveryRoute = [`);
-    deliveryRoute.forEach((id, i) => lines.push(`  "${id}"${i < deliveryRoute.length - 1 ? "," : ""}`));
-    lines.push("];\n");
-  }
-
-  lines.push(`export const ${scene}SecretRoom = {`);
-  lines.push(`  visibleBeforeUnlock: true,`);
-  lines.push(`  lockedNodeId: "${goalNode}",`);
-  lines.push(`  entryNodeId: "${goalNode}",`);
-  lines.push(`  destinationNodeId: "${goalNode}",`);
-  lines.push(`  unlockCondition: "heartsComplete",`);
-  lines.push(`  pulseAfterUnlock: true,`);
-  lines.push(`  completionType: "sceneEnd",`);
-  lines.push(`  cutsceneBackgroundKey: "${getSecretKey()}",`);
-  lines.push(`  endingType: "${scene === "chill" ? "chillJab" : "sceneEnd"}"`);
-  lines.push("};\n");
-
-  if (deliveryRoute.length) {
-    lines.push("// For delivery-routes.js:");
-    lines.push(`${scene}: [`);
-    lines.push(`  [${deliveryRoute.map(id => `"${id}"`).join(", ")}]`);
-    lines.push("]");
-  }
-
-  const warnings = [];
-  if (unmatchedEdge !== 0) warnings.push(`// WARNING: edgePortal count is uneven/unmatched by side. Unmatched count: ${unmatchedEdge}`);
-  if (![0, 3, 4].includes(caveCount)) warnings.push(`// WARNING: cavePortal count is ${caveCount}. Expected 3 or 4 for best automatic mapping.`);
-  if (!findSingleTag(nodeMap, "startNode")) warnings.push("// WARNING: no startNode tag set. Start node was guessed.");
-  if (!findSingleTag(nodeMap, "goalNode")) warnings.push("// WARNING: no goalNode tag set. Goal/secret exit was guessed.");
-
-  return warnings.length ? `${warnings.join("\n")}\n\n${lines.join("\n")}` : lines.join("\n");
-}
-
-function buildExportText() {
-  const nodeMap = convertedNodes();
-  return `${buildNodesText(nodeMap)}\n\n${buildSupportText(nodeMap)}`;
-}
-
-function toggleOutput() {
-  wrap.style.display = (wrap.style.display === "none" || !wrap.style.display) ? "block" : "none";
-  if (wrap.style.display === "none") importArmed = false;
-}
-
-function exportData() {
-  wrap.style.display = "block";
-  output.readOnly = false;
-  const text = buildExportText();
-  output.value = text;
-  localStorage.setItem("nodegen_autosave_export", text);
-  output.focus();
-  output.select();
-  try { document.execCommand("copy"); } catch {}
-}
-
-async function copyOutput() {
-  try {
-    await navigator.clipboard.writeText(output.value);
-    setStatus("Copied export to clipboard");
-  } catch {
-    output.focus();
-    output.select();
-    document.execCommand("copy");
-    setStatus("Copy attempted");
-  }
-}
-
-function downloadOutput() {
-  const blob = new Blob([output.value || buildExportText()], { type: "text/javascript" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `${getSceneName()}-nodes-export.js`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-function autoSave() {
-  try {
-    localStorage.setItem("nodegen_autosave_nodes_v2", JSON.stringify({
-      nodes,
-      idCounter,
-      prefix: getPrefix(),
-      exportName: getExportName(),
-      scene: getSceneName()
-    }));
-  } catch (err) {
-    console.warn("Autosave failed", err);
-  }
-}
-
-function importData() {
-  wrap.style.display = "block";
-
-  if (!importArmed) {
-    importArmed = true;
-    output.readOnly = false;
-    output.value = "";
-    output.placeholder = "Paste nodes object/export, then tap Import again";
-    output.focus();
-    return;
-  }
-
-  try {
-    let text = output.value.trim();
-
-    const match = text.match(/(?:export\s+)?const\s+([A-Za-z_$][\w$]*)\s*=\s*(\{[\s\S]*?\n\});?/);
-    if (match) {
-      document.getElementById("nameInput").value = match[1];
-      text = match[2];
-    } else {
-      text = text
-        .replace(/export\s+const\s+\w+\s*=\s*/, "")
-        .replace(/const\s+\w+\s*=\s*/, "")
-        .replace(/;$/, "");
-    }
-
-    const parsed = eval("(" + text + ")");
-    const source = parsed.nodes || parsed;
-
-    nodes = {};
-    let maxNum = 0;
-
-    for (const id in source) {
-      const cleanTags = [...new Set((source[id].tags || []).map(normalizeTag))];
-
-      if (source[id].jumpTarget) cleanTags.push("jumpTarget");
-      if (source[id].stopHere) cleanTags.push("stopHere");
-
-      nodes[id] = {
-        id,
-        x: source[id].x,
-        y: source[id].y,
-        neighbors: [...(source[id].neighbors || [])],
-        tags: [...new Set(cleanTags)]
-      };
-
-      maxNum = Math.max(maxNum, getNodeNumber(id));
-    }
-
-    idCounter = maxNum + 1;
-    importArmed = false;
-    wrap.style.display = "none";
-    setStatus("Import success");
-    autoSave();
-  } catch (err) {
-    alert("Import Failed");
-    console.error(err);
-  }
-}
-
-// ---------- INTERACTION ----------
-canvas.addEventListener("pointerdown", e => {
-  const p = world(e.clientX, e.clientY);
-  const hit = Object.keys(nodes).find(id => Math.hypot(nodes[id].x - p.x, nodes[id].y - p.y) < 30);
-
-  if (mode === "none") {
-    dragging = "pan";
-    dragStart = { x: e.clientX, y: e.clientY, offsetX, offsetY };
-    return;
-  }
-
-  if (mode === "add") {
-    const pt = applySnap(p.x, p.y);
-    const id = nextId();
-    nodes[id] = { id, x: Math.round(pt.x), y: Math.round(pt.y), neighbors: [], tags: [] };
-    selected = id;
-    autoSave();
-    return;
-  }
-
-  if (mode === "connect") {
-    if (!hit) return;
-
-    if (!selected) {
-      selected = hit;
-    } else if (selected !== hit) {
-      const a = nodes[selected];
-      const b = nodes[hit];
-
-      a.neighbors = a.neighbors || [];
-      b.neighbors = b.neighbors || [];
-
-      const alreadyLinked =
-        a.neighbors.includes(hit) ||
-        b.neighbors.includes(selected);
-
-      if (alreadyLinked) {
-        a.neighbors = a.neighbors.filter(id => id !== hit);
-        b.neighbors = b.neighbors.filter(id => id !== selected);
-      } else {
-        a.neighbors.push(hit);
-        b.neighbors.push(selected);
-      }
-
-      // clean duplicates, just in case
-      a.neighbors = [...new Set(a.neighbors)];
-      b.neighbors = [...new Set(b.neighbors)];
-
-      selected = null;
-      autoSave();
+	<div id="topPanel">
+		<input type="file" id="bgLoader" accept="image/*" title="Load background image" />
+		<label>Scene Name <input id="sceneNameInput" type="text" value="Gift Shop" placeholder="Gift Shop" /></label>
+		<label>Scene Type <select id="sceneTypeInput">
+				<option value="exhibit">exhibit</option>
+				<option value="utilityBonus">utility bonus</option>
+				<option value="trafficHazard">traffic hazard</option>
+				<option value="swimTraffic">swim traffic</option>
+				<option value="boss">boss</option>
+				<option value="finale">finale</option>
+			</select></label>
+		<label>Ending <select id="endingTypeInput">
+				<option value="sceneEnd">sceneEnd</option>
+				<option value="chillJab">chillJab</option>
+				<option value="butterfly">butterfly</option>
+				<option value="">none</option>
+			</select></label>
+		<label>Card <input id="cardColorInput" type="color" value="#041731" /></label>
+		<label>Font <input id="fontColorInput" type="color" value="#ffffff" /></label>
+		<label>Extra <input id="extraInstructionInput" type="text" value="" placeholder="TIMED BONUS ROUND" /></label>
+		<label>Icon <select id="extraIconInput">
+				<option value="none">none</option>
+				<option value="heart">heart</option>
+				<option value="mother">mother</option>
+				<option value="safeBlock">safeBlock</option>
+				<option value="banana">banana</option>
+				<option value="ticket">ticket</option>
+				<option value="gift">gift</option>
+				<option value="jump">jump</option>
+				<option value="lock">lock</option>
+				<option value="slippery">slippery</option>
+				<option value="warning">warning</option>
+			</select></label>
+		<label>Edge pairing <select id="edgePairMode">
+				<option value="sameY">same Y order</option>
+				<option value="reverseY">reverse Y order</option>
+			</select></label>
+	</div>
+	<div id="outputWrap">
+		<div id="outputHeader">
+			<div class="left"><button class="small good" onclick="copyOutput()">Copy</button><button class="small" onclick="downloadOutput()">Download</button></div>
+			<div class="right"><button class="small" onclick="toggleOutput()">Close</button></div>
+		</div><textarea id="output" spellcheck="false"></textarea>
+	</div>
+	<canvas id="c"></canvas>
+	<div id="status"></div>
+	<div id="legend"></div>
+	<div id="toolbar"><button id="btn-none" onclick="setMode('none')">Pan</button><button id="btn-add" onclick="setMode('add')">Add</button><button id="btn-connect" onclick="setMode('connect')">Link</button><button id="btn-move" onclick="setMode('move')">Move</button><button id="btn-delete" onclick="setMode('delete')">Del</button><button id="btn-tag" onclick="handleTagButton()">Tag</button><button id="btn-grid" onclick="toggleGrid()">Grid</button><button id="btn-snap" onclick="toggleSnap()">Snap</button>
+		<div class="toolbar-split"><button onclick="zoomIn()">+</button><button onclick="zoomOut()">−</button></div><button id="btn-tools-toggle" onclick="toggleToolsPanel()">Tools</button><button onclick="fitImage()">Fit</button><button onclick="resetView()">Reset View</button><button onclick="exportData()">Export</button><button onclick="importData()">Import</button><button onclick="validateAndReport()">Validate</button><button class="warn" onclick="clearAllConfirm()">Clear</button>
+	</div>
+	<script>
+	const canvas = document.getElementById('c'),
+		ctx = canvas.getContext('2d'),
+		output = document.getElementById('output'),
+		wrap = document.getElementById('outputWrap'),
+		statusEl = document.getElementById('status'),
+		legendEl = document.getElementById('legend');
+	const GAME_WIDTH = 1080,
+		GAME_HEIGHT = 1920;
+	const RESERVED_PREFIXES = new Set(['BB', 'CK', 'CH', 'TT', 'IC', 'GS', 'MF', 'PC', 'MB', 'SF', 'JF', 'CC', 'SN', 'MM']);
+	let nodes = {},
+		selected = null,
+		mode = 'none',
+		grid = true,
+		snapToGrid = false,
+		importArmed = false,
+		toolsVisible = true,
+		viewScale = 1,
+		offsetX = 0,
+		offsetY = 0,
+		dragging = null,
+		dragStart = null,
+		idCounter = 1,
+		bgImage = null,
+		activeTag = 'banana';
+	const MAGNIFIER = {
+		diameter: 280,
+		zoom: 2.25,
+		offsetX: -170,
+		offsetY: -190,
+		margin: 10
+	};
+	let magnifier = {
+		active: false,
+		touchX: 0,
+		touchY: 0
+	};
+	const tagTypes = ['none', 'banana', 'deliveryRoute', 'keeperRoute', 'secretReward', 'edgePortal', 'cavePortal', 'startNode', 'goalNode', 'jumpTarget', 'stopHere'];
+	const colors = {
+		banana: '#ffe066',
+		deliveryRoute: '#7dd3fc',
+		keeperRoute: '#34d399',
+		secretReward: '#f0abfc',
+		edgePortal: '#60a5fa',
+		cavePortal: '#fb923c',
+		startNode: '#22c55e',
+		goalNode: '#ef4444',
+		jumpTarget: '#a78bfa',
+		stopHere: '#fff'
+	};
+	document.addEventListener('contextmenu', e => {
+		if(e.target.closest('#outputWrap') || e.target.closest('#topPanel')) return;
+		e.preventDefault()
+	}, {
+		passive: false
+	});
+	document.addEventListener('selectstart', e => {
+		if(e.target.closest('#outputWrap') || e.target.closest('#topPanel')) return;
+		e.preventDefault()
+	}, {
+		passive: false
+	});
+
+	function resizeCanvas() {
+		canvas.width = window.innerWidth;
+		canvas.height = window.innerHeight
+	}
+	window.addEventListener('resize', resizeCanvas);
+	resizeCanvas();
+	document.getElementById('bgLoader').addEventListener('change', e => {
+		const f = e.target.files[0];
+		if(!f) return;
+		const img = new Image();
+		img.onload = () => {
+			bgImage = img;
+			fitImage()
+		};
+		img.src = URL.createObjectURL(f)
+	});
+
+	function fitImage() {
+		viewScale = Math.min(canvas.width / GAME_WIDTH, canvas.height / GAME_HEIGHT);
+		offsetX = (canvas.width - GAME_WIDTH * viewScale) / 2;
+		offsetY = (canvas.height - GAME_HEIGHT * viewScale) / 2
+	}
+
+	function resetView() {
+		fitImage()
+	}
+
+	function world(x, y) {
+		return {
+			x: (x - offsetX) / viewScale,
+			y: (y - offsetY) / viewScale
+		}
+	}
+
+	function screen(x, y) {
+		return {
+			x: x * viewScale + offsetX,
+			y: y * viewScale + offsetY
+		}
+	}
+
+	function zoomAt(f, sx = canvas.width / 2, sy = canvas.height / 2) {
+		const b = world(sx, sy);
+		viewScale = Math.max(.08, Math.min(4, viewScale * f));
+		const a = screen(b.x, b.y);
+		offsetX += sx - a.x;
+		offsetY += sy - a.y
+	}
+
+	function zoomIn() {
+		zoomAt(1.18)
+	}
+
+	function zoomOut() {
+		zoomAt(1 / 1.18)
+	}
+	canvas.addEventListener('wheel', e => {
+		e.preventDefault();
+		zoomAt(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX, e.clientY)
+	}, {
+		passive: false
+	});
+
+	function tc(w) {
+		return w ? w[0].toUpperCase() + w.slice(1).toLowerCase() : ''
+	}
+
+	function normSceneName(v) {
+		return String(v || '').replace(/[^a-zA-Z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean).slice(0, 2).map(tc).join(' ')
+	}
+
+	function getRawSceneName() {
+		return document.getElementById('sceneNameInput').value || ''
+	}
+
+	function getSceneMeta(strict = true) {
+		const raw = normSceneName(getRawSceneName()),
+			words = raw.split(' ').filter(Boolean);
+		if(words.length !== 2) {
+			if(strict) throw new Error("Scene Name must be exactly two words, like 'Gift Shop'.");
+			return null
+		}
+		if(!words.every(w => /^[A-Za-z][A-Za-z0-9]*$/.test(w))) {
+			if(strict) throw new Error('Each Scene Name word must start with a letter.');
+			return null
+		}
+		const prefix = words.map(w => w[0].toUpperCase()).join(''),
+			pascal = words.map(tc).join(''),
+			camel = pascal[0].toLowerCase() + pascal.slice(1),
+			kebab = words.map(w => w.toLowerCase()).join('-'),
+			snakeUpper = words.map(w => w.toUpperCase()).join('_');
+		return {
+			displayName: words.join(' '),
+			words,
+			prefix,
+			pascal,
+			camel,
+			kebab,
+			snakeUpper,
+			secretRoomKey: `secretRoom_${prefix.toLowerCase()}`,
+			backgroundKey: `${camel}Background`,
+			nodesConst: `${camel}Nodes`,
+			cardConst: `${camel}CardMeta`,
+			nodesFile: `scene-data-${kebab}-nodes.js`,
+			dataFile: `scene-data-${kebab}.js`,
+			backgroundFile: `assets/${kebab}.webp`,
+			secretRoomFile: `sprites/secret-room-${prefix.toLowerCase()}.webp`
+		}
+	}
+
+	function updateSceneNameStatus() {
+		const inp = document.getElementById('sceneNameInput');
+		inp.classList.remove('invalid', 'warn');
+		const m = getSceneMeta(false);
+		if(!m) {
+			inp.classList.add('invalid');
+			return {
+				ok: false,
+				message: 'Scene Name must be two words'
+			}
+		}
+		if(RESERVED_PREFIXES.has(m.prefix)) {
+			inp.classList.add('warn');
+			return {
+				ok: true,
+				message: `${m.displayName} → ${m.prefix} / ${m.camel}. Prefix reserved; OK if intentional`
+			}
+		}
+		return {
+			ok: true,
+			message: `${m.displayName} → ${m.prefix} / ${m.camel}`
+		}
+	}
+
+	function normalizeSceneNameField() {
+		const inp = document.getElementById('sceneNameInput'),
+			words = String(inp.value || '').replace(/[^a-zA-Z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+		if(words.length > 2 || inp.value.includes('  ')) inp.value = normSceneName(inp.value);
+		updateSceneNameStatus();
+		autoSave()
+	}
+	const sni = document.getElementById('sceneNameInput');
+	sni.addEventListener('input', normalizeSceneNameField);
+	sni.addEventListener('change', () => {
+		sni.value = normSceneName(sni.value);
+		updateSceneNameStatus();
+		autoSave()
+	});
+	sni.addEventListener('blur', () => {
+		sni.value = normSceneName(sni.value);
+		updateSceneNameStatus();
+		autoSave()
+	});
+
+	function getPrefix() {
+		return getSceneMeta(true).prefix
+	}
+
+	function getExportName() {
+		return getSceneMeta(true).nodesConst
+	}
+
+	function getSceneName() {
+		return getSceneMeta(true).camel
+	}
+
+	function getBananaConstName() {
+		return `${getSceneMeta(true).snakeUpper}_BANANA_NODE_IDS`
+	}
+
+	function getSecretKey() {
+		return getSceneMeta(true).secretRoomKey
+	}
+
+	function getSceneType() {
+		return document.getElementById('sceneTypeInput').value || 'exhibit'
+	}
+
+	function getEndingType() {
+		return document.getElementById('endingTypeInput').value || ''
+	}
+
+	function getCardColor() {
+		return document.getElementById('cardColorInput').value || '#041731'
+	}
+
+	function getFontColor() {
+		return document.getElementById('fontColorInput').value || '#fff'
+	}
+
+	function getExtraInstruction() {
+		return (document.getElementById('extraInstructionInput').value || '').trim()
+	}
+
+	function getExtraIcon() {
+		return document.getElementById('extraIconInput').value || 'none'
+	}
+
+	function normalizeTag(t) {
+		return ({
+			ladderExit: 'deliveryRoute',
+			ice: 'secretReward',
+			portal: 'cavePortal'
+		})[t] || t
+	}
+
+	function snap(v) {
+		return Math.round(v / 25) * 25
+	}
+
+	function applySnap(x, y) {
+		return snapToGrid ? {
+			x: snap(x),
+			y: snap(y)
+		} : {
+			x,
+			y
+		}
+	}
+
+	function setMode(m) {
+		mode = m;
+		selected = null;
+		updateButtons()
+	}
+
+	function handleTagButton() {
+		if(mode !== 'tag') {
+			setMode('tag');
+			return
+		}
+		activeTag = tagTypes[(tagTypes.indexOf(activeTag) + 1) % tagTypes.length];
+		updateButtons()
+	}
+
+	function toggleGrid() {
+		grid = !grid;
+		updateButtons()
+	}
+
+	function toggleSnap() {
+		snapToGrid = !snapToGrid;
+		updateButtons()
+	}
+
+	function toggleToolsPanel() {
+		toolsVisible = !toolsVisible;
+		applyToolsVisibility()
+	}
+
+	function applyToolsVisibility() {
+		document.body.classList.toggle('tools-hidden', !toolsVisible);
+		const b = document.getElementById('btn-tools-toggle');
+		if(b) {
+			b.classList.toggle('active', toolsVisible);
+			b.title = toolsVisible ? 'Hide top form/status' : 'Show top form/status'
+		}
+		try {
+			localStorage.setItem('nodegen_tools_visible', toolsVisible ? '1' : '0')
+		} catch {}
+	}
+
+	function updateButtons() {
+		['none', 'add', 'connect', 'move', 'delete', 'tag'].forEach(m => {
+			const b = document.getElementById('btn-' + m);
+			if(b) b.classList.toggle('active', mode === m)
+		});
+		document.getElementById('btn-grid').classList.toggle('active', grid);
+		document.getElementById('btn-snap').classList.toggle('active', snapToGrid);
+		document.getElementById('btn-tag').textContent = mode === 'tag' ? `Tag: ${activeTag==='none'?'clear':activeTag}` : 'Tag'
+	}
+
+	function setStatus(t) {
+		statusEl.textContent = t
+	}
+
+	function setExclusiveTag(id, tag) {
+		for(const oid in nodes)
+			if(oid !== id) nodes[oid].tags = (nodes[oid].tags || []).filter(t => t !== tag);
+		if(!nodes[id].tags.includes(tag)) nodes[id].tags.push(tag)
+	}
+
+	function toggleNodeTag(id, tag) {
+		if(!nodes[id]) return;
+		nodes[id].tags = [...new Set((nodes[id].tags || []).map(normalizeTag))];
+		if(tag === 'none') {
+			nodes[id].tags = [];
+			return
+		}
+		if(tag === 'startNode' || tag === 'goalNode') {
+			if(nodes[id].tags.includes(tag)) nodes[id].tags = nodes[id].tags.filter(t => t !== tag);
+			else setExclusiveTag(id, tag);
+			return
+		}
+		const has = nodes[id].tags.includes(tag);
+		nodes[id].tags = has ? nodes[id].tags.filter(t => t !== tag) : [...nodes[id].tags, tag]
+	}
+
+	function getNodeNumber(id) {
+		const m = String(id).match(/(\d+)$/);
+		return m ? Number(m[1]) : 0
+	}
+
+	function nextId() {
+		const p = getPrefix();
+		while(nodes[`${p}${idCounter}`]) idCounter++;
+		return `${p}${idCounter++}`
+	}
+
+	function convertId(id, p = getPrefix()) {
+		const m = String(id).match(/^([A-Za-z_]+)(\d+)$/);
+		return m ? `${p}${m[2]}` : String(id)
+	}
+
+	function convertedNodes() {
+		const p = getPrefix(),
+			map = {},
+			out = {};
+		for(const old in nodes) map[old] = convertId(old, p);
+		for(const old in nodes) {
+			const n = nodes[old],
+				id = map[old],
+				tags = [...new Set((n.tags || []).map(normalizeTag))];
+			out[id] = {
+				...n,
+				id,
+				neighbors: [...new Set((n.neighbors || []).map(nb => map[nb] || convertId(nb, p)))],
+				tags
+			}
+		}
+		return out
+	}
+
+	function findNodesWithTag(nm, tag) {
+		return Object.values(nm).filter(n => (n.tags || []).includes(tag))
+	}
+
+	function findSingleTag(nm, tag) {
+		return findNodesWithTag(nm, tag)[0]?.id || null
+	}
+
+	function publicNodeTags(tags) {
+		return [...new Set((tags || []).map(normalizeTag))].filter(t => !['deliveryRoute', 'keeperRoute', 'secretReward', 'edgePortal', 'cavePortal', 'startNode', 'goalNode', 'jumpTarget', 'stopHere'].includes(t))
+	}
+
+	function nodeExtraProps(n) {
+		const tags = n.tags || [],
+			props = [];
+		if(tags.includes('edgePortal') || tags.includes('cavePortal')) props.push('tags: ["portal"]');
+		else props.push(`tags: [${publicNodeTags(tags).map(t=>`"${t}"`).join(', ')}]`);
+		if(tags.includes('jumpTarget')) props.push('jumpTarget: true');
+		if(tags.includes('stopHere')) props.push('stopHere: true');
+		return props
+	}
+
+	function buildNodesText(nm) {
+		const ids = Object.keys(nm).sort((a, b) => getNodeNumber(a) - getNodeNumber(b) || a.localeCompare(b)),
+			lines = [`export const ${getExportName()} = {`];
+		ids.forEach((id, i) => {
+			const n = nm[id],
+				nbs = [...new Set(n.neighbors || [])].map(nb => `"${nb}"`).join(', ');
+			lines.push(`  ${id}: { id: "${id}", x: ${Math.round(n.x)}, y: ${Math.round(n.y)}, neighbors: [${nbs}], ${nodeExtraProps(n).join(', ')} }${i<ids.length-1?',':''}`)
+		});
+		lines.push('};');
+		return lines.join('\n')
+	}
+
+	function sortedByYThenX(a) {
+		return [...a].sort((x, y) => x.y - y.y || x.x - y.x || x.id.localeCompare(y.id))
+	}
+
+	function sortedClockwise(a) {
+		if(!a.length) return [];
+		const cx = a.reduce((s, n) => s + n.x, 0) / a.length,
+			cy = a.reduce((s, n) => s + n.y, 0) / a.length;
+		return [...a].sort((x, y) => Math.atan2(x.y - cy, x.x - cx) - Math.atan2(y.y - cy, y.x - cx))
+	}
+
+	function buildPortalMapEntries(nm) {
+		const edge = findNodesWithTag(nm, 'edgePortal'),
+			cave = findNodesWithTag(nm, 'cavePortal'),
+			goal = findSingleTag(nm, 'goalNode'),
+			left = sortedByYThenX(edge.filter(n => n.x <= GAME_WIDTH / 2)),
+			right = sortedByYThenX(edge.filter(n => n.x > GAME_WIDTH / 2)),
+			rp = document.getElementById('edgePairMode').value === 'reverseY' ? [...right].reverse() : right,
+			wrapPairs = [];
+		for(let i = 0; i < Math.min(left.length, rp.length); i++) wrapPairs.push([left[i].id, rp[i].id]);
+		const cavePairs = [],
+			caveIds = cave.filter(n => n.id !== goal);
+		if(caveIds.length === 3) {
+			const o = sortedClockwise(caveIds);
+			for(let i = 0; i < o.length; i++) cavePairs.push([o[i].id, o[(i + 1) % o.length].id])
+		} else if(caveIds.length === 4) {
+			const o = sortedByYThenX(caveIds);
+			cavePairs.push([o[0].id, o[1].id], [o[1].id, o[0].id], [o[2].id, o[3].id], [o[3].id, o[2].id])
+		} else {
+			const o = sortedByYThenX(caveIds);
+			for(let i = 0; i + 1 < o.length; i += 2) cavePairs.push([o[i].id, o[i + 1].id], [o[i + 1].id, o[i].id])
+		}
+		return {
+			wrapPairs,
+			cavePairs,
+			unmatchedEdge: edge.length - wrapPairs.length * 2,
+			caveCount: caveIds.length
+		}
+	}
+
+	function objectMapText(pairs, ind = 4) {
+		const sp = ' '.repeat(ind);
+		return pairs.map(([f, t], i) => `${sp}${f}: "${t}"${i<pairs.length-1?',':''}`).join('\n')
+	}
+
+	function buildTaggedRoute(nm, tag) {
+		const rn = findNodesWithTag(nm, tag);
+		if(!rn.length) return [];
+		const set = new Set(rn.map(n => n.id)),
+			deg = id => (nm[id]?.neighbors || []).filter(nb => set.has(nb)).length;
+		let cur = rn.find(n => deg(n.id) === 1)?.id || sortedByYThenX(rn)[0]?.id,
+			prev = null,
+			route = [],
+			vis = new Set();
+		while(cur && !vis.has(cur)) {
+			route.push(cur);
+			vis.add(cur);
+			const opts = (nm[cur]?.neighbors || []).filter(nb => set.has(nb) && nb !== prev && !vis.has(nb));
+			prev = cur;
+			cur = opts[0] || null
+		}
+		return [...route, ...sortedByYThenX(rn).map(n => n.id).filter(id => !vis.has(id))]
+	}
+
+	function systemsFor(t) {
+		const b = {
+			troops: false,
+			nanaSnatchers: false,
+			delivery: false,
+			kongEvent: false,
+			utilityKeepers: false,
+			trafficHazards: false,
+			swim: false
+		};
+		if(t === 'exhibit') return {
+			...b,
+			troops: true,
+			nanaSnatchers: true
+		};
+		if(t === 'utilityBonus') return {
+			...b,
+			utilityKeepers: true
+		};
+		if(t === 'trafficHazard') return {
+			...b,
+			trafficHazards: true
+		};
+		if(t === 'swimTraffic') return {
+			...b,
+			trafficHazards: true,
+			swim: true
+		};
+		if(t === 'boss') return {
+			...b,
+			troops: true,
+			kongEvent: true
+		};
+		return b
+	}
+
+	function objLiteral(o, ind = 2) {
+		const inn = ' '.repeat(ind + 2),
+			pad = ' '.repeat(ind);
+		return '{\n' + Object.entries(o).map(([k, v], i) => `${inn}${k}: ${typeof v==='string'?`"${v}"`:String(v)}${i<Object.keys(o).length-1?',':''}`).join('\n') + `\n${pad}}`
+	}
+
+	function cardObjectives(t) {
+		if(t === "utilityBonus") {
+			return [{
+				text: "GRAB BONUS BANANAS",
+				iconKey: "banana"
+			}, {
+				text: "BUMP THE KEEPERS",
+				iconKey: "ticket"
+			}, {
+				text: "FIND YOUR SAFE PLACE",
+				iconKey: "safePlace"
+			}];
+		}
+		if(t === "trafficHazard") {
+			return [{
+				text: "COLLECT 3 HEARTS",
+				iconKey: "heart"
+			}, {
+				text: "WATCH THE LANES",
+				iconKey: "warning"
+			}, {
+				text: "FIND YOUR SAFE PLACE",
+				iconKey: "safePlace"
+			}];
+		}
+		if(t === "swimTraffic") {
+			return [{
+				text: "COLLECT 3 HEARTS",
+				iconKey: "heart"
+			}, {
+				text: "SWIM WITH THE CURRENT",
+				iconKey: "warning"
+			}, {
+				text: "FIND YOUR SAFE PLACE",
+				iconKey: "safePlace"
+			}];
+		}
+		return [{
+			text: "COLLECT 3 HEARTS",
+			iconKey: "heart"
+		}, {
+			text: "CARRY MOM ALONG",
+			iconKey: "mother"
+		}, {
+			text: "FIND YOUR SAFE PLACE",
+			iconKey: "safePlace"
+		}];
+	}
+
+	function normalizeGeneratedIconKey(icon) {
+		const map = {
+			safeBlock: "safePlace",
+			heart: "heart",
+			mother: "mother",
+			banana: "banana",
+			ticket: "ticket",
+			gift: "gift",
+			jump: "jump",
+			lock: "lock",
+			slippery: "slippery",
+			warning: "warning"
+		};
+
+		return map[icon] || icon;
+	}
+
+	function buildSupportText(nm) {
+		const meta = getSceneMeta(true),
+			scene = meta.camel,
+			type = getSceneType(),
+			bananaConst = getBananaConstName(),
+			start = findSingleTag(nm, 'startNode') || sortedByYThenX(Object.values(nm)).at(-1)?.id || 'TODO_START',
+			goal = findSingleTag(nm, 'goalNode') || sortedByYThenX(findNodesWithTag(nm, 'cavePortal')).at(-1)?.id || 'TODO_GOAL',
+			rewards = findNodesWithTag(nm, 'secretReward'),
+			bananas = Object.values(nm).filter(n => (n.tags || []).includes('banana')).sort((a, b) => getNodeNumber(a.id) - getNodeNumber(b.id)).map(n => n.id),
+			{
+				wrapPairs,
+				cavePairs,
+				unmatchedEdge,
+				caveCount
+			} = buildPortalMapEntries(nm),
+			deliveryRoute = buildTaggedRoute(nm, 'deliveryRoute'),
+			keeperRoute = buildTaggedRoute(nm, 'keeperRoute'),
+			sys = systemsFor(type),
+			enemy = sys.troops || sys.nanaSnatchers ? [...new Set(cavePairs.map(([f]) => f))] : [],
+			lines = [];
+		const warns = [];
+		if(unmatchedEdge !== 0) warns.push(`// WARNING: edgePortal count is uneven/unmatched by side. Unmatched count: ${unmatchedEdge}`);
+		if(![0, 3, 4].includes(caveCount)) warns.push(`// WARNING: cavePortal count is ${caveCount}. Expected 3 or 4 for best automatic mapping.`);
+		if(!findSingleTag(nm, 'startNode')) warns.push('// WARNING: no startNode tag set. Start node was guessed.');
+		if(!findSingleTag(nm, 'goalNode')) warns.push('// WARNING: no goalNode tag set. Goal/safe-place exit was guessed.');
+		if(RESERVED_PREFIXES.has(meta.prefix)) warns.push(`// NOTE: prefix ${meta.prefix} is reserved. OK if intentional.`);
+		if(warns.length) lines.push(warns.join('\n'), '');
+		lines.push(`// FILE: js/${meta.dataFile}`, '// ===== Generated scene support config - review/tune these guesses =====\n');
+		lines.push(`export const ${bananaConst} = [`);
+		bananas.forEach((id, i) => lines.push(`  "${id}"${i<bananas.length-1?',':''}`));
+		lines.push('];\n');
+		lines.push(`export const ${scene}Config = {`, `  startNode: "${start}",`, `  goalNode: "${goal}"`, '};\n');
+		lines.push(`export const ${scene}Portals = {`, '  cave: {');
+		const ct = objectMapText(cavePairs, 4);
+		if(ct) lines.push(ct);
+		lines.push('  },', '  wrap: {');
+		const wb = [];
+		for(const [a, b] of wrapPairs) wb.push([a, b], [b, a]);
+		const wt = objectMapText(wb, 4);
+		if(wt) lines.push(wt);
+		lines.push('  }', '};\n');
+		lines.push(`export const ${scene}EnemyEntryNodeIds = [${enemy.map(id=>`"${id}"`).join(', ')}];\n`);
+		lines.push(`export const ${scene}SecretRewards = {`);
+		rewards.forEach((n, i) => {
+			const mult = type === 'utilityBonus' ? 4 : 1;
+			lines.push(`  ${n.id}: {`, `    type: "bananaBunch",`, `    x: ${Math.round(n.x)},`, `    y: ${Math.round(n.y)},`, `    min: ${5*mult},`, `    max: ${10*mult}${type==='utilityBonus'?',':''}`);
+			if(type === 'utilityBonus') lines.push('    respawnSeconds: 6');
+			lines.push(`  }${i<rewards.length-1?',':''}`)
+		});
+		lines.push('};\n');
+		if(deliveryRoute.length) {
+			lines.push(`export const ${scene}DeliveryRoute = [`);
+			deliveryRoute.forEach((id, i) => lines.push(`  "${id}"${i<deliveryRoute.length-1?',':''}`));
+			lines.push('];\n')
+		}
+		if(keeperRoute.length) {
+			lines.push(`export const ${scene}KeeperRoute = [`);
+			keeperRoute.forEach((id, i) => lines.push(`  "${id}"${i<keeperRoute.length-1?',':''}`));
+			lines.push('];\n')
+		}
+		lines.push(`export const ${scene}SecretRoom = {`, '  visibleBeforeUnlock: true,', `  lockedNodeId: "${goal}",`, `  entryNodeId: "${goal}",`, `  destinationNodeId: "${goal}",`, '  unlockCondition: "heartsComplete",', '  pulseAfterUnlock: true,', '  completionType: "sceneEnd",', `  cutsceneBackgroundKey: "${meta.secretRoomKey}"${getEndingType()?',':''}`);
+		if(getEndingType()) lines.push(`  endingType: "${getEndingType()}"`);
+		lines.push('};\n');
+    const objectives = cardObjectives(type);
+    const extra = getExtraInstruction();
+    const ei = getExtraIcon();
+
+    if (extra) {
+      objectives.push({
+        text: extra.toUpperCase(),
+        iconKey: ei === "none" ? null : normalizeGeneratedIconKey(ei)
+      });
     }
 
-    return;
-  }
-  
-  if (mode === "move") {
-    if (hit) {
-      dragging = hit;
-      selected = hit;
-    }
-    return;
-  }
+    lines.push(
+      `export const ${meta.cardConst} = {`,
+      `  title: "${meta.displayName.toUpperCase()}",`,
+      `  backgroundKey: "${meta.backgroundKey}",`,
+      `  zoneColor: "${getCardColor()}",`,
+      `  textColor: "${getFontColor()}",`,
+      ``,
+      `  objectives: [`
+    );
 
-  if (mode === "delete") {
-    if (hit) {
-      delete nodes[hit];
-      for (const id in nodes) {
-        nodes[id].neighbors = nodes[id].neighbors.filter(n => n !== hit);
-      }
-      selected = null;
-      autoSave();
-    }
-    return;
-  }
+    objectives.forEach((it, i) => {
+      lines.push(
+        `    { text: "${it.text}", iconKey: ${it.iconKey ? `"${it.iconKey}"` : "null"} }${i < objectives.length - 1 ? "," : ""}`
+      );
+    });
 
-  if (mode === "tag") {
-    if (hit) {
-      toggleNodeTag(hit, activeTag);
-      selected = hit;
-      autoSave();
-    }
-  }
-});
+    lines.push(
+      `  ],`,
+      ``,
+      `  introduction: null,`,
+      `  fallbackImageKey: "cardSafePlaceIcon"`,
+      `};`
+    );
+		return lines.join('\n')
+	}
 
-canvas.addEventListener("pointermove", e => {
-  if (dragging === "pan" && dragStart) {
-    offsetX = dragStart.offsetX + (e.clientX - dragStart.x);
-    offsetY = dragStart.offsetY + (e.clientY - dragStart.y);
-    return;
-  }
+	function buildSceneConfigPatch(nm) {
+		const m = getSceneMeta(true),
+			s = m.camel,
+			type = getSceneType(),
+			sys = systemsFor(type),
+			start = findSingleTag(nm, 'startNode') || sortedByYThenX(Object.values(nm)).at(-1)?.id || 'TODO_START',
+			l = [];
+		l.push(`// ===== scene-config.js patch for ${m.displayName} =====`, `import { ${m.nodesConst} } from "./${m.nodesFile}";`, `import { ${s}Config, ${s}Portals, ${s}SecretRoom, ${s}EnemyEntryNodeIds } from "./${m.dataFile}";\n`, `// Add inside SCENE_CONFIGS:`, `${s}: {`, `  nodes: ${m.nodesConst},`, `  startNode: ${s}Config.startNode,`, `  secretRoom: ${s}SecretRoom,`, `  portals: ${s}Portals,`, `  enemyEntryNodeIds: ${s}EnemyEntryNodeIds,`, `  systems: ${objLiteral(sys,2)},`);
+		if(type === 'utilityBonus') l.push('  utilityBonus: { enabled: true, duration: 45, secretRewardMultiplier: 4, secretRewardRespawnSeconds: 6, utilityKeeperLoot: true },');
+		if(type === 'trafficHazard') l.push('  trafficHazards: { enabled: true, type: "bird", lanes: [] },');
+		if(type === 'swimTraffic') l.push('  trafficHazards: { enabled: true, type: "fish", lanes: [] },', '  swim: { enabled: true, speedMultiplier: 0.72, bobAmount: 10, bubbles: true },');
+		l.push('  mother: {', `    enabledAfterAcquired: true,`, `    startNode: "${start}",`, '    requiredForExit: true', '  }', '}');
+		return l.join('\n')
+	}
 
-  if (dragging && nodes[dragging]) {
-    const p = world(e.clientX, e.clientY);
-    const pt = applySnap(p.x, p.y);
-    nodes[dragging].x = Math.round(pt.x);
-    nodes[dragging].y = Math.round(pt.y);
-    autoSave();
-  }
-});
+	function buildAssetsPatch() {
+		const m = getSceneMeta(true),
+			type = getSceneType(),
+			l = [];
+		l.push(`// ===== assets.js patch/checklist for ${m.displayName} =====`, `// [ ] spriteStore.${m.backgroundKey} -> ${m.backgroundFile}`, '// [ ] spriteStore.cardSafePlaceIcon -> assets/card-safe-place-icon.webp', `// [ ] spriteStore.${m.secretRoomKey} -> ${m.secretRoomFile}`);
+		if(type === 'utilityBonus') l.push('// [ ] spriteStore.utilityKeeperBananaCrateWalk -> sprites/utility-keeper-banana-crate-walk.webp', '// [ ] spriteStore.utilityKeeperHeartCrateWalk -> sprites/utility-keeper-heart-crate-walk.webp', '// [ ] spriteStore.utilityKeeperFaintHearts -> sprites/utility-keeper-faint-hearts.webp');
+		l.push('\n// Optional helper. Add once, then use for new assets if desired:', 'function loadImageWithWarning(spriteStore, key, src) {', '  const img = new Image();', '  img.onload = () => console.log(`[ASSET OK] ${key}: ${src}`);', '  img.onerror = () => console.warn(`[ASSET MISSING] ${key}: ${src}`);', '  img.src = src;', '  spriteStore[key] = img;', '  return img;', '}\n', '// Add inside loadSprites():', `loadImageWithWarning(spriteStore, "${m.backgroundKey}", "${m.backgroundFile}");`, 'loadImageWithWarning(spriteStore, "cardSafePlaceIcon", "assets/card-safe-place-icon.webp");', `loadImageWithWarning(spriteStore, "${m.secretRoomKey}", "${m.secretRoomFile}");`);
+		if(type === 'utilityBonus') l.push('loadImageWithWarning(spriteStore, "utilityKeeperBananaCrateWalk", "sprites/utility-keeper-banana-crate-walk.webp");', 'loadImageWithWarning(spriteStore, "utilityKeeperHeartCrateWalk", "sprites/utility-keeper-heart-crate-walk.webp");', 'loadImageWithWarning(spriteStore, "utilityKeeperFaintHearts", "sprites/utility-keeper-faint-hearts.webp");');
+		return l.join('\n')
+	}
 
-canvas.addEventListener("pointerup", () => {
-  dragging = null;
-  dragStart = null;
-});
+	function buildMainPatch() {
+		const m = getSceneMeta(true),
+			s = m.camel;
+		return [`// ===== main.js patch/reminders for ${m.displayName} =====`, `import { ${getBananaConstName()}, ${s}SecretRewards, ${m.cardConst} } from "./${m.dataFile}";\n`, `// Add to SECRET_REWARDS if it remains in main.js:`, `${s}: ${s}SecretRewards,\n`, `// Add/import this card config into SCENE_CARD_CONFIGS:`, `${s}: ${m.cardConst},\n`, `// If getCurrentBackgroundImage() remains branch-based, add:`, `if (state.scene === "${s}") return spriteStore.${m.backgroundKey} || backgroundImage;`, `\n// Longer-term: prefer scene config/card registry over adding many scene branches.`].join('\n')
+	}
 
-canvas.addEventListener("pointercancel", () => {
-  dragging = null;
-  dragStart = null;
-});
+	function buildAssetTestSnippet() {
+		const m = getSceneMeta(true),
+			paths = [m.backgroundFile, 'assets/card-safe-place-icon.webp', m.secretRoomFile];
+		if(getSceneType() === 'utilityBonus') paths.push('sprites/utility-keeper-banana-crate-walk.webp', 'sprites/utility-keeper-heart-crate-walk.webp', 'sprites/utility-keeper-faint-hearts.webp');
+		return [`// ===== Optional browser asset test for ${m.displayName} =====`, `Promise.all([${paths.map(p=>`"${p}"`).join(', ')}].map(src => new Promise(resolve => {`, `  const img = new Image();`, `  img.onload = () => resolve({ src, ok: true });`, `  img.onerror = () => resolve({ src, ok: false });`, `  img.src = src + "?v=" + Date.now();`, `}))).then(results => console.table(results));`].join('\n')
+	}
 
-window.addEventListener("keydown", e => {
-  const key = e.key.toLowerCase();
+	function buildExportText() {
+		const m = getSceneMeta(true),
+			nm = convertedNodes();
+		return [`// ============================================================`, `// Generated by Monkey Mountain Node Editor`, `// Scene: ${m.displayName}`, `// Prefix: ${m.prefix}`, `// Suggested files: js/${m.nodesFile}, js/${m.dataFile}`, `// ============================================================\n`, `// FILE: js/${m.nodesFile}`, buildNodesText(nm), '', buildSupportText(nm), '', buildSceneConfigPatch(nm), '', buildAssetsPatch(), '', buildMainPatch(), '', buildAssetTestSnippet()].join('\n')
+	}
 
-  if (key === "t") {
-    handleTagButton();
-    e.preventDefault();
-  } else if (key === "a") {
-    setMode("add");
-  } else if (key === "m") {
-    setMode("move");
-  } else if (key === "l") {
-    setMode("connect");
-  } else if (key === "d") {
-    setMode("delete");
-  } else if (key === "p") {
-    setMode("none");
-  } else if (key === "+" || key === "=") {
-    zoomIn();
-  } else if (key === "-" || key === "_") {
-    zoomOut();
-  } else if (key === "e") {
-    exportData();
-  }
-});
+	function toggleOutput() {
+		wrap.style.display = (wrap.style.display === 'none' || !wrap.style.display) ? 'block' : 'none';
+		if(wrap.style.display === 'none') importArmed = false
+	}
 
-// ---------- VALIDATE ----------
-function validate() {
-  const nodeMap = convertedNodes();
-  const errors = [];
-  const warnings = [];
+	function exportData() {
+		try {
+			getSceneMeta(true)
+		} catch (e) {
+			alert(e.message || 'Invalid Scene Name');
+			return
+		}
+		wrap.style.display = 'block';
+		output.readOnly = false;
+		output.value = buildExportText();
+		localStorage.setItem('nodegen_autosave_export', output.value);
+		output.focus();
+		output.select();
+		try {
+			document.execCommand('copy')
+		} catch {}
+	}
+	async function copyOutput() {
+		try {
+			await navigator.clipboard.writeText(output.value);
+			setStatus('Copied export to clipboard')
+		} catch {
+			output.focus();
+			output.select();
+			document.execCommand('copy');
+			setStatus('Copy attempted')
+		}
+	}
 
-  for (const id in nodeMap) {
-    const n = nodeMap[id];
+	function downloadOutput() {
+		const m = getSceneMeta(true),
+			blob = new Blob([output.value || buildExportText()], {
+				type: 'text/javascript'
+			}),
+			a = document.createElement('a');
+		a.href = URL.createObjectURL(blob);
+		a.download = `${m.kebab}-nodes-export.js`;
+		a.click();
+		URL.revokeObjectURL(a.href)
+	}
 
-    for (const nb of n.neighbors || []) {
-      if (!nodeMap[nb]) {
-        errors.push(`${id} references missing node ${nb}`);
-      } else if (!(nodeMap[nb].neighbors || []).includes(id)) {
-        warnings.push(`${id} -> ${nb} is not bidirectional`);
-      }
-    }
-  }
+	function autoSave() {
+		try {
+			localStorage.setItem('nodegen_autosave_nodes_v3', JSON.stringify({
+				nodes,
+				idCounter,
+				sceneName: normSceneName(getRawSceneName()),
+				sceneType: getSceneType(),
+				endingType: getEndingType(),
+				cardColor: getCardColor(),
+				fontColor: getFontColor(),
+				extraInstruction: getExtraInstruction(),
+				extraIcon: getExtraIcon()
+			}))
+		} catch (e) {
+			console.warn('Autosave failed', e)
+		}
+	} ['sceneTypeInput', 'endingTypeInput', 'cardColorInput', 'fontColorInput', 'extraInstructionInput', 'extraIconInput', 'edgePairMode'].forEach(id => {
+		document.getElementById(id)?.addEventListener('change', autoSave);
+		document.getElementById(id)?.addEventListener('input', autoSave)
+	});
 
-  const startCount = findNodesWithTag(nodeMap, "startNode").length;
-  const goalCount = findNodesWithTag(nodeMap, "goalNode").length;
-  const edgeCount = findNodesWithTag(nodeMap, "edgePortal").length;
-  const caveCount = findNodesWithTag(nodeMap, "cavePortal").filter(n => !(n.tags || []).includes("goalNode")).length;
+	function importData() {
+		wrap.style.display = 'block';
+		if(!importArmed) {
+			importArmed = true;
+			output.readOnly = false;
+			output.value = '';
+			output.placeholder = 'Paste nodes object/export, then tap Import again';
+			output.focus();
+			return
+		}
+		try {
+			let text = output.value.trim();
+			const match = text.match(/(?:export\s+)?const\s+([A-Za-z_$][\w$]*)\s*=\s*(\{[\s\S]*?\n\});?/);
+			if(match) text = match[2];
+			else text = text.replace(/export\s+const\s+\w+\s*=\s*/, '').replace(/const\s+\w+\s*=\s*/, '').replace(/;$/, '');
+			const parsed = eval('(' + text + ')'),
+				src = parsed.nodes || parsed;
+			nodes = {};
+			let max = 0;
+			for(const id in src) {
+				const tags = [...new Set((src[id].tags || []).map(normalizeTag))];
+				if(src[id].jumpTarget) tags.push('jumpTarget');
+				if(src[id].stopHere) tags.push('stopHere');
+				nodes[id] = {
+					id,
+					x: src[id].x,
+					y: src[id].y,
+					neighbors: [...(src[id].neighbors || [])],
+					tags: [...new Set(tags)]
+				};
+				max = Math.max(max, getNodeNumber(id))
+			}
+			idCounter = max + 1;
+			importArmed = false;
+			wrap.style.display = 'none';
+			setStatus('Import success');
+			autoSave()
+		} catch (e) {
+			alert('Import Failed');
+			console.error(e)
+		}
+	}
+	canvas.addEventListener('pointerdown', e => {
+		const p = world(e.clientX, e.clientY),
+			hit = Object.keys(nodes).find(id => Math.hypot(nodes[id].x - p.x, nodes[id].y - p.y) < 30);
+		if(mode === 'none') {
+			dragging = 'pan';
+			dragStart = {
+				x: e.clientX,
+				y: e.clientY,
+				offsetX,
+				offsetY
+			};
+			return
+		}
+		if(mode === 'add') {
+			const pt = applySnap(p.x, p.y),
+				id = nextId();
+			nodes[id] = {
+				id,
+				x: Math.round(pt.x),
+				y: Math.round(pt.y),
+				neighbors: [],
+				tags: []
+			};
+			selected = id;
+			autoSave();
+			return
+		}
+		if(mode === 'connect') {
+			if(!hit) return;
+			if(!selected) selected = hit;
+			else if(selected !== hit) {
+				const a = nodes[selected],
+					b = nodes[hit];
+				a.neighbors = a.neighbors || [];
+				b.neighbors = b.neighbors || [];
+				const linked = a.neighbors.includes(hit) || b.neighbors.includes(selected);
+				if(linked) {
+					a.neighbors = a.neighbors.filter(id => id !== hit);
+					b.neighbors = b.neighbors.filter(id => id !== selected)
+				} else {
+					a.neighbors.push(hit);
+					b.neighbors.push(selected)
+				}
+				a.neighbors = [...new Set(a.neighbors)];
+				b.neighbors = [...new Set(b.neighbors)];
+				selected = null;
+				autoSave()
+			}
+			return
+		}
+		if(mode === 'move') {
+			if(hit) {
+				dragging = hit;
+				selected = hit;
+				updateMagnifierFromPointer(e)
+			}
+			return
+		}
+		if(mode === 'delete') {
+			if(hit) {
+				delete nodes[hit];
+				for(const id in nodes) nodes[id].neighbors = nodes[id].neighbors.filter(n => n !== hit);
+				selected = null;
+				autoSave()
+			}
+			return
+		}
+		if(mode === 'tag' && hit) {
+			toggleNodeTag(hit, activeTag);
+			selected = hit;
+			autoSave()
+		}
+	});
+	canvas.addEventListener('pointermove', e => {
+		if(dragging === 'pan' && dragStart) {
+			offsetX = dragStart.offsetX + (e.clientX - dragStart.x);
+			offsetY = dragStart.offsetY + (e.clientY - dragStart.y);
+			return
+		}
+		if(dragging && nodes[dragging]) {
+			updateMagnifierFromPointer(e);
+			const p = world(e.clientX, e.clientY),
+				pt = applySnap(p.x, p.y);
+			nodes[dragging].x = Math.round(pt.x);
+			nodes[dragging].y = Math.round(pt.y);
+			autoSave()
+		}
+	});
 
-  if (startCount !== 1) warnings.push(`startNode count is ${startCount}; expected 1`);
-  if (goalCount !== 1) warnings.push(`goalNode count is ${goalCount}; expected 1`);
-  if (edgeCount % 2 !== 0) warnings.push(`edgePortal count is ${edgeCount}; expected even`);
-  if (![0, 3, 4].includes(caveCount)) warnings.push(`cavePortal count excluding goal is ${caveCount}; expected 3 or 4`);
+	function endPointer() {
+		dragging = null;
+		dragStart = null;
+		magnifier.active = false
+	}
+	canvas.addEventListener('pointerup', endPointer);
+	canvas.addEventListener('pointercancel', endPointer);
 
-  return { errors, warnings };
-}
+	function updateMagnifierFromPointer(e) {
+		magnifier.active = mode === 'move' && !!dragging && !!nodes[dragging];
+		magnifier.touchX = e.clientX;
+		magnifier.touchY = e.clientY
+	}
 
-function validateAndReport() {
-  const { errors, warnings } = validate();
-  const msg = [
-    `Errors: ${errors.length}`,
-    ...errors,
-    "",
-    `Warnings: ${warnings.length}`,
-    ...warnings
-  ].join("\n");
+	function isTyping(e) {
+		const el = e.target;
+		return !!(el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable))
+	}
+	window.addEventListener('keydown', e => {
+		if(isTyping(e)) return;
+		const k = e.key.toLowerCase();
+		if(k === 't') {
+			handleTagButton();
+			e.preventDefault()
+		} else if(k === 'a') setMode('add');
+		else if(k === 'm') setMode('move');
+		else if(k === 'l') setMode('connect');
+		else if(k === 'd') setMode('delete');
+		else if(k === 'p') setMode('none');
+		else if(k === '+' || k === '=') zoomIn();
+		else if(k === '-' || k === '_') zoomOut();
+		else if(k === 'e') exportData()
+	});
 
-  wrap.style.display = "block";
-  output.value = msg;
-}
+	function validate() {
+		let nm;
+		try {
+			nm = convertedNodes()
+		} catch {
+			nm = nodes
+		}
+		const errors = [],
+			warnings = [];
+		for(const id in nm) {
+			for(const nb of nm[id].neighbors || []) {
+				if(!nm[nb]) errors.push(`${id} references missing node ${nb}`);
+				else if(!(nm[nb].neighbors || []).includes(id)) warnings.push(`${id} -> ${nb} is not bidirectional`)
+			}
+		}
+		const sc = findNodesWithTag(nm, 'startNode').length,
+			gc = findNodesWithTag(nm, 'goalNode').length,
+			ec = findNodesWithTag(nm, 'edgePortal').length,
+			cc = findNodesWithTag(nm, 'cavePortal').filter(n => !(n.tags || []).includes('goalNode')).length;
+		if(sc !== 1) warnings.push(`startNode count is ${sc}; expected 1`);
+		if(gc !== 1) warnings.push(`goalNode count is ${gc}; expected 1`);
+		if(ec % 2 !== 0) warnings.push(`edgePortal count is ${ec}; expected even`);
+		if(![0, 3, 4].includes(cc)) warnings.push(`cavePortal count excluding goal is ${cc}; expected 3 or 4`);
+		const meta = getSceneMeta(false);
+		if(!meta) warnings.push('Scene Name is invalid or incomplete.');
+		else if(RESERVED_PREFIXES.has(meta.prefix)) warnings.push(`Prefix ${meta.prefix} is reserved; OK if intentional.`);
+		return {
+			errors,
+			warnings
+		}
+	}
 
-function clearAllConfirm() {
-  if (confirm("Clear all nodes?")) {
-    nodes = {};
-    idCounter = 1;
-    selected = null;
-    autoSave();
-  }
-}
+	function validateAndReport() {
+		const {
+			errors,
+			warnings
+		} = validate();
+		wrap.style.display = 'block';
+		output.value = [`Errors: ${errors.length}`, ...errors, '', `Warnings: ${warnings.length}`, ...warnings].join('\n')
+	}
 
-// ---------- DRAW ----------
-function drawGrid() {
-  if (!grid) return;
+	function clearAllConfirm() {
+		if(confirm('Clear all nodes?')) {
+			nodes = {};
+			idCounter = 1;
+			selected = null;
+			autoSave()
+		}
+	}
 
-  ctx.save();
-  ctx.strokeStyle = "rgba(255,255,255,0.08)";
-  ctx.lineWidth = 1;
+	function drawGrid() {
+		if(!grid) return;
+		ctx.save();
+		ctx.strokeStyle = 'rgba(255,255,255,.08)';
+		ctx.lineWidth = 1;
+		for(let x = 0; x <= GAME_WIDTH; x += 100) {
+			let a = screen(x, 0),
+				b = screen(x, GAME_HEIGHT);
+			ctx.beginPath();
+			ctx.moveTo(a.x, a.y);
+			ctx.lineTo(b.x, b.y);
+			ctx.stroke()
+		}
+		for(let y = 0; y <= GAME_HEIGHT; y += 100) {
+			let a = screen(0, y),
+				b = screen(GAME_WIDTH, y);
+			ctx.beginPath();
+			ctx.moveTo(a.x, a.y);
+			ctx.lineTo(b.x, b.y);
+			ctx.stroke()
+		}
+		ctx.restore()
+	}
 
-  for (let x = 0; x <= GAME_WIDTH; x += 100) {
-    const a = screen(x, 0);
-    const b = screen(x, GAME_HEIGHT);
-    ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
-    ctx.stroke();
-  }
+	function drawMagnifier() {
+		if(!magnifier.active) return;
+		const d = MAGNIFIER.diameter,
+			r = d / 2,
+			z = MAGNIFIER.zoom,
+			src = d / z;
+		let cx = magnifier.touchX + MAGNIFIER.offsetX,
+			cy = magnifier.touchY + MAGNIFIER.offsetY;
+		cx = Math.max(r + MAGNIFIER.margin, Math.min(canvas.width - r - MAGNIFIER.margin, cx));
+		cy = Math.max(r + MAGNIFIER.margin, Math.min(canvas.height - r - MAGNIFIER.margin, cy));
+		let sx = Math.max(0, Math.min(canvas.width - src, magnifier.touchX - src / 2)),
+			sy = Math.max(0, Math.min(canvas.height - src, magnifier.touchY - src / 2));
+		ctx.save();
+		ctx.beginPath();
+		ctx.arc(cx, cy, r + 8, 0, Math.PI * 2);
+		ctx.fillStyle = 'rgba(0,0,0,.48)';
+		ctx.fill();
+		ctx.beginPath();
+		ctx.arc(cx, cy, r, 0, Math.PI * 2);
+		ctx.clip();
+		ctx.drawImage(canvas, sx, sy, src, src, cx - r, cy - r, d, d);
+		ctx.strokeStyle = 'rgba(255,255,255,.75)';
+		ctx.lineWidth = 2;
+		ctx.beginPath();
+		ctx.moveTo(cx - 14, cy);
+		ctx.lineTo(cx + 14, cy);
+		ctx.moveTo(cx, cy - 14);
+		ctx.lineTo(cx, cy + 14);
+		ctx.stroke();
+		ctx.restore();
+		ctx.save();
+		ctx.beginPath();
+		ctx.arc(cx, cy, r, 0, Math.PI * 2);
+		ctx.lineWidth = 4;
+		ctx.strokeStyle = 'rgba(255,255,255,.92)';
+		ctx.stroke();
+		ctx.restore()
+	}
 
-  for (let y = 0; y <= GAME_HEIGHT; y += 100) {
-    const a = screen(0, y);
-    const b = screen(GAME_WIDTH, y);
-    ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
-    ctx.stroke();
-  }
+	function shortTag(t) {
+		return {
+			banana: '🍌',
+			deliveryRoute: 'D',
+			keeperRoute: 'K',
+			secretReward: '🎁',
+			edgePortal: 'E',
+			cavePortal: 'C',
+			startNode: 'S',
+			goalNode: 'G',
+			jumpTarget: 'J',
+			stopHere: 'STOP'
+		} [t] || t
+	}
 
-  ctx.restore();
-}
+	function updateStatusAndLegend() {
+		let nm;
+		try {
+			nm = convertedNodes()
+		} catch {
+			nm = nodes
+		}
+		const {
+			errors,
+			warnings
+		} = validate(), ns = updateSceneNameStatus();
+		setStatus(`${ns.message} | Mode: ${mode}${mode==='tag'?` / ${activeTag}`:''} | Nodes: ${Object.keys(nodes).length} | Zoom: ${Math.round(viewScale*100)}% | ${errors.length} errors, ${warnings.length} warnings`);
+		legendEl.innerHTML = tagTypes.filter(t => t !== 'none').map(t => `<span class="pill" style="border:1px solid ${colors[t]||'#999'}">${shortTag(t)} ${t}</span>`).join(' ')
+	}
 
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  if (bgImage) {
-    ctx.drawImage(bgImage, offsetX, offsetY, GAME_WIDTH * viewScale, GAME_HEIGHT * viewScale);
-  } else {
-    ctx.fillStyle = "#222";
-    ctx.fillRect(offsetX, offsetY, GAME_WIDTH * viewScale, GAME_HEIGHT * viewScale);
-  }
-
-  drawGrid();
-
-  const nodeMap = nodes;
-
-  // Links
-  ctx.save();
-  ctx.lineWidth = Math.max(2, 4 * viewScale);
-  const drawn = new Set();
-
-  for (const id in nodeMap) {
-    const n = nodeMap[id];
-    for (const nbId of n.neighbors || []) {
-      const nb = nodeMap[nbId];
-      if (!nb) continue;
-      const key = [id, nbId].sort().join("|");
-      if (drawn.has(key)) continue;
-      drawn.add(key);
-
-      const a = screen(n.x, n.y);
-      const b = screen(nb.x, nb.y);
-      ctx.strokeStyle = "rgba(3, 252, 32)";
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
-    }
-  }
-  ctx.restore();
-
-  // Nodes
-  for (const id in nodeMap) {
-    const n = nodeMap[id];
-    const p = screen(n.x, n.y);
-    const tags = n.tags || [];
-
-    let fill = "#ffffff";
-    if (tags.includes("banana")) fill = colors.banana;
-    if (tags.includes("deliveryRoute")) fill = colors.deliveryRoute;
-    if (tags.includes("secretReward")) fill = colors.secretReward;
-    if (tags.includes("edgePortal")) fill = colors.edgePortal;
-    if (tags.includes("cavePortal")) fill = colors.cavePortal;
-    if (tags.includes("startNode")) fill = colors.startNode;
-    if (tags.includes("goalNode")) fill = colors.goalNode;
-    if (tags.includes("jumpTarget")) fill = colors.jumpTarget;
-
-    const radius = id === selected ? 12 : 8;
-
-    ctx.save();
-    ctx.fillStyle = fill;
-    ctx.strokeStyle = tags.includes("stopHere") ? "#000" : "rgba(0,0,0,0.85)";
-    ctx.lineWidth = tags.includes("stopHere") ? 4 : 2;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.font = "bold 13px Arial";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = "black";
-    ctx.fillStyle = "white";
-    ctx.strokeText(id, p.x, p.y - 20);
-    ctx.fillText(id, p.x, p.y - 20);
-
-    if (tags.length) {
-      ctx.font = "10px Arial";
-      const label = tags.map(shortTag).join(" ");
-      ctx.strokeText(label, p.x, p.y + 19);
-      ctx.fillText(label, p.x, p.y + 19);
-    }
-    ctx.restore();
-  }
-
-  updateStatusAndLegend();
-  requestAnimationFrame(draw);
-}
-
-function shortTag(t) {
-  return ({
-    banana: "🍌",
-    deliveryRoute: "D",
-    secretReward: "🎁",
-    edgePortal: "E",
-    cavePortal: "C",
-    startNode: "S",
-    goalNode: "G",
-    jumpTarget: "J",
-    stopHere: "STOP"
-  })[t] || t;
-}
-
-function updateStatusAndLegend() {
-  const nodeMap = convertedNodes();
-  const { errors, warnings } = validate();
-  const tagCounts = {};
-  for (const n of Object.values(nodeMap)) {
-    for (const t of n.tags || []) tagCounts[t] = (tagCounts[t] || 0) + 1;
-  }
-
-  setStatus(
-    `Mode: ${mode}` +
-    (mode === "tag" ? ` / ${activeTag}` : "") +
-    ` | Nodes: ${Object.keys(nodes).length}` +
-    ` | Zoom: ${Math.round(viewScale * 100)}%` +
-    ` | ${errors.length} errors, ${warnings.length} warnings`
-  );
-
-  legendEl.innerHTML = tagTypes
-    .filter(t => t !== "none")
-    .map(t => `<span class="pill" style="border:1px solid ${colors[t] || "#999"}">${shortTag(t)} ${t}</span>`)
-    .join(" ");
-}
-
-fitImage();
-updateButtons();
-
-try {
-  const saved = JSON.parse(localStorage.getItem("nodegen_autosave_nodes_v2") || "null");
-  if (saved?.nodes) {
-    nodes = saved.nodes;
-    idCounter = saved.idCounter || (Object.keys(nodes).length + 1);
-    if (saved.prefix) document.getElementById("prefixInput").value = saved.prefix;
-    if (saved.exportName) document.getElementById("nameInput").value = saved.exportName;
-    if (saved.scene) document.getElementById("sceneInput").value = saved.scene;
-  }
-} catch {}
-
-draw();
-</script>
+	function draw() {
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		if(bgImage) ctx.drawImage(bgImage, offsetX, offsetY, GAME_WIDTH * viewScale, GAME_HEIGHT * viewScale);
+		else {
+			ctx.fillStyle = '#222';
+			ctx.fillRect(offsetX, offsetY, GAME_WIDTH * viewScale, GAME_HEIGHT * viewScale)
+		}
+		drawGrid();
+		ctx.save();
+		ctx.lineWidth = Math.max(2, 4 * viewScale);
+		const drawn = new Set();
+		for(const id in nodes) {
+			const n = nodes[id];
+			for(const nbId of n.neighbors || []) {
+				const nb = nodes[nbId];
+				if(!nb) continue;
+				const key = [id, nbId].sort().join('|');
+				if(drawn.has(key)) continue;
+				drawn.add(key);
+				const a = screen(n.x, n.y),
+					b = screen(nb.x, nb.y);
+				ctx.strokeStyle = 'rgba(3,252,32)';
+				ctx.beginPath();
+				ctx.moveTo(a.x, a.y);
+				ctx.lineTo(b.x, b.y);
+				ctx.stroke()
+			}
+		}
+		ctx.restore();
+		for(const id in nodes) {
+			const n = nodes[id],
+				p = screen(n.x, n.y),
+				tags = n.tags || [];
+			let fill = '#fff';
+			for(const t of ['banana', 'deliveryRoute', 'keeperRoute', 'secretReward', 'edgePortal', 'cavePortal', 'startNode', 'goalNode', 'jumpTarget'])
+				if(tags.includes(t)) fill = colors[t];
+			ctx.save();
+			ctx.fillStyle = fill;
+			ctx.strokeStyle = tags.includes('stopHere') ? '#000' : 'rgba(0,0,0,.85)';
+			ctx.lineWidth = tags.includes('stopHere') ? 4 : 2;
+			ctx.beginPath();
+			ctx.arc(p.x, p.y, id === selected ? 12 : 8, 0, Math.PI * 2);
+			ctx.fill();
+			ctx.stroke();
+			ctx.font = 'bold 13px Arial';
+			ctx.textAlign = 'center';
+			ctx.textBaseline = 'middle';
+			ctx.lineWidth = 4;
+			ctx.strokeStyle = 'black';
+			ctx.fillStyle = 'white';
+			ctx.strokeText(id, p.x, p.y - 20);
+			ctx.fillText(id, p.x, p.y - 20);
+			if(tags.length) {
+				ctx.font = '10px Arial';
+				const lab = tags.map(shortTag).join(' ');
+				ctx.strokeText(lab, p.x, p.y + 19);
+				ctx.fillText(lab, p.x, p.y + 19)
+			}
+			ctx.restore()
+		}
+		drawMagnifier();
+		updateStatusAndLegend();
+		requestAnimationFrame(draw)
+	}
+	fitImage();
+	updateButtons();
+	try {
+		const saved = JSON.parse(localStorage.getItem('nodegen_autosave_nodes_v3') || 'null');
+		if(saved?.nodes) {
+			nodes = saved.nodes;
+			idCounter = saved.idCounter || Object.keys(nodes).length + 1;
+			if(saved.sceneName) document.getElementById('sceneNameInput').value = saved.sceneName;
+			if(saved.sceneType) document.getElementById('sceneTypeInput').value = saved.sceneType;
+			if(saved.endingType !== undefined) document.getElementById('endingTypeInput').value = saved.endingType;
+			if(saved.cardColor) document.getElementById('cardColorInput').value = saved.cardColor;
+			if(saved.fontColor) document.getElementById('fontColorInput').value = saved.fontColor;
+			if(saved.extraInstruction !== undefined) document.getElementById('extraInstructionInput').value = saved.extraInstruction;
+			if(saved.extraIcon) document.getElementById('extraIconInput').value = saved.extraIcon
+		}
+	} catch {}
+	try {
+		if(localStorage.getItem('nodegen_tools_visible') === '0') toolsVisible = false
+	} catch {}
+	applyToolsVisibility();
+	updateSceneNameStatus();
+	draw();
+	</script>
 </body>
-</html>
+
+</html
