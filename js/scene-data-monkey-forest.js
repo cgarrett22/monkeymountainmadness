@@ -93,10 +93,10 @@ export const monkeyForestSecretRoom = {
 export const monkeyForestCardMeta = {
   title: "MONKEY FOREST",
   backgroundKey: "monkeyForestBackground",
-  zoneColor: "#A58BFF",
+  zoneColor: "#a487ff",
   textColor: "#ffffff",
 
-  objectives: [
+  objectivesA58BFF: [
     { text: "COLLECT 3 HEARTS", iconKey: "heart" },
     { text: "CARRY MOM ALONG", iconKey: "mother" },
     { text: "FIND YOUR SAFE PLACE", iconKey: "safePlace" }
@@ -110,5 +110,10 @@ export const monkeyForestCardMeta = {
   maxW: 430,
   maxH: 430
 },
+
+  watermarkImageKey: "monkeyForestIcon",
+  watermarkAlpha: 0.15,
+  watermarkMaxSize: 850,
+
   fallbackImageKey: "cardSafePlaceIcon"
 };

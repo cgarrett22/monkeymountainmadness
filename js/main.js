@@ -263,18 +263,6 @@ function getIntroJabWalkFrame(t) {
     return getIntroFrame(t, OPENING_INTRO_TIMING.jabWalkStart, 9, 4, true);
 }
 
-// function getIntroJabBlinkFrame(t) {
-//     return getIntroFrame(t, OPENING_INTRO_TIMING.jabBlinkStart, 5, 4, false);
-// }
-
-// function getIntroJabWeepFrame(t) {
-//     return getIntroFrame(t, OPENING_INTRO_TIMING.jabWeepStart, 9, 8, true);
-// }
-
-// function getIntroMotherFrame(t) {
-//     return getIntroFrame(t, OPENING_INTRO_TIMING.motherShunStart, 6, 4, false);
-// }
-
 function getIntroHeartFrame(t) {
     return getIntroFrame(t, OPENING_INTRO_TIMING.heartAnimStart, 10, 8, true);
 }
@@ -496,10 +484,6 @@ function logIntroSpriteInfoOnce() {
         });
     }
 }
-
-// function imageReady(img) {
-//     return !!(img && img.complete && img.naturalWidth > 0);
-// }
 
 function drawStartTitleScreen(ctx) {
     const bg = spriteStore.titleBackground;
@@ -1697,32 +1681,6 @@ function updateLevelIntro(dt) {
         // Manual continue only. The card is paused for reading.
         return;
     }
-    // if (li.phase === "card") {
-    //     if (li.time >= SCENE_INTRO_TIMING.cardDuration) {
-    //         li.phase = "overlay";
-    //         li.time = 0;
-
-    //         if (!li.prepared) {
-    //             if (li.nextScene === "main") {
-    //                 startMainScene();
-    //             } else if (li.nextScene === "chill") {
-    //                 startChillHill();
-    //             } else if (li.nextScene === "monkeyForest") {
-    //                 startMonkeyForest();
-    //             } else if (li.nextScene === "ticketTime") {
-    //                 startChillHill();
-    //             } else if (li.nextScene === "ichiCafe") {
-    //                 startGenericScene("ichiCafe");
-    //             } else {
-    //                 startGenericScene(li.nextScene);
-    //             }
-
-    //             li.prepared = true;
-    //         }
-    //     }
-
-    //     return;
-    // }
 
     if (li.phase === "overlay") {
         if (li.time >= SCENE_INTRO_TIMING.overlayDuration) {
@@ -1752,7 +1710,7 @@ function getSceneIntroFocus(nextScene = "main") {
 }
 
 function drawBabyKongPathDebug() {
-    if (!isDebugEnabled) return;
+    if (!DEBUG) return;
     if (state.scene !== "boss") return;
     if (!Array.isArray(babyKongPath) || babyKongPath.length < 1) return;
 
@@ -6269,8 +6227,10 @@ function drawZoneCompletedBadge(zone) {
     if (!zone?.bounds) return;
 
     const b = zone.bounds;
-    const x = b.x + b.w - 20;
-    const y = b.y + 24;
+    // const x = b.x + b.w - 20;
+    const x = b.x + (b.w / 2);
+    const y = b.y + (b.h / 2)    // const y = b.y + 24;
+4;
     const r = 28;
 
     ctx.save();

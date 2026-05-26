@@ -279,7 +279,8 @@ export const SCENE_CONFIGS = {
     },
     mother: {
       enabledAfterAcquired: true,
-      startNode: monkeyForestConfig.startNode,
+      // startNode: monkeyForestConfig.startNode,
+      startNode: "MF22",
       requiredForExit: true
     }
   },
